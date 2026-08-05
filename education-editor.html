@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Education editor — Jessica Dougherty</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#0e1513" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e9a97d'/%3E%3Ctext x='16' y='22.5' font-family='Georgia,serif' font-size='19' font-weight='700' fill='%230e1513' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --text:#f3eee1; --muted:#bcc6ba; --faint:#8b978b;
+    --accent:#e9a97d; --accent-2:#9fc7a6;
+    --card:linear-gradient(150deg,#152017 0%,#1d2b21 55%,#26372c 100%);
+    --border:rgba(255,255,255,.09); --shadow:0 16px 42px rgba(0,0,0,.42); --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:#0e1513}
+  body{color:var(--text);min-height:100vh;font-family:'DM Sans',system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:70px}
+  a{color:var(--accent-2)}
+  .wrap{max-width:920px;margin:0 auto;padding:0 22px}
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(14,21,19,.9);border-bottom:1px solid var(--border)}
+  .nav-inner{max-width:920px;margin:0 auto;padding:0 22px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-weight:700;font-size:15px}
+  header{padding:40px 0 22px}
+  .eyebrow{color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px}
+  h1{font-family:'Fraunces',Georgia,serif;font-size:clamp(26px,5vw,36px);font-weight:600;letter-spacing:-.02em}
+  header p{color:var(--muted);font-size:15.5px;margin-top:10px;max-width:640px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:16px}
+  .card h2{font-family:'Fraunces',Georgia,serif;font-size:19px;font-weight:600;margin-bottom:4px}
+  .card h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:rgba(233,169,125,.18);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;margin-right:9px;vertical-align:2px}
+  .card .hint{color:var(--faint);font-size:13.5px;margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:14px 0 6px}
+  input[type=password],input[type=text]{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;color:var(--text);font:inherit;font-size:15px;padding:11px 14px}
+  input:focus,textarea:focus{outline:none;border-color:rgba(233,169,125,.5);box-shadow:0 0 0 3px rgba(233,169,125,.12)}
+  textarea{width:100%;min-height:210px;background:rgba(0,0,0,.34);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;resize:vertical}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  button{background:var(--accent);color:#1b1005;border:0;border-radius:10px;padding:11px 18px;font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  button:hover{filter:brightness(1.06)}
+  button[disabled]{opacity:.5;cursor:not-allowed}
+  button.ghost{background:rgba(255,255,255,.07);color:var(--muted);border:1px solid var(--border)}
+  button.ghost:hover{color:var(--text)}
+  .status{font-size:13.5px;margin-top:12px;min-height:20px}
+  .status.ok{color:var(--accent-2)} .status.bad{color:#f0a898}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tabs button{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);font-size:13.5px;padding:7px 15px}
+  .tabs button.on{background:var(--accent);color:#1b1005;border-color:transparent}
+  .editors{display:none}.editors.on{display:block}
+  .pane{display:none}.pane.on{display:block}
+  .steps{counter-reset:s}
+  .note{background:rgba(159,199,166,.1);border:1px solid rgba(159,199,166,.22);border-radius:12px;padding:13px 15px;color:var(--muted);font-size:13.5px;margin-top:14px}
+  .note b{color:var(--text)}
+  code{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px}
+</style>
+</head>
+<body>
+<nav><div class="nav-inner"><a class="brand" href="index.html">Jessica&nbsp;Dougherty</a><a href="education.html" style="font-size:14px;font-weight:600">Education page →</a></div></nav>
+
+<header class="wrap">
+  <p class="eyebrow">Private tool</p>
+  <h1>Education page editor</h1>
+  <p>Unlock the current page, edit the three tabs as plain HTML, then download a rebuilt <code>education.html</code>. Everything happens in this browser — nothing is uploaded anywhere.</p>
+</header>
+
+<main class="wrap steps">
+
+  <section class="card">
+    <h2><span class="n">1</span>Unlock the current page</h2>
+    <p class="hint">Loads <code>education.html</code> and decrypts it so you can edit what's inside.</p>
+    <label for="pw">Current password</label>
+    <input type="password" id="pw" placeholder="Current password" autocomplete="current-password" spellcheck="false" />
+    <div class="row">
+      <button id="loadBtn" type="button">Unlock &amp; load</button>
+      <button class="ghost" id="pickBtn" type="button">Choose education.html manually</button>
+      <input type="file" id="file" accept=".html" hidden />
+    </div>
+    <p class="status" id="s1"></p>
+  </section>
+
+  <div class="editors" id="editors">
+    <section class="card">
+      <h2><span class="n">2</span>Edit the tabs</h2>
+      <p class="hint">Plain HTML. The styles on the page (<code>.entry</code>, <code>.tag</code>, <code>.cards</code>, the certification table) all still apply.</p>
+      <div class="tabs">
+        <button type="button" class="on" data-pane="education">Education</button>
+        <button type="button" data-pane="experience">Experience</button>
+        <button type="button" data-pane="events">Events</button>
+      </div>
+      <div class="pane on" id="pane-education"><textarea id="ta-education" spellcheck="false"></textarea></div>
+      <div class="pane" id="pane-experience"><textarea id="ta-experience" spellcheck="false"></textarea></div>
+      <div class="pane" id="pane-events"><textarea id="ta-events" spellcheck="false"></textarea></div>
+      <div class="row"><button class="ghost" id="previewBtn" type="button">Preview in a new tab</button></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="n">3</span>Rebuild &amp; download</h2>
+      <p class="hint">Leave the password blank to keep the current one, or type a new one to change it.</p>
+      <label for="newpw">New password (optional)</label>
+      <input type="password" id="newpw" placeholder="Leave blank to keep the current password" autocomplete="new-password" spellcheck="false" />
+      <div class="row"><button id="buildBtn" type="button">Rebuild education.html</button></div>
+      <p class="status" id="s3"></p>
+      <div class="note"><b>Last step:</b> upload the downloaded <code>education.html</code> to your repo (GitHub → the file → <b>Add file / Upload files</b>, or drag it in), replacing the old one. It goes live in about a minute.</div>
+    </section>
+  </div>
+
+</main>
+
+<script>
+(function(){
+  'use strict';
+  var ITER = 250000;
+  var $ = function(id){ return document.getElementById(id); };
+  var sourceHtml = null, vault = null, currentPw = null;
+  var KEYS = ['education','experience','events'];
+
+  function say(el, msg, ok){ var e = $(el); e.textContent = msg; e.className = 'status ' + (ok === undefined ? '' : ok ? 'ok' : 'bad'); }
+  function b64d(s){ var b = atob(s), u = new Uint8Array(b.length); for (var i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
+  function b64e(buf){ var u = new Uint8Array(buf), s = ''; for (var i=0;i<u.length;i++) s += String.fromCharCode(u[i]); return btoa(s); }
+
+  function deriveKey(pw, salt, iter, uses){
+    return crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey'])
+      .then(function(base){
+        return crypto.subtle.deriveKey({ name:'PBKDF2', salt:salt, iterations:iter, hash:'SHA-256' },
+          base, { name:'AES-GCM', length:256 }, false, uses);
+      });
+  }
+
+  function extractVault(html){
+    var m = html.match(/<script type="application\/json" id="vault">([\s\S]*?)<\/script>/);
+    if (!m) throw new Error('no vault');
+    return JSON.parse(m[1]);
+  }
+
+  function loadFromText(html, pw){
+    sourceHtml = html;
+    vault = extractVault(html);
+    return deriveKey(pw, b64d(vault.salt), vault.iterations, ['decrypt'])
+      .then(function(k){ return crypto.subtle.decrypt({ name:'AES-GCM', iv:b64d(vault.iv) }, k, b64d(vault.data)); })
+      .then(function(buf){
+        var content = JSON.parse(new TextDecoder().decode(buf));
+        KEYS.forEach(function(k){ $('ta-' + k).value = content[k] || ''; });
+        currentPw = pw;
+        $('editors').classList.add('on');
+        say('s1', 'Unlocked. Edit below, then rebuild.', true);
+      });
+  }
+
+  $('loadBtn').addEventListener('click', function(){
+    var pw = $('pw').value;
+    if (!pw) return say('s1', 'Enter the current password first.', false);
+    say('s1', 'Loading…');
+    fetch('education.html', { cache: 'no-store' })
+      .then(function(r){ if (!r.ok) throw new Error('http'); return r.text(); })
+      .then(function(t){ return loadFromText(t, pw); })
+      .catch(function(e){
+        if (e && e.message === 'no vault') return say('s1', 'That file has no encrypted section in it.', false);
+        say('s1', 'Couldn’t load or decrypt. If you opened this file directly from your disk, use “Choose education.html manually”. Otherwise the password is wrong.', false);
+      });
+  });
+
+  $('pickBtn').addEventListener('click', function(){ $('file').click(); });
+  $('file').addEventListener('change', function(){
+    var f = this.files[0], pw = $('pw').value;
+    if (!f) return;
+    if (!pw) return say('s1', 'Enter the current password first.', false);
+    f.text().then(function(t){ return loadFromText(t, pw); })
+      .catch(function(){ say('s1', 'Couldn’t decrypt that file with this password.', false); });
+  });
+
+  document.querySelectorAll('.tabs button').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.remove('on'); });
+      document.querySelectorAll('.pane').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+      $('pane-' + b.dataset.pane).classList.add('on');
+    });
+  });
+
+  $('previewBtn').addEventListener('click', function(){
+    var css = document.querySelector('link[href*="fonts.googleapis"]').outerHTML;
+    var body = KEYS.map(function(k){ return '<section style="margin-bottom:40px">' + $('ta-' + k).value + '</section>'; }).join('');
+    var w = window.open('', '_blank');
+    w.document.write('<!DOCTYPE html><meta charset="utf-8">' + css +
+      '<body style="background:#1a251d;color:#f3eee1;font-family:DM Sans,sans-serif;padding:30px;max-width:1000px;margin:auto">' + body);
+    w.document.close();
+  });
+
+  $('buildBtn').addEventListener('click', function(){
+    if (!sourceHtml) return say('s3', 'Unlock the page first.', false);
+    var pw = $('newpw').value || currentPw;
+    var content = {};
+    KEYS.forEach(function(k){ content[k] = $('ta-' + k).value; });
+
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    say('s3', 'Encrypting…');
+
+    deriveKey(pw, salt, ITER, ['encrypt'])
+      .then(function(k){
+        return crypto.subtle.encrypt({ name:'AES-GCM', iv:iv }, k,
+          new TextEncoder().encode(JSON.stringify(content)));
+      })
+      .then(function(ct){
+        var v = { v:1, kdf:'PBKDF2-SHA256', iterations:ITER, salt:b64e(salt), iv:b64e(iv), data:b64e(ct) };
+        var out = sourceHtml.replace(/(<script type="application\/json" id="vault">)[\s\S]*?(<\/script>)/,
+                                     '$1' + JSON.stringify(v).replace(/\$/g, '$$$$') + '$2');
+        var blob = new Blob([out], { type:'text/html' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'education.html';
+        a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+        say('s3', 'Downloaded. Upload it to your repo to replace the old education.html.' +
+                  ($('newpw').value ? ' Your password has been changed.' : ''), true);
+      })
+      .catch(function(){ say('s3', 'Something went wrong while encrypting.', false); });
+  });
+})();
+</script>
+</body>
+</html>

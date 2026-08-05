@@ -61,6 +61,9 @@
   .nav-links{margin-left:auto;display:flex;align-items:center;gap:22px}
   .nav-links a{color:var(--muted);font-size:14px;font-weight:500;transition:color .15s}
   .nav-links a:hover{color:var(--text)}
+  .nav-locked{display:inline-flex;align-items:center;gap:6px}
+  .nav-locked svg{width:12px;height:12px;opacity:.7}
+  .nav-locked:hover svg{opacity:1;color:var(--accent-2)}
   .nav-cta{
     display:inline-flex;align-items:center;gap:7px;
     background:var(--accent-2);color:#14241a !important;font-weight:700;
@@ -374,7 +377,11 @@
       <a href="#about">About</a>
       <a href="#work">Projects</a>
       <a href="#community">AI Community</a>
-      <a class="nav-cta" href="https://www.linkedin.com/in/jessicaddougherty/" target="_blank" rel="noopener">
+      <a class="nav-locked" href="education.html" title="Private — sign in required">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Education
+      </a>
+      <a class="nav-cta"href="https://www.linkedin.com/in/jessicaddougherty/" target="_blank" rel="noopener">
         Connect →
       </a>
       <button class="qr-toggle" id="qrToggle" aria-label="Show QR code" title="Scan / share this site">

@@ -10,6 +10,9 @@ export const config = {
     '/education-editor.html',
     '/education',
     '/education-editor',
+    '/app.html',
+    '/career',
+    '/dashboard/career',
   ],
 };
 

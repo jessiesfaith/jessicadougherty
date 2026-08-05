@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Sign in — Jessica Dougherty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0e1513; --card:linear-gradient(150deg,#152017 0%,#1d2b21 55%,#26372c 100%);
+    --card-2:rgba(255,255,255,.07); --border:rgba(255,255,255,.09);
+    --text:#f3eee1; --muted:#bcc6ba; --faint:#8b978b;
+    --accent:#e9a97d; --accent-2:#9fc7a6;
+    --shadow:0 16px 42px rgba(0,0,0,.42);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{
+    min-height:100vh;display:grid;place-items:center;padding:24px;
+    color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;
+  }
+  a{color:inherit}
+
+  .smoke{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;animation:swirl 120s linear infinite}
+  .smoke b{position:absolute;border-radius:50%;filter:blur(72px);opacity:.5;mix-blend-mode:soft-light;display:block}
+  .smoke .s1{width:62vw;height:62vw;left:-12vw;top:-14vh;background:radial-gradient(circle,#a9cab4,transparent 66%)}
+  .smoke .s2{width:58vw;height:58vw;right:-14vw;bottom:-16vh;background:radial-gradient(circle,#5a836e,transparent 66%)}
+  .smoke .s3{width:44vw;height:44vw;left:6vw;bottom:2vh;background:radial-gradient(circle,#d9a179,transparent 68%)}
+  @keyframes swirl{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){.smoke{animation:none}}
+
+  .box{
+    width:100%;max-width:400px;background:var(--card);border:1px solid var(--border);
+    border-radius:20px;padding:34px 30px 28px;box-shadow:var(--shadow);
+  }
+  .lock{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:13px;
+    background:rgba(159,199,166,.14);border:1px solid rgba(159,199,166,.3);color:var(--accent-2)}
+  .lock svg{width:21px;height:21px}
+  h1{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:600;letter-spacing:-.02em;margin:18px 0 6px}
+  h1 .accent{color:var(--accent)}
+  .sub{font-size:14.5px;color:var(--muted);margin-bottom:22px}
+
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--faint);
+    text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+  .field{position:relative}
+  input{
+    width:100%;padding:13px 46px 13px 14px;border-radius:12px;
+    background:rgba(0,0,0,.28);border:1px solid var(--border);color:var(--text);
+    font-family:inherit;font-size:15.5px;letter-spacing:.02em;
+  }
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,169,125,.16)}
+  .peek{position:absolute;right:6px;top:6px;width:34px;height:34px;display:grid;place-items:center;
+    background:none;border:none;color:var(--faint);cursor:pointer;border-radius:9px}
+  .peek:hover{color:var(--text)}
+  .peek svg{width:18px;height:18px}
+
+  button.go{
+    width:100%;margin-top:16px;padding:13px 18px;border:none;border-radius:12px;cursor:pointer;
+    background:var(--accent-2);color:#14241a;font-family:inherit;font-size:15px;font-weight:700;
+    box-shadow:0 6px 18px rgba(159,199,166,.24);transition:filter .15s,transform .12s;
+  }
+  button.go:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px)}
+  button.go:disabled{opacity:.6;cursor:default}
+
+  .msg{margin-top:14px;font-size:13.5px;border-radius:10px;padding:10px 13px;display:none}
+  .msg.err{display:block;background:rgba(233,120,105,.13);border:1px solid rgba(233,120,105,.34);color:#f0b6ab}
+  .msg.ok{display:block;background:rgba(159,199,166,.13);border:1px solid rgba(159,199,166,.32);color:var(--accent-2)}
+
+  .foot{margin-top:22px;padding-top:16px;border-top:1px solid var(--border);
+    font-size:13px;color:var(--faint);display:flex;justify-content:space-between;gap:12px}
+  .foot a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="smoke" aria-hidden="true"><b class="s1"></b><b class="s2"></b><b class="s3"></b></div>
+
+<main class="box">
+  <span class="lock" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/>
+    </svg>
+  </span>
+
+  <h1>Private <span class="accent">workspace</span></h1>
+  <p class="sub">This part of the site is not public. Sign in to continue.</p>
+
+  <form id="form" autocomplete="off">
+    <label for="password">Password</label>
+    <div class="field">
+      <input id="password" name="password" type="password" required autofocus
+             autocomplete="current-password" spellcheck="false" />
+      <button type="button" class="peek" id="peek" aria-label="Show password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+    <button class="go" id="go" type="submit">Sign in</button>
+  </form>
+
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+
+  <div class="foot">
+    <a href="/">&larr; Back to the public site</a>
+    <span>Session ends on close</span>
+  </div>
+</main>
+
+<script>
+  var form = document.getElementById('form');
+  var input = document.getElementById('password');
+  var go = document.getElementById('go');
+  var msg = document.getElementById('msg');
+  var peek = document.getElementById('peek');
+
+  function show(text, kind) {
+    msg.textContent = text;
+    msg.className = 'msg ' + kind;
+  }
+
+  if (new URLSearchParams(location.search).get('signedout')) {
+    show('Signed out. The session cookie is gone.', 'ok');
+  }
+
+  peek.addEventListener('click', function () {
+    var hidden = input.type === 'password';
+    input.type = hidden ? 'text' : 'password';
+    peek.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+    input.focus();
+  });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    go.disabled = true;
+    go.textContent = 'Checking…';
+    msg.className = 'msg';
+
+    try {
+      var res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ password: input.value })
+      });
+      var data = await res.json().catch(function () { return {}; });
+
+      if (res.ok && data.ok) {
+        show('Welcome back. Opening your workspace…', 'ok');
+        location.assign(data.redirect || '/dashboard');
+        return;
+      }
+      show(data.error || 'Sign in failed. Try again.', 'err');
+    } catch (err) {
+      show('Could not reach the server. Check your connection.', 'err');
+    }
+
+    go.disabled = false;
+    go.textContent = 'Sign in';
+    input.select();
+  });
+</script>
+</body>
+</html>

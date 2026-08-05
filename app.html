@@ -244,8 +244,10 @@
       <div class="spacer"></div>
       <select class="f" id="jobSelect" style="max-width:250px"></select>
       <button class="btn" id="jobNew">New</button>
+      <button class="btn" id="jobGrabber">One-click capture</button>
       <button class="btn danger ghost" id="jobDelete">Delete</button>
     </div>
+    <div class="card" id="grabberCard" style="display:none"></div>
     <div class="split">
       <div class="card">
         <div class="row">
@@ -329,6 +331,10 @@ async function boot() {
     $('boot').remove();
     $('storeInfo').textContent = 'Career master v' + master.version + (master.updatedAt ? ' · updated ' + new Date(master.updatedAt).toLocaleString() : '');
     renderCareer(); renderTplSelect(); renderJobSelect(); renderArchive();
+
+    const captured = readCapture();
+    if (captured) { await acceptCapture(captured); return; }
+
     const wanted = (location.hash || '').replace('#', '');
     show(['career','builder','archive','jobs'].includes(wanted) ? wanted : 'career');
   } catch (err) {
@@ -810,6 +816,72 @@ $('btnCover').addEventListener('click', async () => {
     out.outerHTML = '<div class="banner err"><b>Cover letter failed</b>' + esc(err.message) + '</div>';
   }
 });
+/* ── ONE-CLICK CAPTURE ─────────────────────────────────
+   The bookmarklet runs on the job page you are already looking at, reads the
+   text your browser has already rendered, and hands it over in the URL
+   fragment. Fragments are never sent to a server, so the posting text goes
+   browser-to-browser and nothing is scraped server-side. */
+function readCapture() {
+  const m = (location.hash || '').match(/[#&]capture=([^&]+)/);
+  if (!m) return null;
+  try {
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(m[1]))));
+    history.replaceState(null, '', location.pathname + '#jobs'); // don't leave a giant URL sitting in history
+    return JSON.parse(json);
+  } catch { return null; }
+}
+// "Acme Corp hiring Senior Controller in Palo Alto | LinkedIn" -> company + role
+function splitTitle(title) {
+  const t = String(title || '').replace(/\s*\|\s*LinkedIn\s*$/i, '').trim();
+  let m = t.match(/^(.+?)\s+hiring\s+(.+?)(?:\s+in\s+.+)?$/i);
+  if (m) return { company: m[1].trim(), role: m[2].trim() };
+  m = t.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+  if (m) return { role: m[1].trim(), company: m[2].trim() };
+  return { company: '', role: t };
+}
+// A capture can also arrive into an already-open workspace (browser reuses the
+// tab, or you paste the link yourself). Changing only the fragment does not
+// reload the page, so boot() would never see it.
+window.addEventListener('hashchange', async () => {
+  if (!state.master) return;
+  const d = readCapture();
+  if (d) await acceptCapture(d);
+});
+
+async function acceptCapture(d) {
+  const guess = splitTitle(d.title);
+  const j = {
+    id: uid('job'), company: guess.company, role: guess.role,
+    url: d.url || '', status: 'considering', text: (d.text || '').trim(),
+    createdAt: new Date().toISOString(), capturedFrom: d.url || '',
+  };
+  state.jobs.items.unshift(j); state.jobId = j.id;
+  await saveJobs(); renderJobSelect(); show('jobs');
+  toast('Captured — check the company and role, then hit Analyse fit');
+}
+
+const BOOKMARKLET = "javascript:(function(){var d={title:document.title,url:location.href,text:((document.querySelector('main')||document.body).innerText||'').replace(/\\n{3,}/g,'\\n\\n').slice(0,24000)};var b=btoa(unescape(encodeURIComponent(JSON.stringify(d))));window.open('" + location.origin + "/career#capture='+encodeURIComponent(b),'_blank');})();";
+
+$('jobGrabber').addEventListener('click', () => {
+  const card = $('grabberCard');
+  if (card.style.display === 'block') { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  card.innerHTML =
+    '<div class="sec-head"><h2>One-click capture</h2></div>' +
+    '<p style="font-size:14px;color:var(--muted);margin-bottom:12px">Drag this button to your bookmarks bar. Then on any job posting — LinkedIn, Indeed, a company careers page — click it and the description lands here as a new job.</p>' +
+    '<p><a class="btn primary" style="text-decoration:none" id="bmLink">Grab this job</a>' +
+    ' <button class="btn" id="bmCopy">Copy the code instead</button></p>' +
+    '<div class="banner info" style="margin-top:12px"><b>How it works</b>It reads the page your browser has already loaded and passes the text in the URL fragment — which never reaches any server. Nothing is scraped, and it works on sites that block automated fetching.</div>' +
+    '<div class="banner warn"><b>If your bookmarks bar is hidden</b>Ctrl+Shift+B shows it in Chrome. Or use "Copy the code instead", then make a new bookmark by hand and paste that as the URL.</div>';
+  const a = $('bmLink');
+  a.setAttribute('href', BOOKMARKLET);
+  a.addEventListener('click', (e) => { e.preventDefault(); toast('Drag it to your bookmarks bar rather than clicking it here.'); });
+  $('bmCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(BOOKMARKLET); toast('Bookmarklet code copied — paste it as a new bookmark’s URL'); }
+    catch { toast('Clipboard blocked — drag the button instead', true); }
+  });
+});
+
 function coverHtml(c) {
   const body = (c.body || []).map((p) => '<p style="margin-bottom:11px">' + esc(p) + '</p>').join('');
   return '<div class="card"><div class="sec-head"><h2>Cover letter draft</h2>' +

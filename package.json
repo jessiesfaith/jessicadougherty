@@ -1,8 +1,5 @@
 {
   "name": "jessicadougherty-site",
   "private": true,
-  "description": "Static personal site plus private career workspace (Vercel functions).",
-  "dependencies": {
-    "@vercel/blob": "^2.3.0"
-  }
+  "description": "Static personal site plus a private career workspace running on Vercel functions. No dependencies on purpose — nothing to install, nothing to build, nothing to go stale."
 }

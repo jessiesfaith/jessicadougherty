@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Resume — Jessica Dougherty</title>
+<meta name="description" content="Jessica Dougherty — Controller. SEC/SOX, technical accounting, consolidations, audit & tax." />
+<meta name="theme-color" content="#0e1513" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%239fc7a6'/%3E%3Ctext x='16' y='22.5' font-family='Georgia,serif' font-size='19' font-weight='700' fill='%230e1513' text-anchor='middle'%3EJ%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --text:#f3eee1; --muted:#c3ccbf; --faint:#8b978b;
+    --accent:#e9a97d; --accent-2:#9fc7a6;
+    --card:linear-gradient(150deg,#152017 0%,#1d2b21 55%,#26372c 100%);
+    --border:rgba(255,255,255,.09);
+    --shadow:0 16px 42px rgba(0,0,0,.42);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;background:#0e1513}
+  body{background:transparent;color:var(--text);min-height:100vh;font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:840px;margin:0 auto;padding:0 24px}
+
+  .smoke{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;animation:swirl 100s linear infinite}
+  .smoke b{position:absolute;border-radius:50%;filter:blur(72px);opacity:.5;mix-blend-mode:soft-light;display:block}
+  .smoke .s1{width:62vw;height:62vw;left:-12vw;top:-14vh;background:radial-gradient(circle,#a9cab4,transparent 66%);animation:drift1 28s ease-in-out infinite alternate}
+  .smoke .s2{width:58vw;height:58vw;right:-14vw;bottom:-16vh;background:radial-gradient(circle,#5a836e,transparent 66%);animation:drift2 34s ease-in-out infinite alternate}
+  .smoke .s3{width:50vw;height:50vw;left:34vw;top:24vh;background:radial-gradient(circle,#8fb8a0,transparent 68%);animation:drift3 42s ease-in-out infinite alternate}
+  .smoke .s4{width:44vw;height:44vw;left:6vw;bottom:2vh;background:radial-gradient(circle,#d9a179,transparent 68%);animation:drift1 38s ease-in-out infinite alternate-reverse}
+  @keyframes swirl{to{transform:rotate(360deg)}}
+  @keyframes drift1{to{transform:translate(10vw,8vh) scale(1.22)}}
+  @keyframes drift2{to{transform:translate(-12vw,-7vh) scale(1.18)}}
+  @keyframes drift3{to{transform:translate(7vw,-9vh) scale(1.3)}}
+  @media(prefers-reduced-motion:reduce){.smoke,.smoke b{animation:none}}
+
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);background:rgba(14,21,19,.86);border-bottom:1px solid var(--border)}
+  .nav-inner{max-width:840px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{font-weight:700;font-size:15px;color:var(--text)}
+  .nav-right{display:flex;align-items:center;gap:16px}
+  .back{color:var(--muted);font-size:14px;font-weight:600}
+  .back:hover{color:var(--text)}
+  .dl{display:inline-flex;align-items:center;gap:8px;background:var(--accent-2);color:#14241a;font-weight:700;font-size:13.5px;padding:9px 15px;border-radius:10px;box-shadow:0 4px 14px rgba(159,199,166,.28)}
+  .dl:hover{filter:brightness(1.05)}
+  .dl svg{width:15px;height:15px}
+
+  .sheet{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:40px 42px;margin:34px 0 44px}
+  .r-name{font-family:'Fraunces',Georgia,serif;font-size:clamp(30px,6vw,44px);font-weight:600;letter-spacing:-.02em;color:var(--text);line-height:1.02}
+  .r-tag{color:var(--accent);font-weight:600;font-size:15px;margin-top:8px}
+  .r-contact{color:var(--muted);font-size:13.5px;margin-top:8px}
+  .r-contact a{color:var(--accent-2)}
+
+  h2{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:28px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .lede{color:var(--muted);font-size:14.5px}
+  .comp{color:var(--muted);font-size:14px;line-height:1.9}
+
+  .role{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-top:18px;flex-wrap:wrap}
+  .role .co{font-weight:700;color:var(--text);font-size:15.5px}
+  .role .loc{color:var(--faint);font-size:12.5px;font-weight:500;margin-left:8px}
+  .role .dt{color:var(--faint);font-size:12.5px;font-weight:600;white-space:nowrap}
+  .rtitle{color:var(--accent-2);font-style:italic;font-size:14px;margin:3px 0 8px}
+  ul{list-style:none;margin:0}
+  li{position:relative;padding-left:18px;color:var(--muted);font-size:14px;margin-bottom:7px;line-height:1.55}
+  li::before{content:'';position:absolute;left:2px;top:9px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  .edu-line{color:var(--muted);font-size:14px;margin-bottom:5px}
+  .edu-line b{color:var(--text);font-weight:600}
+  .langs{color:var(--muted);font-size:13.5px;margin-top:10px}
+
+  footer{padding:26px 0 46px;text-align:center;color:var(--faint);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--muted)} footer a:hover{color:var(--accent)}
+  @media(max-width:640px){.sheet{padding:28px 22px}.nav-right .back{display:none}}
+</style>
+</head>
+<body>
+<div class="smoke" aria-hidden="true"><b class="s1"></b><b class="s2"></b><b class="s3"></b><b class="s4"></b></div>
+
+<nav>
+  <div class="nav-inner">
+    <a class="brand" href="index.html">Jessica&nbsp;Dougherty</a>
+    <div class="nav-right">
+      <a class="back" href="index.html">← Back to site</a>
+      <a class="dl" href="resume.pdf" download="Jessica_Dougherty_Resume.pdf">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        Download PDF
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="sheet">
+    <div class="r-name">Jessica Dougherty</div>
+    <div class="r-tag">Controller · SEC/SOX &amp; Technical Accounting · Consolidations · Audit &amp; Tax</div>
+    <div class="r-contact">San Francisco Bay Area, CA&nbsp;&nbsp;|&nbsp;&nbsp;jessicadougherty4321@gmail.com&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://www.linkedin.com/in/jessicaddougherty/" target="_blank" rel="noopener">linkedin.com/in/jessicaddougherty</a></div>
+
+    <h2>Professional Summary</h2>
+    <p class="lede">CPA-track accounting and finance leader with 15+ years spanning corporate controllership, SEC reporting, SOX compliance, global AR and revenue ($750M+), multi-entity consolidations, and external audit for high-growth public companies including Guardant Health and 10x Genomics. Deep US GAAP technical accounting, month/quarter/year-end close, treasury and cash forecasting, and financial-systems implementation, paired with SOX advisory experience at a national accounting firm. Currently founder and CFO of a fractional finance practice delivering controllership, tax planning, and AI-enabled accounting operations. Seeking a Controller role with a public company, audit or tax firm.</p>
+
+    <h2>Core Competencies</h2>
+    <p class="comp">SEC Reporting &amp; SOX Compliance · US GAAP Technical Accounting · Multi-Entity &amp; Multi-Currency Consolidations · Global AR, Revenue &amp; Cash Management · Month / Quarter / Year-End Close · External &amp; Internal Audit Management · FP&amp;A &amp; Cash Forecasting · Derivatives, ESPP &amp; Royalty Accounting · Tax Planning &amp; Compliance · ERP &amp; Financial-Systems Implementation (Deltek) · Process Reengineering &amp; Automation · Team Leadership &amp; Cross-Functional Partnership</p>
+
+    <h2>Professional Experience</h2>
+
+    <div class="role"><div><span class="co">Fast Insights IO</span><span class="loc">Los Gatos, CA</span></div><span class="dt">Apr 2024 – Present</span></div>
+    <div class="rtitle">Founder &amp; CFO / Fractional Controller</div>
+    <ul>
+      <li>Provide fractional CFO and controllership services to small and mid-sized businesses — owning the monthly close, bookkeeping, cash and tax planning, financial reporting, and finance-systems setup.</li>
+      <li>Advise high-net-worth clients on estate, cash, and tax planning; prepare and review filings and support compliance and audit readiness.</li>
+      <li>Design AI-enabled accounting operations that automate reconciliations, close tasks, and reporting workflows, improving accuracy and turnaround time while maintaining secure data.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">Scout Quest Education</span><span class="loc">Remote — United States</span></div><span class="dt">Apr 2026 – Present</span></div>
+    <div class="rtitle">Cofounder &amp; CEO</div>
+    <ul>
+      <li>Founded and lead an education-technology startup; own company finance, budgeting, compliance and data-privacy planning, and operational infrastructure alongside product and strategy.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">Guardant Health</span><span class="loc">Palo Alto, CA</span></div><span class="dt">2022 – 2024</span></div>
+    <div class="rtitle">Senior Manager — Global AR &amp; Cash | SEC/SOX Lead | Consolidations | Audit | Systems</div>
+    <ul>
+      <li>Led global accounts receivable, cash, and collections for a publicly traded precision-oncology company, owning the related close, reconciliations, and reporting.</li>
+      <li>Served as SEC/SOX lead for AR and cash cycles — designed, documented, and maintained internal controls and coordinated directly with external and internal auditors on walkthroughs and testing.</li>
+      <li>Managed multi-entity consolidations and supported technical accounting and financial-systems initiatives across the close.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">10x Genomics</span><span class="loc">Pleasanton, CA</span></div><span class="dt">2018 – 2022</span></div>
+    <div class="rtitle">Senior Manager → Manager → Supervisor, Global AR / Revenue | SEC/SOX Lead | Consolidations | Cash Planning | Systems</div>
+    <ul>
+      <li>Progressed through three roles of increasing scope, leading global AR and revenue operations, SEC/SOX compliance, consolidations, and cash planning for a high-growth public company.</li>
+      <li>Owned revenue and AR close, account reconciliations, and audit support; partnered with external auditors on quarterly reviews and annual audits.</li>
+      <li>Served as designated systems leader for accounting initiatives, streamlining the close and strengthening the control environment.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">Connor Group</span><span class="loc">San Jose, CA</span></div><span class="dt">2018 – 2019</span></div>
+    <div class="rtitle">Senior Manager — SOX Implementation Lead</div>
+    <ul>
+      <li>Advised clients on SOX program design and implementation at a leading technical accounting and advisory firm — scoping controls, leading risk assessments, and preparing audit-ready documentation.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">The Myers-Briggs Company</span><span class="loc">Sunnyvale, CA</span></div><span class="dt">2015 – 2018</span></div>
+    <div class="rtitle">Assistant Controller / Director — Accounting | FP&amp;A | Consolidations | Derivatives | ESPP | Royalties</div>
+    <ul>
+      <li>Directed accounting, FP&amp;A, and multi-entity consolidations across multinational business, including derivatives, ESPP, and royalty accounting.</li>
+      <li>Owned monthly, quarterly, and annual close, financial reporting, and external audit coordination.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">IBI Group</span><span class="loc">San Jose, CA</span></div><span class="dt">2013 – 2015</span></div>
+    <div class="rtitle">Controller / Business Manager</div>
+    <ul>
+      <li>Held full controllership for a regional office; led a strategic reorganization, downsized office locations, and improved reporting, budgeting, and day-to-day financial operations.</li>
+    </ul>
+
+    <div class="role"><div><span class="co">Allana Buick &amp; Bers, Inc.</span><span class="loc">Palo Alto, CA</span></div><span class="dt">2008 – 2013</span></div>
+    <div class="rtitle">Assistant CFO &amp; Supervising Project Accountant</div>
+    <ul>
+      <li>Supported the CFO across financial planning, project accounting, estate management, and bank-covenant compliance for a professional-services firm.</li>
+      <li>Led project planning and job-cost accounting and administered Deltek (project ERP); recognized as an industry subject-matter expert through published PSMJ articles on job-cost accounting.</li>
+    </ul>
+
+    <h2>Education</h2>
+    <div class="edu-line"><b>B.S., Business Administration — Accounting</b>, University of Phoenix</div>
+    <div class="edu-line"><b>A.A., Business / CIS — Accounting</b>, De Anza College</div>
+
+    <h2>Certifications &amp; Affiliations</h2>
+    <ul>
+      <li>Certified Public Accountant (CPA) — California Board of Accountancy (final exam completed; results pending, 2026)</li>
+      <li>Registered Tax Preparer — CTEC (exam passed; application pending)</li>
+      <li>Member, American Institute of Certified Public Accountants (AICPA), 2026 – Present</li>
+    </ul>
+
+    <h2>Systems &amp; Skills</h2>
+    <p class="comp">SEC reporting · SOX · US GAAP · consolidations · revenue recognition · AR &amp; cash management · treasury &amp; forecasting · external/internal audit management · FP&amp;A · tax planning &amp; compliance · close management · Deltek and ERP systems implementation · advanced Microsoft Excel · AI-enabled finance automation.</p>
+
+    <h2>Leadership &amp; Recognition</h2>
+    <ul>
+      <li>Leader, Bay Area Deltek User Group; Chapter Treasurer, NAPW – San Jose; Member, Toastmasters International.</li>
+      <li>Published author — PSMJ articles: “Job Cost Accounting Secrets” and “Team in Training.”</li>
+    </ul>
+    <p class="langs">Languages: conversational basics in Spanish, French, Italian, and German.</p>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">© <span id="yr">2026</span> Jessica Dougherty · <a href="index.html">jessicaddougherty.com</a></div>
+</footer>
+<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+const { isAuthed, noStore } = require('./_auth');
+
+const API = 'https://api.anthropic.com/v1';
+const VERSION = '2023-06-01';
+
+let cachedModel = null;
+
+function key() {
+  return process.env.ANTHROPIC_API_KEY || '';
+}
+
+async function listModels() {
+  const r = await fetch(API + '/models?limit=20', {
+    headers: { 'x-api-key': key(), 'anthropic-version': VERSION },
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error?.message || 'Could not list models (HTTP ' + r.status + ')');
+  return (body.data || []).map((m) => ({ id: m.id, name: m.display_name || m.id }));
+}
+
+// Never hardcode a model id — they get retired and the feature would silently
+// break months from now. Prefer the env var, else ask the API what exists.
+async function resolveModel() {
+  if (process.env.ANTHROPIC_MODEL) return process.env.ANTHROPIC_MODEL;
+  if (cachedModel) return cachedModel;
+  const models = await listModels();
+  if (!models.length) throw new Error('No models available on this API key.');
+  cachedModel = models[0].id;
+  return cachedModel;
+}
+
+const GUARDRAILS = `You help Jessica Dougherty tailor her resume. She is an accounting professional pursuing a CPA licence, so accuracy is a professional obligation, not a preference.
+
+HARD RULES:
+- Use ONLY facts present in the CAREER DATA provided. Never invent or estimate employers, titles, dates, dollar figures, percentages, team sizes, or credentials.
+- Never upgrade a credential. "Results pending" stays "results pending".
+- You may reorder, select, condense, and rephrase existing content, and you may surface a fact that is buried in one bullet into a clearer one.
+- If the job posting asks for something the career data does not evidence, do NOT write around it. Report it as a gap.
+- Prefer her own wording where it is already strong. Do not add corporate filler.
+- Output valid JSON only. No markdown fences, no commentary outside the JSON.`;
+
+async function callClaude({ system, user, maxTokens = 4000 }) {
+  const model = await resolveModel();
+  const r = await fetch(API + '/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key(),
+      'anthropic-version': VERSION,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: user }],
+    }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body?.error?.message || 'Claude API error (HTTP ' + r.status + ')');
+  const text = (body.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+  return { text, model };
+}
+
+function parseJson(text) {
+  const trimmed = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const first = trimmed.indexOf('{');
+    const last = trimmed.lastIndexOf('}');
+    if (first !== -1 && last > first) {
+      try { return JSON.parse(trimmed.slice(first, last + 1)); } catch { /* fall through */ }
+    }
+    return null;
+  }
+}
+
+function readBody(req) {
+  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
+  if (typeof req.body === 'string') {
+    try { return Promise.resolve(JSON.parse(req.body)); } catch { return Promise.resolve(null); }
+  }
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', (c) => { raw += c; if (raw.length > 2 * 1024 * 1024) req.destroy(); });
+    req.on('end', () => { try { resolve(JSON.parse(raw || 'null')); } catch { resolve(null); } });
+    req.on('error', () => resolve(null));
+  });
+}
+
+const PROMPTS = {
+  analyze: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+JOB POSTING:
+${b.posting}
+
+Analyse the fit. Return JSON exactly in this shape:
+{
+ "roleTitle": "the role title from the posting",
+ "company": "the company from the posting, or empty string",
+ "matchScore": 0-100,
+ "matchRationale": "two sentences, plain language, no flattery",
+ "strengths": [{"itemId":"id from career data","why":"why this posting cares about it"}],
+ "gaps": [{"requirement":"what the posting asks for","evidence":"none|partial","note":"what she could add to close it, or say if it is not closable"}],
+ "keywords": ["terms from the posting worth mirroring, only if truthful for her"],
+ "recommendedItemIds": ["career data ids to include, best first"],
+ "summaryRewrite": "a professional summary tailored to this posting, built only from existing facts"
+}`,
+
+  tailor: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+TARGET ROLE: ${b.targetRole || 'unspecified'}
+${b.posting ? 'JOB POSTING:\n' + b.posting : ''}
+
+Suggest bullet-level edits for the selected items (${JSON.stringify(b.itemIds || [])}). Return JSON:
+{
+ "suggestions": [
+   {"itemId":"...","bulletId":"...","original":"...","suggested":"...","reason":"short"}
+ ],
+ "dropped": [{"itemId":"...","reason":"why this item is noise for this role"}]
+}
+Every "suggested" must be supported by "original" or by other facts in CAREER DATA. If a bullet is already right, leave it out.`,
+
+  cover: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+JOB POSTING:
+${b.posting}
+
+${b.notes ? 'HER NOTES TO INCORPORATE:\n' + b.notes : ''}
+
+Draft a cover letter. Return JSON:
+{
+ "greeting": "...",
+ "body": ["paragraph 1","paragraph 2","paragraph 3"],
+ "closing": "...",
+ "flags": ["anything you could not support from the career data"]
+}
+Three or four short paragraphs. Specific, not effusive. Lead with the single most relevant piece of her actual experience. No phrases like "I am excited to apply" or "perfect fit".`,
+};
+
+module.exports = async (req, res) => {
+  noStore(res);
+
+  if (!isAuthed(req)) return res.status(401).json({ ok: false, error: 'Not signed in.' });
+
+  if (!key()) {
+    return res.status(503).json({
+      ok: false,
+      code: 'NO_KEY',
+      error: 'No Anthropic API key yet. Add ANTHROPIC_API_KEY in Vercel → Settings → Environment Variables, then redeploy.',
+    });
+  }
+
+  try {
+    const url = new URL(req.url, 'https://local');
+
+    if (req.method === 'GET' && url.searchParams.get('action') === 'models') {
+      return res.status(200).json({ ok: true, models: await listModels(), active: process.env.ANTHROPIC_MODEL || cachedModel || null });
+    }
+
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'GET, POST');
+      return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    }
+
+    const body = await readBody(req);
+    const action = body && body.action;
+    if (!PROMPTS[action]) {
+      return res.status(400).json({ ok: false, error: 'Unknown action. Expected analyze, tailor or cover.' });
+    }
+    if (!body.master) return res.status(400).json({ ok: false, error: 'Missing career data.' });
+    if ((action === 'analyze' || action === 'cover') && !body.posting) {
+      return res.status(400).json({ ok: false, error: 'Paste the job posting first.' });
+    }
+
+    const { text, model } = await callClaude({
+      system: GUARDRAILS,
+      user: PROMPTS[action](body),
+      maxTokens: action === 'cover' ? 2000 : 5000,
+    });
+
+    const parsed = parseJson(text);
+    if (!parsed) {
+      return res.status(502).json({ ok: false, error: 'Claude returned something unparseable. Try again.', raw: text.slice(0, 800) });
+    }
+
+    return res.status(200).json({ ok: true, action, model, result: parsed });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String((err && err.message) || err) });
+  }
+};

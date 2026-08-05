@@ -109,7 +109,12 @@ async function readDoc(kind) {
   }
 }
 
-async function writeDoc(kind, data) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// A 409 from the Contents API means the file moved under us between reading its
+// sha and writing — another commit landed on the branch first. That is normal
+// git behaviour, not an error to show the user: re-read the sha and try again.
+async function writeDoc(kind, data, attempt = 0) {
   const { repo, branch } = cfg();
   const existing = await getFile(kind); // fetch sha immediately before writing
   const payload = {
@@ -124,6 +129,11 @@ async function writeDoc(kind, data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+
+  if ((res.status === 409 || res.status === 422) && attempt < 4) {
+    await sleep(220 * (attempt + 1)); // stagger so racing writers do not collide again
+    return writeDoc(kind, data, attempt + 1);
+  }
   if (!res.ok) throw await explain(res);
   return data;
 }

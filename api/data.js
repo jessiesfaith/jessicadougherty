@@ -47,12 +47,14 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET') {
-      let doc = await readDoc(kind);
-      if (!doc) {
-        doc = kind === 'master' ? seed() : emptyList();
-        await writeDoc(kind, doc); // first run: lay down the starting document
-      }
-      return res.status(200).json({ ok: true, doc });
+      const doc = await readDoc(kind);
+      if (doc) return res.status(200).json({ ok: true, doc, isNew: false });
+
+      // Nothing stored yet. Hand back the starting document WITHOUT writing it.
+      // Loading the app fires four of these at once, and four simultaneous
+      // commits to one branch is a guaranteed 409 — the first real save creates
+      // the file instead.
+      return res.status(200).json({ ok: true, doc: kind === 'master' ? seed() : emptyList(), isNew: true });
     }
 
     if (req.method === 'PUT') {
@@ -62,10 +64,13 @@ module.exports = async (req, res) => {
       }
 
       const current = await readDoc(kind);
-      const currentVersion = current && typeof current.version === 'number' ? current.version : 0;
+      const exists = current !== null;
+      const currentVersion = exists && typeof current.version === 'number' ? current.version : 0;
 
-      // Guards against two open tabs silently clobbering each other.
-      if (typeof body.expectedVersion === 'number' && body.expectedVersion !== currentVersion) {
+      // Guards against two open tabs silently clobbering each other. Skipped on
+      // the very first write, where the client is holding an unsaved seed whose
+      // version cannot match anything stored.
+      if (exists && typeof body.expectedVersion === 'number' && body.expectedVersion !== currentVersion) {
         return res.status(409).json({
           ok: false,
           code: 'VERSION_CONFLICT',

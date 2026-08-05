@@ -33,8 +33,8 @@ module.exports = async (req, res) => {
   if (!configured()) {
     return res.status(503).json({
       ok: false,
-      error: 'Storage is not connected yet. In Vercel: Storage → Create Database → Blob → set access to Private → connect it to this project, then redeploy.',
       code: 'NO_STORE',
+      error: 'Your data repo is not connected yet. Create a PRIVATE GitHub repo (with a README), make a fine-grained token with Contents: Read and write on it, then set GITHUB_DATA_REPO (owner/name) and GITHUB_DATA_TOKEN in Vercel and redeploy.',
     });
   }
 

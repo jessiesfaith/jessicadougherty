@@ -71,7 +71,14 @@
   .item.done{border-left:3px solid var(--accent-2)}
   .item-top{display:flex;gap:10px;align-items:flex-start}
   .item-main{flex:1;min-width:0}
-  .item-actions{display:flex;gap:2px;flex:none}
+  .item-actions{display:flex;gap:2px;flex:none;align-items:center}
+  .grip{cursor:grab;color:var(--faint);font-size:15px;line-height:1;padding:5px 4px;border-radius:6px;user-select:none;flex:none}
+  .grip:hover{color:var(--text);background:var(--card-2)}
+  .grip:active{cursor:grabbing}
+  .item.dragging{opacity:.4}
+  .item.drop-above{box-shadow:0 -3px 0 var(--accent)}
+  .item.drop-below{box-shadow:0 3px 0 var(--accent)}
+  .item-actions button.icon:disabled{opacity:.25;cursor:default;background:none}
   .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px}
   label.f{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
   input.f,textarea.f,select.f{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border);color:var(--text);
@@ -402,8 +409,16 @@ function itemHtml(it, si, sec) {
     '<div class="bullet"><textarea class="f" data-bind="s.'+si+'.i.'+ii+'.b.'+bi+'">' + esc(b.text) + '</textarea>' +
     '<button class="icon" data-delbullet="'+si+','+ii+','+bi+'" title="Remove line">✕</button></div>').join('');
 
-  return '<div class="item ' + (it.status === 'in_progress' ? 'wip' : 'done') + '">' +
-    '<div class="item-top"><div class="item-main">' + fields +
+  const grp = groupOf(sec, it);
+  const gi = grp.indexOf(it);
+  const first = gi === 0, last = gi === grp.length - 1;
+  const mv = (where, label, title, off) =>
+    '<button class="icon" data-move="' + si + '|' + it.id + '|' + where + '" title="' + title + '"' + (off ? ' disabled' : '') + '>' + label + '</button>';
+
+  return '<div class="item ' + (it.status === 'in_progress' ? 'wip' : 'done') + '" data-item="' + esc(it.id) + '" data-sec="' + si + '">' +
+    '<div class="item-top">' +
+    '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' +
+    '<div class="item-main">' + fields +
       '<div class="bullets">' + bullets +
       '<button class="icon" data-addbullet="'+si+','+ii+'">+ line</button></div>' +
       (it.tags && it.tags.length ? '<div class="tagline">' + it.tags.map(esc).join(' · ') + '</div>' : '') +
@@ -413,10 +428,74 @@ function itemHtml(it, si, sec) {
         '<option value="completed"' + (it.status !== 'in_progress' ? ' selected' : '') + '>Completed</option>' +
         '<option value="in_progress"' + (it.status === 'in_progress' ? ' selected' : '') + '>In progress</option>' +
       '</select>' +
-      '<button class="icon" data-move="'+si+','+ii+',-1" title="Move up">▲</button>' +
-      '<button class="icon" data-move="'+si+','+ii+',1" title="Move down">▼</button>' +
+      mv('top', '⤒', 'Move to top', first) +
+      mv('up', '▲', 'Move up', first) +
+      mv('down', '▼', 'Move down', last) +
+      mv('bottom', '⤓', 'Move to bottom', last) +
       '<button class="icon" data-del="'+si+','+ii+'" title="Delete">🗑</button>' +
     '</div></div></div>';
+}
+
+/* ── ORDERING ──────────────────────────────────────────
+   Items are stored in one array per section but displayed in two groups
+   (Completed, then In progress). Reordering therefore has to work *within a
+   group* — otherwise nudging the last completed entry down would silently
+   shuffle it past the divider and look like it jumped somewhere random.
+   The raw array positions of the other group are left exactly where they are,
+   so a section like Experience keeps current roles ahead of past ones on the
+   rendered resume. */
+const statusOf = (it) => (it.status === 'in_progress' ? 'in_progress' : 'completed');
+function groupOf(sec, it) {
+  return sec.items.filter((x) => statusOf(x) === statusOf(it));
+}
+function sameGroup(si, idA, idB) {
+  const sec = state.master.sections[si];
+  const a = sec.items.find((x) => x.id === idA);
+  const b = sec.items.find((x) => x.id === idB);
+  return Boolean(a && b && statusOf(a) === statusOf(b));
+}
+
+// Rewrites the group's members back into the same slots they occupied.
+function applyGroupOrder(sec, status, ordered) {
+  const slots = [];
+  sec.items.forEach((x, i) => { if (statusOf(x) === status) slots.push(i); });
+  slots.forEach((slot, k) => { sec.items[slot] = ordered[k]; });
+}
+
+function reorder(si, id, where) {
+  const sec = state.master.sections[si];
+  const it = sec.items.find((x) => x.id === id);
+  if (!it) return false;
+  const status = statusOf(it);
+  const group = sec.items.filter((x) => statusOf(x) === status);
+  const from = group.indexOf(it);
+
+  let to;
+  if (where === 'top') to = 0;
+  else if (where === 'bottom') to = group.length - 1;
+  else if (where === 'up') to = from - 1;
+  else to = from + 1;
+  if (to === from || to < 0 || to >= group.length) return false;
+
+  group.splice(from, 1);
+  group.splice(to, 0, it);
+  applyGroupOrder(sec, status, group);
+  return true;
+}
+
+function moveBeside(si, draggedId, targetId, before) {
+  const sec = state.master.sections[si];
+  const it = sec.items.find((x) => x.id === draggedId);
+  const target = sec.items.find((x) => x.id === targetId);
+  if (!it || !target || statusOf(it) !== statusOf(target)) return false;
+  const status = statusOf(it);
+  const group = sec.items.filter((x) => statusOf(x) === status);
+
+  group.splice(group.indexOf(it), 1);
+  const at = group.indexOf(target);
+  group.splice(before ? at : at + 1, 0, it);
+  applyGroupOrder(sec, status, group);
+  return true;
 }
 
 function setPath(path, value) {
@@ -450,13 +529,46 @@ function bind() {
     markDirty(); renderCareer();
   }));
   document.querySelectorAll('[data-move]').forEach((el) => el.addEventListener('click', () => {
-    const [si, ii, d] = el.dataset.move.split(',').map(Number);
-    const arr = state.master.sections[si].items;
-    const j = ii + d;
-    if (j < 0 || j >= arr.length) return;
-    [arr[ii], arr[j]] = [arr[j], arr[ii]];
-    markDirty(); renderCareer();
+    const [si, id, where] = el.dataset.move.split('|');
+    if (reorder(+si, id, where)) { markDirty(); renderCareer(); }
   }));
+
+  // Drag to reorder. The grip is the only draggable part, so dragging never
+  // fights with selecting text inside the fields.
+  let dragged = null;
+  document.querySelectorAll('#panel-career .item').forEach((row) => {
+    const grip = row.querySelector('.grip');
+    if (grip) grip.addEventListener('dragstart', (e) => {
+      dragged = { id: row.dataset.item, sec: row.dataset.sec };
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.item);
+      e.dataTransfer.setDragImage(row, 20, 20);
+    });
+    if (grip) grip.addEventListener('dragend', () => {
+      dragged = null;
+      document.querySelectorAll('.item').forEach((r) => r.classList.remove('dragging', 'drop-above', 'drop-below'));
+    });
+
+    row.addEventListener('dragover', (e) => {
+      if (!dragged || row.dataset.item === dragged.id) return;
+      if (row.dataset.sec !== dragged.sec) return;       // no cross-section drags
+      if (!sameGroup(+row.dataset.sec, row.dataset.item, dragged.id)) return; // use the dropdown to change status
+      e.preventDefault();
+      const mid = row.getBoundingClientRect().top + row.offsetHeight / 2;
+      row.classList.toggle('drop-above', e.clientY < mid);
+      row.classList.toggle('drop-below', e.clientY >= mid);
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drop-above', 'drop-below'));
+    row.addEventListener('drop', (e) => {
+      if (!dragged) return;
+      e.preventDefault();
+      const before = row.classList.contains('drop-above');
+      const d = dragged;
+      row.classList.remove('drop-above', 'drop-below');
+      if (moveBeside(+row.dataset.sec, d.id, row.dataset.item, before)) { markDirty(); renderCareer(); }
+    });
+  });
   document.querySelectorAll('[data-addbullet]').forEach((el) => el.addEventListener('click', () => {
     const [si, ii] = el.dataset.addbullet.split(',').map(Number);
     const it = state.master.sections[si].items[ii];

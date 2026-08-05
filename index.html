@@ -743,11 +743,8 @@
       if(t==='ocean')return playFile(oceanA,'ocean','Ocean waves');
       ensure();if(t==='forest')forest();fade(.85);}
     main.addEventListener('click',function(){idx=(idx+1)%order.length;apply(order[idx]);});
-    /* start on The Swan: autoplay if allowed, otherwise begin on first interaction */
-    idx=1;cur='swan';label.textContent='The Swan';wrap.classList.add('playing');swan.volume=.7;
-    var _sp=swan.play();if(_sp&&_sp.catch)_sp.catch(function(){});
-    function _arm(){if(cur==='swan'&&swan.paused){swan.play().catch(function(){});}document.removeEventListener('pointerdown',_arm);document.removeEventListener('keydown',_arm);window.removeEventListener('scroll',_arm);}
-    document.addEventListener('pointerdown',_arm);document.addEventListener('keydown',_arm);window.addEventListener('scroll',_arm,{passive:true});
+    /* start silent — visitors opt in by clicking the music button */
+    idx=0;cur='off';label.textContent=NAMES.off;wrap.classList.remove('playing');
   })();
 </script>
 </body>

@@ -563,7 +563,7 @@
     <h3 id="g-other">Other</h3>
     <p>Four plans &mdash; <strong>Education</strong>, <strong>Experience</strong>, <strong>Events</strong> and <strong>Project</strong>. They are what you intend to do, kept deliberately apart from the career master, which is the record of what you have done.</p>
     <p><strong>Nothing here can reach a resume.</strong> No agent reads these, and no version is built from them. When something on a plan actually happens, you add it to your master by hand &mdash; and that is the moment it becomes a fact rather than an intention.</p>
-    <p>Each is a flat list with the same six columns: <strong>Item</strong>, <strong>Type</strong>, <strong>Enrolled</strong>, <strong>Duration</strong>, <strong>Link</strong> and <strong>Priority</strong>. <strong>+ add</strong> puts a row on the list and the bin removes one &mdash; it asks first if you have typed a name into it. A link you fill in gets an <em>open</em> beside it.</p>
+    <p>Each is a flat list with the same seven columns: <strong>Type</strong>, <strong>Company</strong>, <strong>Item</strong>, <strong>Enrolled</strong>, <strong>Duration</strong>, <strong>Link</strong> and <strong>Priority</strong>. <strong>+ add</strong> puts a row on the list and the bin removes one &mdash; it asks first if you have typed a name into it. A link you fill in gets an <em>open</em> beside it.</p>
     <p>Click any column heading to sort by it, again to reverse it. <strong>Sorting only changes what you see</strong>: the stored order stays the order you added things in, so a sort never quietly rewrites your list. Blanks sort last either way, and Priority sorts high, medium, low rather than alphabetically.</p>
     <p>The count on each heading is how many rows it holds, and how many of those are high priority. All four start collapsed, like everything else.</p>
     </div>
@@ -3523,11 +3523,12 @@ const PLANS = [
    the same whatever you are planning: what is it, what kind, have you started,
    how long does it take, where is it, and how much do you care. */
 const PLAN_COLS = [
-  { key: 'title', label: 'Item', kind: 'text', ph: 'what it is', w: 'minmax(0,1.5fr)' },
-  { key: 'type', label: 'Type', kind: 'text', ph: 'course, cert, talk…', w: 'minmax(0,0.9fr)' },
+  { key: 'type', label: 'Type', kind: 'text', ph: 'course, cert, talk…', w: 'minmax(0,0.85fr)' },
+  { key: 'company', label: 'Company', kind: 'text', ph: 'who runs it', w: 'minmax(0,1fr)' },
+  { key: 'title', label: 'Item', kind: 'text', ph: 'what it is', w: 'minmax(0,1.3fr)' },
   { key: 'enrolled', label: 'Enrolled', kind: 'date', ph: '', w: '128px' },
-  { key: 'duration', label: 'Duration', kind: 'text', ph: '12 weeks', w: '104px' },
-  { key: 'link', label: 'Link', kind: 'url', ph: 'https://', w: 'minmax(0,1.1fr)' },
+  { key: 'duration', label: 'Duration', kind: 'text', ph: '12 weeks', w: '100px' },
+  { key: 'link', label: 'Link', kind: 'url', ph: 'https://', w: 'minmax(0,1fr)' },
   { key: 'priority', label: 'Priority', kind: 'select', opts: ['high', 'medium', 'low'], w: '104px' },
 ];
 const PLAN_GRID = PLAN_COLS.map((c) => c.w).join(' ') + ' 46px';
@@ -3601,7 +3602,7 @@ function renderPlan(pl) {
     planOpen[pl.key] = !planOpen[pl.key]; renderPlan(pl);
   });
   el.querySelector('[data-planadd]').addEventListener('click', () => {
-    items.push({ id: uid('pl'), title: '', type: '', enrolled: '', duration: '', link: '', priority: 'medium' });
+    items.push({ id: uid('pl'), type: '', company: '', title: '', enrolled: '', duration: '', link: '', priority: 'medium' });
     planOpen[pl.key] = true; queueSavePlans(); renderPlan(pl);
   });
   el.querySelectorAll('[data-plansort]').forEach((h) => h.addEventListener('click', () => {

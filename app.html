@@ -291,6 +291,7 @@
   .guide-nav button{background:var(--card-2);border:1px solid var(--border);color:var(--muted);font:inherit;font-size:12px;
     font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer}
   .guide-nav button:hover{color:var(--text);border-color:var(--accent)}
+  .guide-nav button.on{color:var(--text);border-color:var(--accent);background:rgba(233,169,125,.14)}
   /* position:relative so headings measure their offset against this scroller,
      not against the fixed panel — otherwise opening overshoots by the header height */
   .guide-body{overflow-y:auto;padding:4px 20px 60px;flex:1;scroll-behavior:smooth;position:relative}
@@ -423,30 +424,30 @@
     <h2>User guide</h2>
     <button class="btn ghost" id="guideClose" title="Close (Esc)">✕</button>
   </div>
-  <div class="guide-nav">
-    <button data-goto="g-career">Resume</button>
-    <button data-goto="g-apps">Postings</button>
-    <button data-goto="g-archive">Job Postings</button>
-    
-    <button data-goto="g-fit">Fit score</button>
-    <button data-goto="g-capture">Capture</button>
-    <button data-goto="g-data">Your data</button>
-    <button data-goto="g-trouble">Problems</button>
+  <div class="guide-nav" id="guideNav">
+    <button data-g="career">Resume</button>
+    <button data-g="archive">Job Postings</button>
+    <button data-g="fit">Fit Score</button>
+    <button data-g="prep">Interview Prep</button>
+    <button data-g="data">Your data &amp; problems</button>
   </div>
   <div class="guide-body" id="guideBody">
 
+    <div class="gsec" data-g="career">
     <h3 id="g-career">Your master documents</h3>
     <p>The Resume tab holds both masters &mdash; the resume, and the cover letter underneath it. Both are <strong>read-only and shown exactly as they print</strong>. Each has its own PDF button.</p>
     <p>They change in one direction only: you write against a real posting in <strong>Fit Score</strong>, then promote a version up. <strong>Nothing an agent writes lands here on its own</strong> &mdash; thirty applications should not slowly erode what you actually wrote.</p>
     <h4>Keywords</h4>
     <p>Every resume entry carries two lists: the <strong>job titles</strong> it is evidence for, and the <strong>skills</strong> it demonstrates. These are what the agent matches a posting against. An untagged entry is invisible to it.</p>
     <p><strong>&#10022; Tag keywords</strong> fills both with AI. It only touches entries that have none, so running it again is safe. It saves for you when it finishes.</p>
-
+    </div>
+    <div class="gsec" data-g="career">
     <h3 id="g-apps">The postings list</h3>
     <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have. It carries the same columns as Job Postings: company, job title, status, posting, deadline, sent, contact, notes and what has been built.</p>
     <p>It is <strong>read-only</strong>. It is here so you can see where every application stands while you look at your masters; <strong>Job Postings is the one place you change any of it</strong>, so there is never a question of which copy of a row you typed into.</p>
     <p><strong>Built</strong> links still work &mdash; they open that application's resume or cover letter ready to print, with a chip for how many versions exist. Rows for applications you have not marked complete are dimmed.</p>
-
+    </div>
+    <div class="gsec" data-g="archive">
     <h3 id="g-archive">Job Postings</h3>
     <p>Every posting on one row, every field its own column &mdash; company, job title, status, how much of the description you actually have, deadline, sent date, contact, notes, and what has been built. Click a row to open it in full underneath.</p>
     <h4>Editing in the row</h4>
@@ -467,7 +468,8 @@
       <li><strong>Deleted</strong> hides it. The data stays in your repo; tick <em>show deleted</em> to bring it back</li>
     </ul>
     <div class="warn">Moving a completed document back to draft asks first, because it discards the record of what you sent.</div>
-
+    </div>
+    <div class="gsec" data-g="fit">
     <h3 id="g-fit">Fit score</h3>
     <p>The Application box holds three columns: the <strong>posting</strong> on the left, then the <strong>resume</strong> and the <strong>cover letter</strong> written against it, so you can read a requirement and its answer without scrolling between them. The posting's heading is the picker &mdash; changing it switches every column to that application. <strong>Show</strong> opens the description for editing; edits save to that application.</p>
     <p>Every requirement in the posting is scored <strong>twice</strong> &mdash; once against the resume, once against the cover letter &mdash; because they fail in different ways. A resume can cover something the letter never mentions.</p>
@@ -482,7 +484,8 @@
     <p>Then score again: the Versions list shows each version's own score, so you can see whether the rewrite actually moved the number.</p>
     <div class="tip">A zero with "no evidence" is the honest answer, not a failure of the scorer. If the posting wants something you have never done, no wording fixes that &mdash; and the fix will say so rather than help you claim it.</div>
     <p>Every run is saved to the score history, so you can see whether a rewrite actually moved the number.</p>
-
+    </div>
+    <div class="gsec" data-g="archive">
     <h3 id="g-capture">One-click capture</h3>
     <p>Grabs a posting from the page you are looking at, with no copy-paste.</p>
     <ol>
@@ -492,7 +495,24 @@
       <li>Open any job posting and click the bookmark. It arrives as a new application.</li>
     </ol>
     <p>It reads the page your browser already loaded and passes the text in the URL fragment, which never reaches any server. Nothing is scraped, which is why it works on sites that block automated fetching.</p>
-
+    </div>
+    <div class="gsec" data-g="prep">
+    <h3 id="g-prep">Interview prep</h3>
+    <p>For after the documents are sent, when the question is whether you can stand behind them.</p>
+    <p>Pick the position at the top &mdash; the list carries the <strong>company, the title and the date it came in</strong>, and a tick against the ones you have already prepped, so two openings at one company a month apart are not the same line.</p>
+    <p>The posting, the resume and the cover letter come over side by side. The <strong>posting is editable</strong> here, because a recruiter sends a fuller description and this is where you are sitting. The two documents are not: a resume is built from the entries and summary of a version, and a completed one is frozen as the record of what you sent. <strong>Edit in Fit Score</strong> on either takes you there with the same position already selected.</p>
+    <h4>What drafting gives you</h4>
+    <p><strong>Draft interview prep</strong> reads all three together and returns three things.</p>
+    <ul>
+      <li><strong>Likely questions</strong> &mdash; the question, why they will ask it, what it is really testing, and your answer. The answer is the only editable thing, and you Approve or Skip each one.</li>
+      <li><strong>Double-check</strong> &mdash; where the three documents disagree, quoted. The wrong company in your own letter is better found here than across a table.</li>
+      <li><strong>What the posting suggests</strong> &mdash; read-only. What was sent is the record; act on it by building a new version in Fit Score.</li>
+    </ul>
+    <h4>AI help on an answer</h4>
+    <p>Same as on the agent's questions: it drafts into a review box with its sources, nothing lands in your answer until you press <strong>Use this</strong>, and anything it could not source from your record is listed as something to confirm rather than a sentence to sign.</p>
+    <p>All of it is stored against that position, so coming back a week later brings back what you wrote.
+    </div>
+    <div class="gsec" data-g="data">
     <h3 id="g-data">Where your data lives</h3>
     <p>In <code>career-data</code> — your own private GitHub repo — as four plain JSON files under <code>career/</code>. Every save is a commit, so you have the full history.</p>
     <p>You can <code>git clone</code> that repo and read it in a text editor. Nothing here depends on this website continuing to exist, or on any subscription staying paid.</p>
@@ -505,7 +525,8 @@
     <p>No subscription. Stop paying for everything except the domain and this keeps working — you'd lose only the three AI buttons.</p>
     <h4>Signing in</h4>
     <p>Your session ends when you close the browser, and after 2 hours regardless. That's what you asked for: signing in each visit proves the gate still works.</p>
-
+    </div>
+    <div class="gsec" data-g="data">
     <h3 id="g-trouble">When something breaks</h3>
     <table>
       <tr><td>"Your data repo is not connected"</td><td>Environment variables missing. Vercel → Deployments → ⋯ → Redeploy.</td></tr>
@@ -516,6 +537,7 @@
       <tr><td>Bounced to login</td><td>Session expired. Normal — sign in again.</td></tr>
     </table>
     <p>Anything not on this list, or an error that doesn't name its own fix: send me the exact wording.</p>
+    </div>
   </div>
 </aside>
 
@@ -2869,6 +2891,7 @@ function renderFitHistory() {
    going back to it a week later brings back what she wrote. */
 let prepId = null;
 const prepJob = () => state.jobs.items.find((x) => x.id === prepId) || null;
+let prepJdEditing = false;
 const prepDate = (j) => (j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'no date');
 
 function renderPrep() {
@@ -2901,13 +2924,24 @@ function renderPrep() {
       esc([j.company, j.role].filter(Boolean).join(' · ')) + (j.deadline ? ' · deadline ' + esc(j.deadline) : '') +
       (j.appliedOn ? ' · sent ' + esc(j.appliedOn) : '') + '</p>' +
     '<div class="split split3" style="gap:12px">' +
+      // The posting is editable here — a recruiter sends a fuller description,
+      // or you take a note off the call, and prep is where you are sitting.
       '<div><div class="group-label"><span>Job description</span><span class="line"></span>' +
+        '<button class="btn ghost" id="prepJdEdit">' + (prepJdEditing ? 'Done' : 'Edit') + '</button>' +
         '<button class="btn ghost" id="prepJdPdf">PDF</button></div>' +
-        '<pre class="frozen" style="max-height:230px">' + esc(j.text || '') + '</pre></div>' +
+        (prepJdEditing
+          ? '<textarea class="f" id="prepJdText" style="min-height:230px;height:230px">' + esc(j.text || '') + '</textarea>'
+          : '<pre class="frozen" style="max-height:230px">' + esc(j.text || '') + '</pre>') + '</div>' +
+      // These two are not text with an edit button behind it: a resume is built
+      // from the entries and summary of a version, and once a version is marked
+      // complete it is frozen as the record of what was sent. Changing either
+      // means making the next version, which happens in Fit Score.
       '<div><div class="group-label"><span>Resume ' + (v ? 'v' + v.v : '') + '</span><span class="line"></span>' +
+        '<button class="btn ghost" id="prepREdit">Edit in Fit Score</button>' +
         '<button class="btn ghost" id="prepRPdf"' + (rTxt ? '' : ' disabled') + '>PDF</button></div>' +
         '<pre class="frozen" style="max-height:230px">' + esc(rTxt || 'Nothing built for this one yet.') + '</pre></div>' +
       '<div><div class="group-label"><span>Cover letter</span><span class="line"></span>' +
+        '<button class="btn ghost" id="prepCEdit">Edit in Fit Score</button>' +
         '<button class="btn ghost" id="prepCPdf"' + (cTxt ? '' : ' disabled') + '>PDF</button></div>' +
         '<pre class="frozen" style="max-height:230px">' + esc(cTxt || 'Nothing built for this one yet.') + '</pre></div>' +
     '</div>';
@@ -2915,6 +2949,13 @@ function renderPrep() {
   $('prepPick').addEventListener('change', (e) => { prepId = e.target.value; renderPrep(); });
   $('prepGo').addEventListener('click', () => draftPrep(j));
   $('prepJdPdf').addEventListener('click', () => printPosting(j));
+  $('prepJdEdit').addEventListener('click', () => { prepJdEditing = !prepJdEditing; renderPrep(); });
+  const jt = $('prepJdText');
+  if (jt) jt.addEventListener('input', () => { j.text = jt.value; queueSaveJobs(); });
+  // Same application, the tab that can change it, already selected.
+  const toFit = () => { state.jdId = j.id; show('fit'); };
+  $('prepREdit').addEventListener('click', toFit);
+  $('prepCEdit').addEventListener('click', toFit);
   const rp = $('prepRPdf'); if (rp) rp.addEventListener('click', () => printResume(j));
   const cp = $('prepCPdf'); if (cp) cp.addEventListener('click', () => printCoverLetter(j));
   const cl = $('prepClear');
@@ -3078,17 +3119,24 @@ async function draftPrep(j) {
 /* ── USER GUIDE PANE ───────────────────────────────────
    Opens on whichever section matches the tab you are looking at, so the
    answer you need is the first thing on screen. */
-const TAB_TO_GUIDE = { career: 'g-career', cover: 'g-cover', archive: 'g-archive', fit: 'g-fit' };
+/* The guide is per tab. Opening it from the Fit Score tab should not land you
+   in one long document that also covers capture, storage and tokens — it should
+   show you Fit Score, with the other tabs a click away. */
+const GUIDE_TABS = ['career', 'archive', 'fit', 'prep', 'data'];
+function showGuideTab(which) {
+  const g = GUIDE_TABS.includes(which) ? which : 'career';
+  document.querySelectorAll('#guideBody .gsec').forEach((el) => {
+    el.hidden = el.dataset.g !== g;
+  });
+  document.querySelectorAll('#guideNav button').forEach((b) => b.classList.toggle('on', b.dataset.g === g));
+  $('guideBody').scrollTop = 0;
+}
 
-function openGuide(sectionId) {
+function openGuide(which) {
   const g = $('guide'), s = $('scrim');
   g.hidden = false; s.hidden = false;
   requestAnimationFrame(() => { g.classList.add('on'); s.classList.add('on'); });
-  const target = document.getElementById(sectionId || TAB_TO_GUIDE[state.tab] || 'g-career');
-  // jump without animating, so it opens already in the right place
-  $('guideBody').style.scrollBehavior = 'auto';
-  $('guideBody').scrollTop = target ? target.offsetTop - 10 : 0;
-  $('guideBody').style.scrollBehavior = 'smooth';
+  showGuideTab(which || state.tab);
   $('guideClose').focus();
 }
 function closeGuide() {
@@ -3101,10 +3149,8 @@ $('guideLink').addEventListener('click', (e) => { e.preventDefault(); openGuide(
 $('guideClose').addEventListener('click', closeGuide);
 $('scrim').addEventListener('click', closeGuide);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('guide').hidden) closeGuide(); });
-document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => {
-  const t = document.getElementById(b.dataset.goto);
-  if (t) $('guideBody').scrollTop = t.offsetTop - 10;
-}));
+document.querySelectorAll('#guideNav button').forEach((b) =>
+  b.addEventListener('click', () => showGuideTab(b.dataset.g)));
 
 boot();
 </script>

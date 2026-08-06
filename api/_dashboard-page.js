@@ -8,48 +8,105 @@
 //      rewrite in vercel.json: { "source": "/dashboard/x", "destination": "/api/x" }
 //   Anything served from an /api route with that guard is private by default.
 
+/* Tabs, not one flat wall of cards. Each module belongs to a group, and the
+   dashboard shows one group at a time — with sub-tabs where a group has more
+   than one place to land. Everything still ends up at a URL behind the same
+   cookie check; the grouping is only how you find it.
+   ADDING A MODULE: add it to MODULES with a `group`, and if it needs a page of
+   its own, create api/<module>.js with the guard from api/dashboard.js and a
+   rewrite in vercel.json. */
+const GROUPS = [
+  { key: 'career', title: 'Career', blurb: 'Your master documents and the versions built from them.' },
+  { key: 'jobs', title: 'Job search', blurb: 'Postings, how well you match them, and getting ready to be asked about it.' },
+  { key: 'edex', title: 'Education and Experience', blurb: 'What you studied and what you have done, kept apart from the documents that quote them.' },
+  { key: 'public', title: 'Public', blurb: 'The parts of this anyone can see.' },
+];
+
+// Sub-tabs, for a group with more than one destination.
+const SUBTABS = {
+  edex: [
+    { key: 'education', title: 'Education' },
+    { key: 'experience', title: 'Experience' },
+  ],
+};
+
 const MODULES = [
   {
-    key: 'career',
+    key: 'career', group: 'career',
     title: 'Career master',
     blurb: 'Every role, degree, certification, event and hackathon — one editable source of truth.',
     icon: 'M3 7h18v12H3zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
     href: '/career#career',
   },
   {
-    key: 'builder',
-    title: 'Resume builder',
-    blurb: 'Pick sections from the master and build a version aimed at a specific role.',
+    key: 'fit', group: 'career',
+    title: 'Fit Score',
+    blurb: 'Score a resume and letter against a posting, twice per requirement, then revise and approve the next version.',
     icon: 'M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM14 4v6h6',
-    href: '/career#builder',
+    href: '/career#fit',
   },
   {
-    key: 'archive',
-    title: 'Resume archive',
-    blurb: 'Frozen snapshots of every resume you saved, so you know what you actually sent.',
+    key: 'archive', group: 'career',
+    title: 'Versions',
+    blurb: 'Every version kept, with its score — and a completed one frozen as the record of what you sent.',
     icon: 'M3 7h18v13H3zM3 7l2-4h14l2 4M10 12h4',
+    href: '/career#fit',
+  },
+  {
+    key: 'jobs', group: 'jobs',
+    title: 'Job Postings',
+    blurb: 'Paste or capture a posting, track deadline, sent date, contact and notes in the row.',
+    icon: 'M3 9h18M7 3v4m10-4v4M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
     href: '/career#archive',
   },
   {
-    key: 'jobs',
-    title: 'Jobs',
-    blurb: 'Paste a posting, get a fit read and gap list, generate a tailored resume and cover letter.',
-    icon: 'M3 9h18M7 3v4m10-4v4M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
-    href: '/career#jobs',
+    key: 'prep', group: 'jobs',
+    title: 'Interview Prep',
+    blurb: 'Likely questions, where your three documents disagree, and the questions worth asking them.',
+    icon: 'M12 3a9 9 0 1 0 9 9M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01',
+    href: '/career#prep',
   },
   {
-    key: 'education',
+    key: 'education', group: 'edex', sub: 'education',
     title: 'Education notes',
-    blurb: 'Your separate education page, now behind this same login.',
+    blurb: 'Your separate education page, behind this same login.',
     icon: 'M22 10 12 5 2 10l10 5zM6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5',
     href: '/education.html',
   },
   {
-    key: 'resume',
+    key: 'education-editor', group: 'edex', sub: 'education',
+    title: 'Edit education',
+    blurb: 'Add and change what is on the education page.',
+    icon: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+    href: '/education-editor.html',
+  },
+  {
+    key: 'experience', group: 'edex', sub: 'experience',
+    title: 'Experience',
+    blurb: 'Roles, dates and the bullets under them — the entries every resume is selected from.',
+    icon: 'M3 7h18v12H3zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    href: '/career#career',
+  },
+  {
+    key: 'keywords', group: 'edex', sub: 'experience',
+    title: 'Keywords',
+    blurb: 'The job titles and skills each entry is evidence for. An untagged entry is invisible to the agent.',
+    icon: 'M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7 7h.01',
+    href: '/career#career',
+  },
+  {
+    key: 'resume', group: 'public',
     title: 'Public resume',
-    blurb: 'The version anyone can see at /resume.html. The builder does not touch it.',
+    blurb: 'What anyone gets from the Resume buttons on the landing page. Publish it from the Resume tab.',
     icon: 'M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z',
-    href: '/resume.html',
+    href: '/resume',
+  },
+  {
+    key: 'site', group: 'public',
+    title: 'The site itself',
+    blurb: 'jessicadougherty.com as everyone else sees it.',
+    icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z',
+    href: '/',
   },
 ];
 
@@ -132,6 +189,17 @@ function page() {
   .mod-tag{font-size:12px;font-weight:600;color:var(--faint);border:1px dashed rgba(255,255,255,.16);padding:4px 9px;border-radius:8px;align-self:flex-start}
   .is-todo{opacity:.82}
 
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:0;margin-top:8px}
+  .tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--faint);font:inherit;font-size:14.5px;
+    font-weight:600;padding:10px 14px;cursor:pointer;margin-bottom:-1px}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--text);border-bottom-color:var(--accent)}
+  .panel-blurb{color:var(--muted);font-size:14.5px;padding:16px 0 2px;max-width:640px}
+  .subtabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0 2px}
+  .subtab{background:var(--card-2);border:1px solid var(--border);color:var(--muted);font:inherit;font-size:13px;
+    font-weight:600;padding:6px 13px;border-radius:100px;cursor:pointer}
+  .subtab:hover{color:var(--text)}
+  .subtab.on{color:var(--text);border-color:var(--accent);background:rgba(233,169,125,.14)}
   .note{margin:26px 0 60px;background:var(--card-2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;font-size:14px;color:var(--muted)}
   .note strong{color:var(--text);font-weight:600}
   footer{border-top:1px solid var(--border);padding:22px 0 40px;font-size:13px;color:var(--faint)}
@@ -162,9 +230,22 @@ function page() {
 </header>
 
 <main class="wrap">
-  <section class="grid">
-    ${MODULES.map(card).join('\n    ')}
-  </section>
+  <div class="tabs" role="tablist">
+    ${GROUPS.map((g, i) => '<button class="tab' + (i === 0 ? ' on' : '') + '" role="tab" data-tab="' + g.key + '">' + g.title + '</button>').join('\n    ')}
+  </div>
+  ${GROUPS.map((g, i) => {
+    const subs = SUBTABS[g.key];
+    const mine = MODULES.filter((m) => m.group === g.key);
+    const body = subs
+      ? '<div class="subtabs">' +
+          subs.map((sb, k) => '<button class="subtab' + (k === 0 ? ' on' : '') + '" data-sub="' + g.key + ':' + sb.key + '">' + sb.title + '</button>').join('') +
+        '</div>' +
+        subs.map((sb, k) => '<section class="grid sub" data-subpanel="' + g.key + ':' + sb.key + '"' + (k === 0 ? '' : ' hidden') + '>' +
+          mine.filter((m) => m.sub === sb.key).map(card).join('') + '</section>').join('')
+      : '<section class="grid">' + mine.map(card).join('') + '</section>';
+    return '<div class="panel" data-panel="' + g.key + '"' + (i === 0 ? '' : ' hidden') + '>' +
+      '<p class="panel-blurb">' + g.blurb + '</p>' + body + '</div>';
+  }).join('\n  ')}
 
   <div class="note">
     <strong>Session:</strong> expires when you close your browser, and after 2 hours regardless.
@@ -173,6 +254,38 @@ function page() {
 </main>
 
 <footer class="wrap">Private area &middot; jessicadougherty.com</footer>
+<script>
+  // Which tab you were last on, so coming back from a module lands where you
+  // left rather than at the top every time.
+  var KEY = 'jd_dash_tab';
+  function showTab(key) {
+    var found = false;
+    document.querySelectorAll('[data-panel]').forEach(function (p) {
+      var on = p.dataset.panel === key;
+      p.hidden = !on;
+      if (on) found = true;
+    });
+    if (!found) return showTab(document.querySelector('[data-panel]').dataset.panel);
+    document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === key); });
+    try { localStorage.setItem(KEY, key); } catch (e) {}
+  }
+  function showSub(id) {
+    var group = id.split(':')[0];
+    document.querySelectorAll('[data-subpanel]').forEach(function (p) {
+      if (p.dataset.subpanel.split(':')[0] === group) p.hidden = p.dataset.subpanel !== id;
+    });
+    document.querySelectorAll('.subtab').forEach(function (b) {
+      if (b.dataset.sub.split(':')[0] === group) b.classList.toggle('on', b.dataset.sub === id);
+    });
+  }
+  document.querySelectorAll('.tab').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+  document.querySelectorAll('.subtab').forEach(function (b) {
+    b.addEventListener('click', function () { showSub(b.dataset.sub); });
+  });
+  try { var saved = localStorage.getItem(KEY); if (saved) showTab(saved); } catch (e) {}
+</script>
 </body>
 </html>`;
 }

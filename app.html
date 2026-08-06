@@ -352,6 +352,7 @@
       </div>
       <div class="spacer"></div>
       <button class="btn" id="masterPdf">Resume PDF</button>
+      <button class="btn" id="publishBtn" title="Put this resume on jessicadougherty.com">Publish to my site</button>
       <button class="btn" id="coverPdf">Cover letter PDF</button>
       <button class="btn ghost" id="tagAll" title="Fill in job titles and skills — keywords only, never your wording">✦ Tag keywords</button>
     </div>
@@ -587,7 +588,7 @@ function rich(s) {
 const plain = (s) => String(s == null ? '' : s).replace(/\*{2,3}(?!\s)([^*]+?)(?<!\s)\*{2,3}/g, '$1');
 const uid = (p) => p + '-' + Math.random().toString(36).slice(2, 9);
 
-const state = { master:null, templates:null, archives:null, jobs:null, fits:null, cover:null, jdId:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
+const state = { master:null, templates:null, archives:null, jobs:null, fits:null, cover:null, published:null, jdId:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
   // ticked in the Jobs and Archive tabs, consumed by Fit Score
   fitJobs:new Set(), fitResumes:new Set() };
 
@@ -676,10 +677,10 @@ function markClean() { state.dirty = false; $('saveBtn').disabled = true; $('sav
 /* ── boot ──────────────────────────────────────────────── */
 async function boot() {
   try {
-    const [master, templates, archives, jobs, fits, cover] =
-      await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits'), api('cover')]);
+    const [master, templates, archives, jobs, fits, cover, published] =
+      await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits'), api('cover'), api('published')]);
     state.master = master; state.templates = templates; state.archives = archives;
-    state.jobs = jobs; state.fits = fits; state.cover = cover;
+    state.jobs = jobs; state.fits = fits; state.cover = cover; state.published = published;
     migrate();
     $('boot').remove();
     $('storeInfo').textContent = 'Career master v' + master.version + (master.updatedAt ? ' · updated ' + new Date(master.updatedAt).toLocaleString() : '');
@@ -688,6 +689,7 @@ async function boot() {
     renderCoverView();
     renderTagSummary();
     renderDocLists();
+    renderPublishState();
 
     const captured = readCapture();
     if (captured) { await acceptCapture(captured); return; }
@@ -805,8 +807,9 @@ function allMasterIds() {
 }
 function renderMasterView() {
   $('masterView').innerHTML =
-    '<div class="sec-head"><h2>Resume</h2></div>' +
+    '<div class="sec-head"><h2>Resume</h2><span class="tagline" id="publishState"></span></div>' +
     '<div class="preview">' + renderResume({ itemIds: allMasterIds(), summary: '', targetRole: '' }) + '</div>';
+  renderPublishState();
 }
 function renderCoverView() {
   const L = state.cover.letter;
@@ -1113,6 +1116,49 @@ function renderTagSummary() {
 }
 let keywordsOpen = false;
 $('masterPdf').addEventListener('click', () => printMasterResume());
+
+/* The public resume. It is the master, exactly as it prints, and it goes out
+   only when she says so — nothing tailored to one posting can reach the site by
+   accident, because this button is on the master and nowhere else. The site
+   reads it at request time, so publishing is live without a deploy. */
+$('publishBtn').addEventListener('click', async () => {
+  const b = $('publishBtn');
+  const p = state.master.profile;
+  const html = renderResume({ itemIds: allMasterIds(), summary: '', targetRole: '' });
+  const already = state.published && state.published.at
+    ? '\n\nThe version now on the site was published ' + new Date(state.published.at).toLocaleString() + '.'
+    : '';
+  if (!confirm('Publish this resume to jessicadougherty.com?\n\nIt replaces what both Resume buttons on the landing page show, and anyone can read it.' + already)) return;
+  b.disabled = true; b.innerHTML = '<span class="spin"></span> Publishing…';
+  try {
+    const doc = {
+      ...state.published,
+      html,
+      name: p.name || '',
+      headline: p.headline || '',
+      at: new Date().toISOString(),
+    };
+    state.published = adoptVersion(state.published, await api('published', 'PUT', doc, state.published.version)) || doc;
+    Object.assign(state.published, doc);
+    renderPublishState();
+    toast('Published. jessicadougherty.com/resume is showing this now.');
+  } catch (err) {
+    toast(err.code === 'VERSION_CONFLICT'
+      ? 'The published copy changed somewhere else. Reload, then publish again.'
+      : 'Could not publish: ' + err.message, true);
+  } finally { b.disabled = false; b.textContent = 'Publish to my site'; }
+});
+
+// What is on the site right now, next to the button that changes it.
+function renderPublishState() {
+  const el = $('publishState');
+  if (!el) return;
+  const at = state.published && state.published.at;
+  el.innerHTML = at
+    ? 'Live at <a href="/resume" target="_blank" rel="noopener">jessicadougherty.com/resume</a> &mdash; published ' +
+      esc(new Date(at).toLocaleString()) + '.'
+    : 'Nothing published yet. The site is showing the resume page that ships with it.';
+}
 
 $('coverPdf').addEventListener('click', () => printMasterCover());
 

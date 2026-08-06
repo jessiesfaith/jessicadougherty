@@ -15,11 +15,14 @@ Vercel functions, and your data is JSON in a private GitHub repo you own.
 | `api/_auth.js` | HMAC session token, signed cookie, fail-closed |
 | `middleware.js` | Blocks the private pages at the edge, before a file is served |
 | `api/inbox.js` | Lets an email agent post a posting in, using `INBOX_SECRET` |
+| `api/resume.js` | **Public.** Serves the published resume at `/resume` |
+| `api/_dashboard-page.js` | The dashboard, as tabs over grouped modules |
 
 ### The four tabs
 
 **Resume** — your master resume and cover letter, read-only, shown exactly as
-they print. A read-only mirror of the postings table sits above them.
+they print. A read-only mirror of the postings table sits above them, and
+**Publish to my site** puts the master on the public site.
 
 **Job Postings** — the editable table. Add or capture postings, edit tracking
 fields in the row, tick and Remove. Removing is a soft delete: status becomes
@@ -32,6 +35,40 @@ you edit and approve; versions; score history.
 **Interview Prep** — after the documents are sent. Likely questions, a
 double-check of where the three documents disagree, questions to ask them, and
 prep versions.
+
+## The dashboard
+
+`/dashboard` is tabs, not one wall of cards: **Career**, **Job search**,
+**Education and Experience** (with **Education** and **Experience** sub-tabs),
+and **Public**. The tab you were last on is remembered in `localStorage`.
+
+To add a module: add it to `MODULES` in `api/_dashboard-page.js` with a `group`
+(and a `sub` if its group has sub-tabs). If it needs a page of its own, create
+`api/<module>.js` with the guard copied from `api/dashboard.js` and add a rewrite
+in `vercel.json`. Anything served from an `/api` route with that guard is private
+by default.
+
+## Publishing the public resume
+
+**Publish to my site** sits on the Resume tab, beside the PDF buttons. It takes
+the master resume exactly as it prints and writes it to `career/published-resume.json`
+in the data repo. `api/resume.js` serves that at `/resume`, with no cookie check —
+it is the one thing here meant to be read by anyone.
+
+Both Resume buttons on the landing page point at `/resume`. If nothing has been
+published, `/resume` redirects to the `resume.html` that ships with the site, so
+the link is never broken.
+
+Three things worth knowing:
+
+- **Publishing takes effect immediately.** No deploy, no build. The route is
+  cached for 60 seconds at the edge, so allow a moment.
+- **Only the master can be published.** The button exists on the Resume tab and
+  nowhere else, so a version tailored to one posting cannot reach the public site
+  by accident.
+- **It is a copy, not a link.** Editing your master afterwards does not change
+  what is live until you press Publish again. The line under the Resume heading
+  says what is live and when it went out.
 
 ## Two rules the code keeps
 
@@ -58,6 +95,10 @@ field to edit, and editing means making the next version in Fit Score.
 | `ANTHROPIC_API_KEY` | The AI buttons | Everything else works without it |
 | `ANTHROPIC_MODEL` | The AI buttons | **Recommended.** Unset, the app takes the first model the API lists, which is not pinned to anything |
 | `INBOX_SECRET` | The email agent | Optional |
+
+`/resume` needs `GITHUB_DATA_REPO` and `GITHUB_DATA_TOKEN` like everything else.
+Without them it simply falls back to the static `resume.html` rather than
+erroring — a storage problem must not take the public page down.
 
 ## The one real constraint: 1 MB per file
 

@@ -3,7 +3,9 @@ const { readDoc, writeDoc, configured } = require('./_store');
 const { seed } = require('./_seed');
 
 const LIST_KINDS = ['templates', 'archives', 'jobs', 'fits', 'cover', 'settings'];
-const ALL_KINDS = ['master', ...LIST_KINDS];
+// Not a list: a single published resume, or nothing published yet.
+const DOC_KINDS = ['published'];
+const ALL_KINDS = ['master', ...LIST_KINDS, ...DOC_KINDS];
 
 function emptyList() {
   return { schema: 1, version: 1, updatedAt: null, items: [] };
@@ -54,7 +56,8 @@ module.exports = async (req, res) => {
       // Loading the app fires four of these at once, and four simultaneous
       // commits to one branch is a guaranteed 409 — the first real save creates
       // the file instead.
-      return res.status(200).json({ ok: true, doc: kind === 'master' ? seed() : emptyList(), isNew: true });
+      const blank = kind === 'master' ? seed() : DOC_KINDS.includes(kind) ? { schema: 1, version: 1, updatedAt: null } : emptyList();
+      return res.status(200).json({ ok: true, doc: blank, isNew: true });
     }
 
     if (req.method === 'PUT') {

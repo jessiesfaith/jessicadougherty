@@ -442,6 +442,7 @@ function migrate() {
     if (!STATUSES.includes(j.status)) j.status = j.status === 'closed' ? 'complete' : 'draft';
     if (typeof j.appliedOn !== 'string') j.appliedOn = '';
     if (typeof j.deadline !== 'string') j.deadline = '';
+    if (typeof j.teaser !== 'string') j.teaser = '';
     if (!j.resume) j.resume = { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null };
     if (!j.coverLetter) j.coverLetter = { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null };
   });
@@ -463,6 +464,9 @@ function migrate() {
 }
 
 const notDeleted = (x) => x && x.status !== 'deleted';
+// An alert email gives a title and a link, not requirements. Until the real
+// posting is in, generating anything from it would be guesswork.
+const needsJd = (j) => !((j.text || '').trim());
 
 /* ── transport ─────────────────────────────────────────── */
 async function api(kind, method, doc, expectedVersion) {
@@ -1035,7 +1039,9 @@ function renderArchive() {
       : list.map((j) =>
         '<div class="jdrow' + (j.id === state.jdId ? ' on' : '') + '" data-jd="' + esc(j.id) + '">' +
           '<div class="m"><b>' + esc(j.company || 'Untitled') + '</b><p>' + esc(j.role || 'no role yet') + '</p>' +
-          '<p class="s">' + statusChip(j.status) + ' resume ' + statusChip(j.resume.status) + ' letter ' + statusChip(j.coverLetter.status) + '</p></div>' +
+          '<p class="s">' + statusChip(j.status) + ' resume ' + statusChip(j.resume.status) + ' letter ' + statusChip(j.coverLetter.status) +
+            (needsJd(j) ? ' <span class="chip st-draft">needs posting</span>' : '') +
+            (j.source ? ' <span class="chip">inbox</span>' : '') + '</p></div>' +
         '</div>').join(''));
 
   document.querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', () => {
@@ -1063,6 +1069,13 @@ function renderJdDetail() {
         '<div><label class="f">Deadline</label><input class="f" type="date" data-jdf="deadline" value="' + esc(j.deadline || '') + '" /></div>' +
         '<div><label class="f">Applied on</label><input class="f" type="date" data-jdf="appliedOn" value="' + esc(j.appliedOn || '') + '" /></div>' +
       '</div>' +
+      (needsJd(j)
+        ? '<div class="banner warn"><b>Only the alert, not the posting</b>' +
+          'This arrived from your inbox as a job alert, which carries a teaser and a link. ' +
+          'Open it and use one-click capture, or paste the description below &mdash; generating from a teaser produces a resume aimed at nothing.' +
+          (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener">Open the posting &rarr;</a>' : '') + '</div>' +
+          (j.teaser ? '<label class="f">From the alert</label><pre class="frozen" style="max-height:130px">' + esc(j.teaser) + '</pre>' : '')
+        : '') +
       '<label class="f">Job description</label>' +
       '<textarea class="f" data-jdf="text" style="min-height:170px">' + esc(j.text || '') + '</textarea>' +
       '<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">' +
@@ -1198,7 +1211,7 @@ $('jobGrabber').addEventListener('click', showGrabber);
    keyword, and rewrites the master letter. It writes only into this
    application — your masters are never touched. */
 async function generateForJd(j) {
-  if (!(j.text || '').trim()) return toast('Paste the job description first.', true);
+  if (!(j.text || '').trim()) return toast('No job description yet — open the posting and capture it first. A teaser is not enough to tailor against.', true);
   const btn = $('genBoth');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading the posting…';
   try {

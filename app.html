@@ -443,6 +443,9 @@ function migrate() {
     if (typeof j.appliedOn !== 'string') j.appliedOn = '';
     if (typeof j.deadline !== 'string') j.deadline = '';
     if (typeof j.teaser !== 'string') j.teaser = '';
+    if (!Array.isArray(j.versions)) j.versions = [];
+    if (!Array.isArray(j.questions)) j.questions = [];
+    if (typeof j.currentVersion !== 'number') j.currentVersion = 0;
     if (!j.resume) j.resume = { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null };
     if (!j.coverLetter) j.coverLetter = { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null };
   });
@@ -1094,6 +1097,8 @@ function renderJdDetail() {
         : '<div class="preview" style="max-height:46vh">' + (j.resume.itemIds.length ? renderResume({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role }) : '<p style="color:#666">Nothing selected yet — generate, or tick entries below.</p>') + '</div>') +
       (j.resume.frozenText ? '' : '<div id="jdPicker"></div>') +
     '</div>' +
+    '<div class="card" id="jdQuestions"></div>' +
+    '<div class="card" id="jdVersions"></div>' +
 
     '<div class="card">' +
       '<div class="sec-head"><h2>Cover letter</h2>' + sel('c', j.coverLetter.status, 'coverLetter.status') +
@@ -1106,6 +1111,8 @@ function renderJdDetail() {
 
   wireJdDetail(j);
   if (!j.resume.frozenText) renderJdPicker(j);
+  renderQuestions(j);
+  renderVersions(j);
 }
 
 function wireJdDetail(j) {
@@ -1243,36 +1250,233 @@ $('jdNew').addEventListener('click', () => {
 $('showDeleted').addEventListener('change', renderArchive);
 $('jobGrabber').addEventListener('click', showGrabber);
 
-/* Generation: the agent reads the posting, picks entries from your master by
-   keyword, and rewrites the master letter. It writes only into this
-   application — your masters are never touched. */
+/* ── THE AGENT LOOP ────────────────────────────────────
+   Generate → ask her about the gaps → she answers → revise into a new version
+   → score → revise again. Every version is kept, so you can see what changed
+   and go back. Her answers are the only route by which a new fact enters a
+   document — the agent never fills a gap on its own. */
+
+function currentVersion(j) {
+  if (!Array.isArray(j.versions) || !j.versions.length) return null;
+  return j.versions.find((v) => v.v === j.currentVersion) || j.versions[j.versions.length - 1];
+}
+function versionResumeText(j, v) {
+  if (!v) return j.resume.frozenText || '';
+  return resumePlainText({ itemIds: v.resume.itemIds, summary: v.resume.summary, targetRole: j.role });
+}
+function versionCoverText(v) {
+  return v && v.coverLetter ? (v.coverLetter.paragraphs || []).map((p) => p.text).filter(Boolean).join('\n\n') : '';
+}
+
+function pushVersion(j, payload, note) {
+  j.versions = Array.isArray(j.versions) ? j.versions : [];
+  const n = j.versions.length ? Math.max(...j.versions.map((v) => v.v)) + 1 : 1;
+  const v = {
+    v: n,
+    createdAt: new Date().toISOString(),
+    note: note || '',
+    changelog: payload.changelog || [],
+    stillMissing: payload.stillMissing || [],
+    resume: { itemIds: (payload.itemIds || []).filter((id) => itemById(id)), summary: payload.summary || '' },
+    coverLetter: { paragraphs: (payload.coverLetter || []).map((t, i) => ({ id: uid('p'), kind: i === 0 ? 'opening' : 'proof', title: 'Paragraph ' + (i + 1), text: t })) },
+    score: null,
+  };
+  j.versions.push(v);
+  j.currentVersion = n;
+  // Keep the live resume/letter pointing at the newest version.
+  j.resume.itemIds = v.resume.itemIds.slice();
+  j.resume.summary = v.resume.summary;
+  j.coverLetter.paragraphs = v.coverLetter.paragraphs.map((p) => ({ ...p }));
+  return v;
+}
+
+/* Step 1 — draft v1 and immediately ask about what the posting wants and the
+   documents cannot answer. */
 async function generateForJd(j) {
-  if (!(j.text || '').trim()) return toast('No job description yet — open the posting and capture it first. A teaser is not enough to tailor against.', true);
+  if (!(j.text || '').trim()) return toast('No job description yet — capture the posting first. A teaser is not enough to tailor against.', true);
   const btn = $('genBoth');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading the posting…';
   try {
     const a = await ai({ action: 'analyze', master: state.master, posting: j.text });
-    const ids = (a.result.recommendedItemIds || []).filter((id) => itemById(id));
-    j.resume.itemIds = ids.length ? ids : state.master.sections.flatMap((s) => s.items.map((i) => i.id));
-    j.resume.summary = a.result.summaryRewrite || '';
-    j.resume.generatedAt = new Date().toISOString();
     if (!j.company && a.result.company) j.company = a.result.company;
     if (!j.role && a.result.roleTitle) j.role = a.result.roleTitle;
 
     btn.innerHTML = '<span class="spin"></span> Writing the letter…';
     const c = await ai({ action: 'cover', master: state.master, posting: j.text,
       notes: state.cover.letter.paragraphs.map((p) => p.title + ': ' + p.text).join('\n') });
-    const body = (c.result.body || []).map((t, i) => ({ id: uid('p'), kind: i === 0 ? 'opening' : 'proof', title: 'Paragraph ' + (i + 1), text: t }));
-    j.coverLetter.paragraphs = body;
-    j.coverLetter.generatedAt = new Date().toISOString();
+
+    pushVersion(j, {
+      itemIds: a.result.recommendedItemIds || [],
+      summary: a.result.summaryRewrite || '',
+      coverLetter: c.result.body || [],
+      changelog: ['Drafted from your master resume and master cover letter, aimed at this posting.'],
+    }, 'first draft');
 
     await saveJobs(); renderArchive();
-    toast('Drafted from your masters — review both, then mark complete to freeze.');
+    btn.innerHTML = '<span class="spin"></span> Working out what to ask you…';
+    await askQuestions(j, true);
+    toast('Draft v1 ready. Answer the questions below, then Revise.');
   } catch (err) {
     toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet — add it in Vercel.' : err.message, true);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Generate resume + letter';
+  } finally { btn.disabled = false; btn.textContent = 'Generate resume + letter'; }
+}
+
+/* Step 2 — the questions. This is where new truth enters the system: the agent
+   asks, you answer, and only then can a document claim it. */
+async function askQuestions(j, quiet) {
+  const v = currentVersion(j);
+  try {
+    const r = await ai({ action: 'questions', master: state.master, posting: j.text,
+      resumeText: versionResumeText(j, v), coverText: versionCoverText(v) });
+    const asked = new Set((j.questions || []).map((q) => (q.requirement || '').toLowerCase()));
+    j.questions = Array.isArray(j.questions) ? j.questions : [];
+    (r.result.questions || []).forEach((q) => {
+      if (asked.has((q.requirement || '').toLowerCase())) return;   // do not re-ask what you already answered
+      j.questions.push({ id: uid('q'), requirement: q.requirement, question: q.question, why: q.why, guess: q.guess || '',
+        answer: '', status: 'open', toMaster: false });
+    });
+    await saveJobs(); renderJdDetail();
+    if (!quiet) toast((r.result.questions || []).length + ' question(s) — answer what you can, skip the rest.');
+  } catch (err) {
+    if (!quiet) toast(err.message, true);
   }
+}
+
+/* Step 3 — revise into the next version, using her answers and any scoring
+   feedback from the last comparison. */
+async function reviseJd(j) {
+  const v = currentVersion(j);
+  const answers = (j.questions || []).filter((q) => q.status === 'answered' && q.answer.trim())
+    .map((q) => ({ requirement: q.requirement, question: q.question, answer: q.answer }));
+  const fixes = v && v.score ? (v.score.sections || []).filter((s) => s.resumeFix || s.coverFix)
+    .map((s) => ({ requirement: s.requirement, resumeFix: s.resumeFix, coverFix: s.coverFix })) : [];
+
+  if (!answers.length && !fixes.length && !confirm('No answers and no scoring feedback yet. Revise anyway?')) return;
+
+  const btn = $('btnRevise');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Revising…'; }
+  try {
+    const r = await ai({ action: 'revise', master: state.master, posting: j.text,
+      resumeText: versionResumeText(j, v), coverText: versionCoverText(v), answers, fixes });
+    const nv = pushVersion(j, r.result, 'revised from ' + answers.length + ' answer(s)' + (fixes.length ? ' and scoring feedback' : ''));
+    (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
+    await saveJobs(); renderArchive();
+    toast('v' + nv.v + ' created — ' + (nv.changelog.length || 0) + ' change(s). Review before marking complete.');
+  } catch (err) {
+    toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
+  } finally { if ($('btnRevise')) { $('btnRevise').disabled = false; $('btnRevise').textContent = 'Revise into v' + ((j.versions || []).length + 1); } }
+}
+
+function renderQuestions(j) {
+  const el = $('jdQuestions');
+  if (!el) return;
+  const qs = (j.questions || []);
+  const open = qs.filter((q) => q.status === 'open');
+  const nextV = (j.versions || []).length + 1;
+
+  el.innerHTML =
+    '<div class="sec-head"><h2>Questions from the agent</h2>' +
+      '<span class="count">' + open.length + ' open</span>' +
+      '<button class="btn" id="btnAsk">Ask again</button>' +
+      '<button class="btn primary" id="btnRevise">Revise into v' + nextV + '</button></div>' +
+    (!qs.length
+      ? '<div class="empty">Nothing outstanding. Generate a draft, or hit Ask again after editing the posting.</div>'
+      : '<p class="tagline" style="margin-bottom:9px">These are things the posting wants that your documents do not answer. Your answer is the only way one of them can be claimed &mdash; nothing here is filled in for you.</p>' +
+        qs.map((q) =>
+          '<div class="item ' + (q.status === 'applied' || q.status === 'answered' ? 'done' : 'wip') + '" style="margin-bottom:9px' + (q.status === 'skipped' ? ';opacity:.5' : '') + '"><div class="item-top"><div class="item-main">' +
+            '<b style="font-size:14px">' + esc(q.question) + '</b>' +
+            '<p class="tagline">Posting asks for: ' + esc(q.requirement) + (q.why ? ' &middot; ' + esc(q.why) : '') + '</p>' +
+            (q.guess ? '<p class="tagline" style="color:var(--accent)">Possible hint from your record: ' + esc(q.guess) + '</p>' : '') +
+            '<textarea class="f" data-qa="' + esc(q.id) + '" style="min-height:62px;margin-top:6px" placeholder="Your answer — or say plainly that you have not done this.">' + esc(q.answer || '') + '</textarea>' +
+            '<label class="pick" style="padding:4px 0"><input type="checkbox" data-qm="' + esc(q.id) + '"' + (q.toMaster ? ' checked' : '') + ' /> <span class="s">also add this to my master resume</span></label>' +
+          '</div><div class="item-actions" style="flex-direction:column;gap:4px">' +
+            (q.status === 'skipped'
+              ? '<span class="chip">skipped</span><button class="icon" data-qundo="' + esc(q.id) + '" title="Bring it back">undo</button>'
+              : q.status === 'applied'
+              ? '<span class="chip st-complete">used</span>'
+              : q.status === 'answered'
+                ? '<span class="chip st-complete">approved</span><button class="icon" data-qundo="' + esc(q.id) + '" title="Take it back">undo</button>'
+                : '<button class="btn" data-qok="' + esc(q.id) + '">Approve</button>' +
+                  '<button class="btn ghost" data-qskip="' + esc(q.id) + '">Skip</button>') +
+          '</div></div></div>').join(''));
+
+  el.querySelectorAll('[data-qa]').forEach((t) => t.addEventListener('input', () => {
+    const q = j.questions.find((x) => x.id === t.dataset.qa);
+    if (q) { q.answer = t.value; queueSaveJobs(); }
+  }));
+  el.querySelectorAll('[data-qm]').forEach((c) => c.addEventListener('change', () => {
+    const q = j.questions.find((x) => x.id === c.dataset.qm);
+    if (q) { q.toMaster = c.checked; queueSaveJobs(); }
+  }));
+  el.querySelectorAll('[data-qok]').forEach((b) => b.addEventListener('click', () => {
+    const q = j.questions.find((x) => x.id === b.dataset.qok);
+    if (!q) return;
+    if (!q.answer.trim()) return toast('Write an answer first, or Skip it.', true);
+    q.status = 'answered';
+    if (q.toMaster) addAnswerToMaster(q);
+    queueSaveJobs(); renderJdDetail();
+    toast('Approved. It will be used on the next revision.');
+  }));
+  el.querySelectorAll('[data-qundo]').forEach((b) => b.addEventListener('click', () => {
+    const q = j.questions.find((x) => x.id === b.dataset.qundo);
+    if (q) q.status = 'open';
+    queueSaveJobs(); renderJdDetail();
+  }));
+  el.querySelectorAll('[data-qskip]').forEach((b) => b.addEventListener('click', () => {
+    const q = j.questions.find((x) => x.id === b.dataset.qskip);
+    if (q) q.status = 'skipped';
+    queueSaveJobs(); renderJdDetail();
+  }));
+  const ask = $('btnAsk'); if (ask) ask.addEventListener('click', () => askQuestions(j));
+  const rev = $('btnRevise'); if (rev) rev.addEventListener('click', () => reviseJd(j));
+}
+
+// Answers are HER words, so they are allowed into the master — but only the
+// ones she ticked, and they land as a clearly-labelled in-progress entry for
+// her to file properly.
+function addAnswerToMaster(q) {
+  const sec = state.master.sections.find((s) => s.key === 'experience');
+  if (!sec) return;
+  sec.items.unshift({
+    id: uid('exp'), status: 'in_progress',
+    org: '', role: q.requirement || 'From an application answer',
+    location: '', dates: '',
+    bullets: [{ id: uid('b'), text: q.answer.trim() }],
+    titles: [], skills: [], tags: [],
+  });
+  markDirty();
+  toast('Added to your master resume as in-progress — tidy it up and Save.');
+}
+
+function renderVersions(j) {
+  const el = $('jdVersions');
+  if (!el) return;
+  const vs = (j.versions || []).slice().reverse();
+  el.innerHTML =
+    '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span></div>' +
+    (!vs.length ? '<div class="empty">No versions yet. Generate a draft to create v1.</div>'
+      : vs.map((v) =>
+        '<div class="arch' + (v.v === j.currentVersion ? ' on' : '') + '">' +
+          '<span class="chip' + (v.v === j.currentVersion ? ' st-complete' : '') + '">v' + v.v + '</span>' +
+          '<div class="m"><b>' + esc(v.note || 'version ' + v.v) + '</b>' +
+            '<p>' + esc(new Date(v.createdAt).toLocaleString()) +
+            (v.score ? ' · scored ' + v.score.overallResume + ' / ' + v.score.overallCover : ' · not scored') + '</p>' +
+            (v.changelog && v.changelog.length ? '<p class="s">' + v.changelog.map(esc).join(' · ') + '</p>' : '') +
+            (v.stillMissing && v.stillMissing.length ? '<p class="s" style="color:var(--warn)">still missing: ' + v.stillMissing.map(esc).join(', ') + '</p>' : '') +
+          '</div>' +
+          (v.v === j.currentVersion ? '<span class="chip">current</span>' : '<button class="btn" data-usev="' + v.v + '">Use this</button>') +
+        '</div>').join(''));
+
+  el.querySelectorAll('[data-usev]').forEach((b) => b.addEventListener('click', () => {
+    const v = (j.versions || []).find((x) => x.v === +b.dataset.usev);
+    if (!v) return;
+    j.currentVersion = v.v;
+    j.resume.itemIds = v.resume.itemIds.slice();
+    j.resume.summary = v.resume.summary;
+    j.coverLetter.paragraphs = v.coverLetter.paragraphs.map((p) => ({ ...p }));
+    queueSaveJobs(); renderJdDetail();
+    toast('Switched to v' + v.v);
+  }));
 }
 
 /* ── ONE-CLICK CAPTURE ─────────────────────────────────
@@ -1357,12 +1561,39 @@ function renderFit() {
       : '<select class="f" id="fitJd" style="max-width:420px">' +
         list.map((j) => '<option value="' + esc(j.id) + '"' + (j.id === state.jdId ? ' selected' : '') + '>' +
           esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '</option>').join('') + '</select>' +
+        '<div id="fitDocs"></div>' +
         '<div style="margin-top:12px"><button class="btn primary" id="btnScore">Score against resume and letter</button></div>');
 
   const selEl = $('fitJd');
-  if (selEl) selEl.addEventListener('change', () => { state.jdId = selEl.value; });
+  if (selEl) selEl.addEventListener('change', () => { state.jdId = selEl.value; renderFitDocs(); });
+  renderFitDocs();
   const b = $('btnScore');
   if (b) b.addEventListener('click', runSectionScoring);
+}
+
+// The documents being scored, with their PDFs, right where you are comparing
+// them — so grabbing what you are about to send is one click from the score.
+function renderFitDocs() {
+  const el = $('fitDocs');
+  if (!el) return;
+  const j = state.jobs.items.find((x) => x.id === ($('fitJd') ? $('fitJd').value : state.jdId));
+  if (!j) { el.innerHTML = ''; return; }
+  const v = currentVersion(j);
+  const rTxt = j.resume.frozenText || versionResumeText(j, v);
+  const cTxt = j.coverLetter.frozenText || versionCoverText(v) || coverLetterText(j.coverLetter);
+  el.innerHTML =
+    '<div class="split" style="gap:12px;margin-top:12px">' +
+      '<div><div class="group-label"><span>Resume ' + (v ? 'v' + v.v : '') + '</span><span class="line"></span>' +
+        statusChip(j.resume.status) + '</div>' +
+        '<pre class="frozen" style="max-height:200px">' + esc(rTxt || 'Nothing yet — generate it in Archive.') + '</pre>' +
+        '<button class="btn" id="fitPdfR"' + (rTxt ? '' : ' disabled') + '>Resume PDF</button></div>' +
+      '<div><div class="group-label"><span>Cover letter</span><span class="line"></span>' +
+        statusChip(j.coverLetter.status) + '</div>' +
+        '<pre class="frozen" style="max-height:200px">' + esc(cTxt || 'Nothing yet.') + '</pre>' +
+        '<button class="btn" id="fitPdfC"' + (cTxt ? '' : ' disabled') + '>Cover letter PDF</button></div>' +
+    '</div>';
+  const r = $('fitPdfR'); if (r) r.addEventListener('click', () => printResume(j));
+  const c = $('fitPdfC'); if (c) c.addEventListener('click', () => printCoverLetter(j));
 }
 
 async function runSectionScoring() {
@@ -1377,6 +1608,8 @@ async function runSectionScoring() {
   try {
     const r = await ai({ action: 'scoresections', posting: j.text, resumeText, coverText, master: state.master });
     j.lastScore = { at: new Date().toISOString(), result: r.result };
+    const cv = currentVersion(j);
+    if (cv) cv.score = r.result;   // so "Revise into v2" can act on this feedback
     state.fits.items.unshift({
       id: uid('fit'), at: j.lastScore.at, jobId: j.id,
       jobLabel: (j.company || 'Untitled') + ' — ' + (j.role || '?'),
@@ -1385,6 +1618,7 @@ async function runSectionScoring() {
     });
     await saveJobs(); await saveFits();
     renderSectionScores(r.result, j);
+    renderFitDocs();
     renderFitHistory();
   } catch (err) {
     $('fitOut').innerHTML = '<div class="banner err"><b>' + (err.code === 'NO_KEY' ? 'API key not set' : 'Scoring failed') + '</b>' + esc(err.message) + '</div>';
@@ -1421,11 +1655,23 @@ function renderSectionScores(a, j) {
       '<p style="font-size:14px;color:var(--muted);margin-bottom:12px">' + esc(a.verdict || '') + '</p>' +
       '<div class="secrow head"><div class="secreq">Requirement</div><div class="seccol">Resume</div><div class="seccol">Cover letter</div></div>' +
       (rows || '<div class="empty">No requirements identified in that posting.</div>') +
+      '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<button class="btn primary" id="btnReviseFromScore">Revise into the next version using this</button>' +
+        '<span class="tagline">Takes these fixes and any answers you have approved, and writes a new version.</span>' +
+      '</div>' +
     '</div>';
 
   // A resume fix has no single unambiguous target — it might be a bullet, an
   // omitted entry, or nothing you can honestly claim. Hand you the text rather
   // than guess and edit the wrong thing.
+  const rev = $('btnReviseFromScore');
+  if (rev) rev.addEventListener('click', async () => {
+    const jj = state.jobs.items.find((x) => x.id === state.jdId);
+    if (!jj) return;
+    await reviseJd(jj);
+    show('archive');
+  });
+
   document.querySelectorAll('[data-fixr]').forEach((b) => b.addEventListener('click', async () => {
     const sec = a.sections[+b.dataset.fixr];
     try { await navigator.clipboard.writeText(sec.resumeFix); toast('Copied — apply it in Resume or in this application\'s entry list.'); }

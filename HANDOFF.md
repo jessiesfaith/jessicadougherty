@@ -31,7 +31,7 @@ they print. A read-only mirror of the postings table sits above them, including 
 fields in the row, tick and Remove. Removing is a soft delete: status becomes
 `deleted` and *show deleted* brings it back.
 
-**Fit Score** — the working tab. Posting, resume and cover letter side by side;
+**Fit Score** — the working tab. Posting, resume and cover letter side by side, all read-only;
 every requirement scored twice; the agent's questions; a proposed next version
 you edit and approve; versions; score history.
 
@@ -45,7 +45,10 @@ hand, which is the moment it becomes a fact.
 
 **Interview Prep** — after the documents are sent. Likely questions, a
 double-check of where the three documents disagree, questions to ask them, and
-prep versions.
+prep versions. All three documents are read-only here.
+
+Both question lists carry **Run all AI help**, which drafts every open question
+sequentially into its own review box — the approval rule is unchanged.
 
 ## The dashboard
 

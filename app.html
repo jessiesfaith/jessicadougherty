@@ -654,7 +654,7 @@ function renderCoverView() {
       ? '<p style="margin-bottom:12px">' + esc(L.greeting || '') + '</p>' +
         paras.map((t) => '<p style="margin-bottom:12px">' + esc(t) + '</p>').join('') +
         '<p style="white-space:pre-line">' + esc(L.signoff || '') + '</p>'
-      : '<p style="color:#666">Nothing written yet. Hit Edit and write your letter once — the agent adapts it per posting.</p>') +
+      : '<p style="color:#666">Nothing written yet. Either hit <b>Edit</b> and write it once, or generate a letter for a posting in <b>Fit Score</b> and use <b>Save as master letter</b> there.</p>') +
     '</div>';
 }
 function toggleEditor(viewId, editId, btnId, onOpen) {
@@ -1267,6 +1267,31 @@ function printCoverLetter(j) {
   w.document.close(); setTimeout(() => w.print(), 350);
 }
 
+// Company-specific sentences do not belong in a master, so this asks before it
+// overwrites and reminds you to generalise what it copied.
+async function promoteLetterToMaster(j) {
+  const v = currentVersion(j);
+  const paras = (j.coverLetter.frozenText ? j.coverLetter.frozenText.split(/\n{2,}/) : (versionCoverText(v) || coverLetterText(j.coverLetter)).split(/\n{2,}/))
+    .map((t) => t.trim()).filter(Boolean);
+  if (!paras.length) return toast('Nothing in this letter to promote.', true);
+
+  const existing = state.cover.letter.paragraphs.filter((p) => (p.text || '').trim()).length;
+  if (existing && !confirm('Replace your master cover letter with this one?\n\nYour current master has ' + existing + ' written paragraph(s). This cannot be undone from here — the version on this application is unaffected either way.')) return;
+
+  state.cover.letter.paragraphs = paras.map((t, i) => ({
+    id: uid('p'),
+    kind: i === 0 ? 'opening' : (i === paras.length - 1 ? 'closing' : 'proof'),
+    title: i === 0 ? 'Opening' : (i === paras.length - 1 ? 'Closing' : 'Proof ' + i),
+    text: t,
+  }));
+
+  try {
+    adoptVersion(state.cover, await api('cover', 'PUT', state.cover, state.cover.version));
+    renderCoverView();
+    toast('Saved as your master letter. Open Cover Letter and take out anything specific to ' + (j.company || 'this company') + '.');
+  } catch (err) { toast('Could not save: ' + err.message, true); }
+}
+
 function printMasterResume() {
   printResume({ company: '', role: '', resume: { itemIds: allMasterIds(), summary: '', frozenHtml: '' } });
 }
@@ -1669,7 +1694,9 @@ function renderFitDocs() {
           STATUSES.map((st) => '<option value="' + st + '"' + (j.coverLetter.status === st ? ' selected' : '') + '>' + st + '</option>').join('') +
         '</select>' + (j.coverLetter.frozenText ? '<span class="chip">frozen</span>' : '') + '</div>' +
         '<pre class="frozen" style="max-height:200px">' + esc(cTxt || 'Nothing yet.') + '</pre>' +
-        '<button class="btn" id="fitPdfC"' + (cTxt ? '' : ' disabled') + '>Cover letter PDF</button></div>' +
+        '<button class="btn" id="fitPdfC"' + (cTxt ? '' : ' disabled') + '>Cover letter PDF</button>' +
+        (cTxt ? '<button class="btn ghost" id="fitToMaster" title="Make this your master cover letter">Save as master letter</button>' : '') +
+        '</div>' +
     '</div>' +
     '<div style="margin-top:12px"><button class="btn' + (v ? '' : ' primary') + '" id="fitGen">' +
       (v ? 'Regenerate from scratch' : 'Generate resume + letter') + '</button>' +
@@ -1677,6 +1704,8 @@ function renderFitDocs() {
   const r = $('fitPdfR'); if (r) r.addEventListener('click', () => printResume(j));
   const c = $('fitPdfC'); if (c) c.addEventListener('click', () => printCoverLetter(j));
   const g = $('fitGen'); if (g) g.addEventListener('click', () => generateForJd(j));
+  const tm = $('fitToMaster');
+  if (tm) tm.addEventListener('click', () => promoteLetterToMaster(j));
   // Marking a document complete is what freezes it — the control belongs beside
   // the document it freezes.
   el.querySelectorAll('[data-jdf]').forEach((sel2) => sel2.addEventListener('change', () => {

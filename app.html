@@ -208,6 +208,7 @@
   /* Inline so the version chip and the two links share the line. */
   .apptbl .doclinks{display:inline-flex;gap:9px;flex-wrap:nowrap;vertical-align:middle;margin-left:7px}
   .apptbl .doclinks a,.apptbl .doclinks .none{white-space:nowrap}
+  .apptbl .pubopen{margin-left:7px;font-size:12px;color:var(--accent);white-space:nowrap}
   .apptbl input{width:100%;background:transparent;border:1px solid transparent;border-radius:5px;color:inherit;font:inherit;padding:3px 5px}
   .apptbl input:hover{border-color:var(--border)}
   .apptbl input:focus{border-color:var(--accent);background:rgba(0,0,0,.18);outline:none}
@@ -352,7 +353,6 @@
       </div>
       <div class="spacer"></div>
       <button class="btn" id="masterPdf">Resume PDF</button>
-      <button class="btn" id="publishBtn" title="Put this resume on jessicadougherty.com">Publish to my site</button>
       <button class="btn" id="coverPdf">Cover letter PDF</button>
       <button class="btn ghost" id="tagAll" title="Fill in job titles and skills — keywords only, never your wording">✦ Tag keywords</button>
     </div>
@@ -456,7 +456,7 @@
     <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have. It carries the same columns as Job Postings: company, job title, status, posting, deadline, sent, contact, notes and what has been built.</p>
     <p>It is <strong>read-only</strong>. It is here so you can see where every application stands while you look at your masters; <strong>Job Postings is the one place you change any of it</strong>, so there is never a question of which copy of a row you typed into.</p>
     <p><strong>Built</strong> links still work &mdash; they open that application's resume or cover letter ready to print, with a chip for how many versions exist. Rows for applications you have not marked complete are dimmed.</p>
-    <p>The table starts closed, with the count on the heading &mdash; the masters underneath are what this tab is for.</p>
+    <p>The table starts closed, with the count on the heading &mdash; the masters underneath are what this tab is for. The <strong>Public</strong> column shows which application's resume is live on the site; publishing happens in <strong>Job Postings</strong>.</p>
     <h4>Sorting</h4>
     <p>Click any column heading to sort by it, and again to reverse it; an arrow marks the one you are on. A blank always sorts last whichever way the arrow points &mdash; an empty deadline is not an early one. <strong>Posting</strong> sorts by how many words of the description you actually have and <strong>Built</strong> by how many versions exist, rather than by the text in the cell. The two tables sort independently.</p>
     <h4>Bold, and blue</h4>
@@ -469,6 +469,9 @@
     <p>Click any column heading to sort by it, and again to reverse it; an arrow marks the one you are on. A blank always sorts last whichever way the arrow points &mdash; an empty deadline is not an early one. <strong>Posting</strong> sorts by how many words of the description you actually have and <strong>Built</strong> by how many versions exist, rather than by the text in the cell. The two tables sort independently.</p>
     <h4>Editing in the row</h4>
     <p><strong>Deadline</strong>, <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type. Clicking anywhere else on the row opens that posting below.</p>
+    <h4>The public resume</h4>
+    <p><strong>Publish</strong> in the <strong>Public</strong> column puts that application's resume on jessicadougherty.com &mdash; it becomes what both Resume buttons on the landing page show, and anyone can read it. The row that is live says so, with a link to open it. Publishing another replaces it; it takes effect in seconds, with no deploy.</p>
+    <p>It publishes a <em>copy</em>. Editing that version afterwards changes nothing on the site until you publish again. Until you publish anything at all, the site shows the resume page that ships with it.</p>
     <h4>Removing applications</h4>
     <p>Each row starts with a checkbox, and the one in the header selects or deselects every row at once. <strong>Remove</strong>, at the top of the box, counts what you have ticked and hides those applications on click.</p>
     <p>It is the same soft delete as the Delete button on an open posting: the data stays in your repo. Tick <em>show deleted</em> and they come straight back.</p>
@@ -689,7 +692,6 @@ async function boot() {
     renderCoverView();
     renderTagSummary();
     renderDocLists();
-    renderPublishState();
 
     const captured = readCapture();
     if (captured) { await acceptCapture(captured); return; }
@@ -807,9 +809,8 @@ function allMasterIds() {
 }
 function renderMasterView() {
   $('masterView').innerHTML =
-    '<div class="sec-head"><h2>Resume</h2><span class="tagline" id="publishState"></span></div>' +
+    '<div class="sec-head"><h2>Resume</h2></div>' +
     '<div class="preview">' + renderResume({ itemIds: allMasterIds(), summary: '', targetRole: '' }) + '</div>';
-  renderPublishState();
 }
 function renderCoverView() {
   const L = state.cover.letter;
@@ -927,6 +928,7 @@ const SORTERS = {
   contactEmail: (j) => (j.contactEmail || '').toLowerCase(),
   notes: (j) => (j.notes || '').trim().toLowerCase(),
   built: (j) => (j.versions || []).length,
+  published: (j) => (isPublished(j) ? 0 : 1),   // the live one first
 };
 function sortRows(rows, sort) {
   const get = SORTERS[sort && sort.key];
@@ -990,14 +992,15 @@ function renderCompanyTable() {
     '<p class="tagline" style="margin-bottom:8px">One row per application, read-only. Editing, and removing, happen in <strong>Job Postings</strong>.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
-        '<col style="width:12%"><col style="width:13%"><col style="width:8.5%"><col style="width:10.5%">' +
-        '<col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:11%"><col style="width:20%">' +
+        '<col style="width:11%"><col style="width:12%"><col style="width:8%"><col style="width:9.5%">' +
+        '<col style="width:7.5%"><col style="width:7.5%"><col style="width:8.5%"><col style="width:10%">' +
+        '<col style="width:19%"><col style="width:7%">' +
       '</colgroup><thead><tr>' +
         sortTh('Company', 'company', coSort) + sortTh('Job title', 'role', coSort) +
         sortTh('Status', 'status', coSort) + sortTh('Posting', 'posting', coSort) +
         sortTh('Deadline', 'deadline', coSort) + sortTh('Sent', 'appliedOn', coSort) +
         sortTh('Contact email', 'contactEmail', coSort) + sortTh('Notes', 'notes', coSort) +
-        sortTh('Built', 'built', coSort) +
+        sortTh('Built', 'built', coSort) + sortTh('Public', 'published', coSort) +
       '</tr></thead><tbody>' +
       rows.map((j) =>
         '<tr' + (j.status === 'complete' ? '' : ' class="dim"') + '>' +
@@ -1007,6 +1010,7 @@ function renderCompanyTable() {
           '<td>' + postingCell(j) + '</td>' +
           appReadCells(j) +
           '<td>' + builtCell(j) + '</td>' +
+          '<td>' + publicCell(j) + '</td>' +
         '</tr>').join('') +
       '</tbody></table>'));
   $('coTblToggle').addEventListener('click', () => { companyTableOpen = !companyTableOpen; renderCompanyTable(); });
@@ -1121,43 +1125,50 @@ $('masterPdf').addEventListener('click', () => printMasterResume());
    only when she says so — nothing tailored to one posting can reach the site by
    accident, because this button is on the master and nowhere else. The site
    reads it at request time, so publishing is live without a deploy. */
-$('publishBtn').addEventListener('click', async () => {
-  const b = $('publishBtn');
-  const p = state.master.profile;
-  const html = renderResume({ itemIds: allMasterIds(), summary: '', targetRole: '' });
-  const already = state.published && state.published.at
-    ? '\n\nThe version now on the site was published ' + new Date(state.published.at).toLocaleString() + '.'
-    : '';
-  if (!confirm('Publish this resume to jessicadougherty.com?\n\nIt replaces what both Resume buttons on the landing page show, and anyone can read it.' + already)) return;
-  b.disabled = true; b.innerHTML = '<span class="spin"></span> Publishing…';
+/* Which application's resume is on the public site, and putting one there.
+   Publishing is one row at a time from Job Postings, so the resume anyone can
+   read is always a specific version you chose — never whatever the master
+   happened to say. The Resume tab shows the same column read-only. */
+const isPublished = (j) => Boolean(state.published && state.published.jobId === j.id);
+
+function publicCell(j) {
+  if (isPublished(j)) {
+    return '<span class="chip st-complete">live</span>' +
+      '<a class="pubopen" href="/resume" target="_blank" rel="noopener" title="Open the public resume">open</a>';
+  }
+  return '<span class="tagline">—</span>';
+}
+
+async function publishJobResume(j) {
+  const v = currentVersion(j);
+  const html = j.resume.frozenHtml ||
+    renderResume({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role });
+  if (!html || !(j.resume.itemIds || []).length) {
+    return toast('Nothing built for this one yet — generate a version first.', true);
+  }
+  const now = state.published && state.published.at
+    ? '\n\nIt replaces the one published ' + new Date(state.published.at).toLocaleString() + '.' : '';
+  if (!confirm('Put this resume on jessicadougherty.com?\n\nThis is the version aimed at ' +
+      (j.company || 'this posting') + ', and it becomes what both Resume buttons on the landing page show. Anyone can read it.' + now)) return;
   try {
     const doc = {
       ...state.published,
       html,
-      name: p.name || '',
-      headline: p.headline || '',
+      jobId: j.id,
+      name: state.master.profile.name || '',
+      headline: j.role || state.master.profile.headline || '',
+      label: [j.company, j.role].filter(Boolean).join(' — '),
       at: new Date().toISOString(),
     };
-    state.published = adoptVersion(state.published, await api('published', 'PUT', doc, state.published.version)) || doc;
-    Object.assign(state.published, doc);
-    renderPublishState();
-    toast('Published. jessicadougherty.com/resume is showing this now.');
+    const saved = await api('published', 'PUT', doc, state.published.version);
+    state.published = saved || doc;
+    renderJdListOnly(); renderDocLists();
+    toast('Live at jessicadougherty.com/resume.');
   } catch (err) {
     toast(err.code === 'VERSION_CONFLICT'
       ? 'The published copy changed somewhere else. Reload, then publish again.'
       : 'Could not publish: ' + err.message, true);
-  } finally { b.disabled = false; b.textContent = 'Publish to my site'; }
-});
-
-// What is on the site right now, next to the button that changes it.
-function renderPublishState() {
-  const el = $('publishState');
-  if (!el) return;
-  const at = state.published && state.published.at;
-  el.innerHTML = at
-    ? 'Live at <a href="/resume" target="_blank" rel="noopener">jessicadougherty.com/resume</a> &mdash; published ' +
-      esc(new Date(at).toLocaleString()) + '.'
-    : 'Nothing published yet. The site is showing the resume page that ships with it.';
+  }
 }
 
 $('coverPdf').addEventListener('click', () => printMasterCover());
@@ -1606,8 +1617,9 @@ function renderJdListOnly() {
           // Measured against what each column actually needs on one line: Built
           // wants 210px for a chip and two links, and Job title is the one that
           // can afford to clip because the row below spells it out in full.
-          '<col style="width:3.5%"><col style="width:10%"><col style="width:11%"><col style="width:8.5%"><col style="width:10.5%">' +
-          '<col style="width:10%"><col style="width:10%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:19.5%">' +
+          '<col style="width:3.5%"><col style="width:9.5%"><col style="width:10%"><col style="width:8%"><col style="width:9.5%">' +
+          '<col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:8%">' +
+          '<col style="width:18.5%"><col style="width:7%">' +
         '</colgroup><thead><tr>' +
           '<th class="pickcell"><input type="checkbox" id="appPickAll" title="Select all"' +
             (picked === list.length ? ' checked' : '') + (picked && picked < list.length ? ' data-some="1"' : '') + ' /></th>' +
@@ -1615,7 +1627,7 @@ function renderJdListOnly() {
           sortTh('Status', 'status', jdSort) + sortTh('Posting', 'posting', jdSort) +
           sortTh('Deadline', 'deadline', jdSort) + sortTh('Sent', 'appliedOn', jdSort) +
           sortTh('Contact email', 'contactEmail', jdSort) + sortTh('Notes', 'notes', jdSort) +
-          sortTh('Built', 'built', jdSort) +
+          sortTh('Built', 'built', jdSort) + sortTh('Public', 'published', jdSort) +
         '</tr></thead><tbody>' +
         list.map((j) =>
           '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
@@ -1627,11 +1639,19 @@ function renderJdListOnly() {
             '<td>' + postingCell(j) + '</td>' +
             appEditCells(j) +
             '<td>' + builtCell(j) + '</td>' +
+            '<td>' + (isPublished(j)
+              ? publicCell(j)
+              : '<button class="btn ghost" data-pub="' + esc(j.id) + '" title="Put this resume on jessicadougherty.com">Publish</button>') + '</td>' +
           '</tr>').join('') +
         '</tbody></table>');
 
   $('jdTblToggle').addEventListener('click', () => { jdTableOpen = !jdTableOpen; renderJdListOnly(); });
   wireSort($('jdList'), jdSort, renderJdListOnly);
+  $('jdList').querySelectorAll('[data-pub]').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();   // the row click selects a posting; this one does not
+    const j = state.jobs.items.find((x) => x.id === b.dataset.pub);
+    if (j) publishJobResume(j);
+  }));
 
   // Anchors and the fields in a row do their own thing; the row click, meaning
   // anywhere else on it, is for opening that posting underneath.

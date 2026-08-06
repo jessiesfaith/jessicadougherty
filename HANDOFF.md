@@ -21,8 +21,8 @@ Vercel functions, and your data is JSON in a private GitHub repo you own.
 ### The four tabs
 
 **Resume** — your master resume and cover letter, read-only, shown exactly as
-they print. A read-only mirror of the postings table sits above them, and
-**Publish to my site** puts the master on the public site.
+they print. A read-only mirror of the postings table sits above them, including a
+**Public** column showing which application's resume is live on the site.
 
 **Job Postings** — the editable table. Add or capture postings, edit tracking
 fields in the row, tick and Remove. Removing is a soft delete: status becomes
@@ -50,10 +50,14 @@ by default.
 
 ## Publishing the public resume
 
-**Publish to my site** sits on the Resume tab, beside the PDF buttons. It takes
-the master resume exactly as it prints and writes it to `career/published-resume.json`
-in the data repo. `api/resume.js` serves that at `/resume`, with no cookie check —
-it is the one thing here meant to be read by anyone.
+**Publish** sits in the **Public** column of the Postings table on the **Job
+Postings** tab — one row at a time. It writes that application's resume to
+`career/published-resume.json` in the data repo, along with the `jobId` it came
+from. `api/resume.js` serves that at `/resume`, with no cookie check — it is the
+one thing here meant to be read by anyone.
+
+The Resume tab's table carries the same **Public** column read-only, so you can
+see which one is live without being able to change it from there.
 
 Both Resume buttons on the landing page point at `/resume`. If nothing has been
 published, `/resume` redirects to the `resume.html` that ships with the site, so
@@ -63,9 +67,9 @@ Three things worth knowing:
 
 - **Publishing takes effect immediately.** No deploy, no build. The route is
   cached for 60 seconds at the edge, so allow a moment.
-- **Only the master can be published.** The button exists on the Resume tab and
-  nowhere else, so a version tailored to one posting cannot reach the public site
-  by accident.
+- **What goes public is a specific version, chosen a row at a time.** That means
+  a resume aimed at one posting can become the public one — deliberate, since the
+  Publish button is per row and confirms with the company name in the prompt.
 - **It is a copy, not a link.** Editing your master afterwards does not change
   what is live until you press Publish again. The line under the Resume heading
   says what is live and when it went out.

@@ -1668,6 +1668,38 @@ function printResume(j) {
 
 // The letter prints as a letter — her contact block, the date, proper margins —
 // not as a bare wall of text.
+/* The posting, printable. Every other document on this page can be taken out
+   of the app on paper; the one you are being measured against should be too —
+   for an interview, or as the record of what the ad actually said on the day
+   you applied, since postings come down. */
+function printPosting(j) {
+  const text = String(j.text || '').trim();
+  if (!text) return toast('No job description to print yet.', true);
+  const head = [j.company, j.role].filter(Boolean).join(' — ') || 'Job posting';
+  const meta = [
+    j.deadline ? 'Deadline: ' + j.deadline : '',
+    j.appliedOn ? 'Sent: ' + j.appliedOn : '',
+    'Printed ' + new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+  ].filter(Boolean).join('  |  ');
+
+  const w = window.open('', '_blank');
+  w.document.write('<html><head><title>' + esc(pdfName(j, 'Posting')) + '</title><style>' +
+    'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.75in .5in;font-size:11pt;line-height:1.5}' +
+    'h1{font-size:17pt;margin-bottom:2px;letter-spacing:-.3px}' +
+    '.meta{font-size:9.5pt;color:#555;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:20px}' +
+    '.url{font-size:9.5pt;color:#555;margin-bottom:18px;word-break:break-all}' +
+    // The posting's own line breaks are its structure — bullets, headings and
+    // blank lines all live in them, so they are kept exactly as captured.
+    'pre{white-space:pre-wrap;font-family:Georgia,serif;font-size:11pt;margin:0}' +
+    '@media print{@page{margin:.5in}}</style></head><body>' +
+    '<h1>' + esc(head) + '</h1>' +
+    '<div class="meta">' + esc(meta) + '</div>' +
+    (j.url ? '<div class="url">' + esc(j.url) + '</div>' : '') +
+    '<pre>' + esc(text) + '</pre>' +
+    '</body></html>');
+  w.document.close(); setTimeout(() => w.print(), 350);
+}
+
 function printCoverLetter(j) {
   const p = state.master.profile;
   const text = coverLetterText(j.coverLetter);
@@ -2275,7 +2307,8 @@ function renderFitJd() {
     (fitJdOpen
       ? '<textarea class="f" id="fitJdText" style="min-height:200px;height:200px">' + esc(j.text || '') + '</textarea>' +
         '<div class="tagline" style="margin-top:6px">Edits here save to this application.</div>'
-      : '<pre class="frozen" style="max-height:200px">' + esc(j.text || 'No description yet — hit Show and paste it in, or capture it from the posting.') + '</pre>');
+      : '<pre class="frozen" style="max-height:200px">' + esc(j.text || 'No description yet — hit Show and paste it in, or capture it from the posting.') + '</pre>') +
+    '<button class="btn" id="fitPdfJd"' + ((j.text || '').trim() ? '' : ' disabled') + '>Posting PDF</button>';
 
   const sel = $('fitJd');
   if (sel) sel.addEventListener('change', () => {
@@ -2283,6 +2316,8 @@ function renderFitJd() {
     renderFitDocs(); renderFitWork();
   });
   $('jdToggle').addEventListener('click', () => { fitJdOpen = !fitJdOpen; renderFitJd(); });
+  const pj = $('fitPdfJd');
+  if (pj) pj.addEventListener('click', () => printPosting(j));
   const t = $('fitJdText');
   if (t) t.addEventListener('input', () => { j.text = t.value; queueSaveJobs(); });
 }

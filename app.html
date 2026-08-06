@@ -200,6 +200,9 @@
   .apptbl td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:middle;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .apptbl th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .apptbl th[data-sort]{cursor:pointer;user-select:none}
+  .apptbl th[data-sort]:hover{color:var(--text)}
+  .sortarrow{margin-left:4px;color:var(--accent);font-size:9px;vertical-align:1px}
   .apptbl td.co{font-weight:600}
   .apptbl td.ro{color:var(--faint)}
   /* Inline so the version chip and the two links share the line. */
@@ -453,12 +456,16 @@
     <p>It is <strong>read-only</strong>. It is here so you can see where every application stands while you look at your masters; <strong>Job Postings is the one place you change any of it</strong>, so there is never a question of which copy of a row you typed into.</p>
     <p><strong>Built</strong> links still work &mdash; they open that application's resume or cover letter ready to print, with a chip for how many versions exist. Rows for applications you have not marked complete are dimmed.</p>
     <p>The table starts closed, with the count on the heading &mdash; the masters underneath are what this tab is for.</p>
+    <h4>Sorting</h4>
+    <p>Click any column heading to sort by it, and again to reverse it; an arrow marks the one you are on. A blank always sorts last whichever way the arrow points &mdash; an empty deadline is not an early one. <strong>Posting</strong> sorts by how many words of the description you actually have and <strong>Built</strong> by how many versions exist, rather than by the text in the cell. The two tables sort independently.</p>
     <h4>Bold, and blue</h4>
     <p>Anywhere you write document text, <code>**stars**</code> makes it <strong>bold</strong> and <code>***three***</code> makes it bold and blue. Headings, your name and employer names already print blue. The markers never reach a PDF, the frozen record, or the agent &mdash; they are stripped from everything but the rendered page.</p>
     </div>
     <div class="gsec" data-g="archive">
     <h3 id="g-archive">Job Postings</h3>
     <p>Every posting on one row, every field its own column &mdash; company, job title, status, how much of the description you actually have, deadline, sent date, contact, notes, and what has been built. Click a row to open it in full underneath.</p>
+    <h4>Sorting</h4>
+    <p>Click any column heading to sort by it, and again to reverse it; an arrow marks the one you are on. A blank always sorts last whichever way the arrow points &mdash; an empty deadline is not an early one. <strong>Posting</strong> sorts by how many words of the description you actually have and <strong>Built</strong> by how many versions exist, rather than by the text in the cell. The two tables sort independently.</p>
     <h4>Editing in the row</h4>
     <p><strong>Deadline</strong>, <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type. Clicking anywhere else on the row opens that posting below.</p>
     <h4>Removing applications</h4>
@@ -903,6 +910,47 @@ const APP_FIELDS = [
 ];
 const dash = (s) => (s ? esc(s) : '<span class="tagline">—</span>');
 
+/* Sorting, shared by the two Postings tables. Each column knows how to turn a
+   row into something comparable — words for the posting, a count for what has
+   been built, plain text for the rest — and a blank always sorts last whichever
+   way the arrow points, because an empty deadline is not an early one. */
+const SORTERS = {
+  company: (j) => (j.company || '').toLowerCase(),
+  role: (j) => (j.role || '').toLowerCase(),
+  status: (j) => j.status || '',
+  posting: (j) => (needsJd(j) ? 0 : jdWords(j.text)),
+  deadline: (j) => j.deadline || '',
+  appliedOn: (j) => j.appliedOn || '',
+  contactEmail: (j) => (j.contactEmail || '').toLowerCase(),
+  notes: (j) => (j.notes || '').trim().toLowerCase(),
+  built: (j) => (j.versions || []).length,
+};
+function sortRows(rows, sort) {
+  const get = SORTERS[sort && sort.key];
+  if (!get) return rows;
+  const blank = (v) => v === '' || v == null;
+  return rows.slice().sort((a, b) => {
+    const x = get(a), y = get(b);
+    if (blank(x) !== blank(y)) return blank(x) ? 1 : -1;
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * sort.dir;
+    return String(x).localeCompare(String(y)) * sort.dir;
+  });
+}
+// A header you can click, showing which way it is pointing when it is the one.
+function sortTh(label, key, sort, cls) {
+  const on = sort && sort.key === key;
+  return '<th' + (cls ? ' class="' + cls + '"' : '') + ' data-sort="' + key + '"' +
+    ' title="Sort by ' + esc(label.toLowerCase()) + '">' + esc(label) +
+    (on ? '<span class="sortarrow">' + (sort.dir > 0 ? '▲' : '▼') + '</span>' : '') + '</th>';
+}
+function wireSort(root, sort, redraw) {
+  root.querySelectorAll('[data-sort]').forEach((th) => th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (sort.key === key) sort.dir = -sort.dir; else { sort.key = key; sort.dir = 1; }
+    redraw();
+  }));
+}
+
 function appReadCells(j) {
   return '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
     '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
@@ -930,8 +978,8 @@ function appEditCells(j) {
    editable. It is there to tell you where each application stands while you
    look at the master documents, not to be a second place to change one. */
 function renderCompanyTable() {
-  const rows = jdList().slice().sort((a, b) =>
-    (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
+  const rows = sortRows(jdList().slice().sort((a, b) =>
+    (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || '')), coSort);
   $('docsByCompany').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span>' +
       '<button class="btn ghost" id="coTblToggle">' + (companyTableOpen ? 'Hide' : 'Show') + '</button></div>' +
@@ -942,8 +990,11 @@ function renderCompanyTable() {
         '<col style="width:12%"><col style="width:13%"><col style="width:8.5%"><col style="width:10.5%">' +
         '<col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:11%"><col style="width:20%">' +
       '</colgroup><thead><tr>' +
-        '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
-        '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
+        sortTh('Company', 'company', coSort) + sortTh('Job title', 'role', coSort) +
+        sortTh('Status', 'status', coSort) + sortTh('Posting', 'posting', coSort) +
+        sortTh('Deadline', 'deadline', coSort) + sortTh('Sent', 'appliedOn', coSort) +
+        sortTh('Contact email', 'contactEmail', coSort) + sortTh('Notes', 'notes', coSort) +
+        sortTh('Built', 'built', coSort) +
       '</tr></thead><tbody>' +
       rows.map((j) =>
         '<tr' + (j.status === 'complete' ? '' : ' class="dim"') + '>' +
@@ -956,8 +1007,10 @@ function renderCompanyTable() {
         '</tr>').join('') +
       '</tbody></table>'));
   $('coTblToggle').addEventListener('click', () => { companyTableOpen = !companyTableOpen; renderCompanyTable(); });
+  wireSort($('docsByCompany'), coSort, renderCompanyTable);
 }
 let companyTableOpen = false;
+const coSort = { key: null, dir: 1 };
 
 /* The Remove button's label is the only thing a tick changes until you press
    it, so it is updated on its own rather than through a full re-render. */
@@ -1489,8 +1542,9 @@ const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
 /* Every posting on one row, every field its own column — a flat dataset you can
    scan down. Clicking a row opens it in full underneath. */
 let jdTableOpen = false;
+const jdSort = { key: null, dir: 1 };
 function renderJdListOnly() {
-  const list = jdList();
+  const list = sortRows(jdList(), jdSort);
   // A tick that survives a re-render but never outlives the rows it points at.
   appPicked.forEach((id) => { if (!list.some((j) => j.id === id)) appPicked.delete(id); });
   const picked = list.filter((j) => appPicked.has(j.id)).length;
@@ -1511,8 +1565,11 @@ function renderJdListOnly() {
         '</colgroup><thead><tr>' +
           '<th class="pickcell"><input type="checkbox" id="appPickAll" title="Select all"' +
             (picked === list.length ? ' checked' : '') + (picked && picked < list.length ? ' data-some="1"' : '') + ' /></th>' +
-          '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
-          '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
+          sortTh('Company', 'company', jdSort) + sortTh('Job title', 'role', jdSort) +
+          sortTh('Status', 'status', jdSort) + sortTh('Posting', 'posting', jdSort) +
+          sortTh('Deadline', 'deadline', jdSort) + sortTh('Sent', 'appliedOn', jdSort) +
+          sortTh('Contact email', 'contactEmail', jdSort) + sortTh('Notes', 'notes', jdSort) +
+          sortTh('Built', 'built', jdSort) +
         '</tr></thead><tbody>' +
         list.map((j) =>
           '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
@@ -1528,6 +1585,7 @@ function renderJdListOnly() {
         '</tbody></table>');
 
   $('jdTblToggle').addEventListener('click', () => { jdTableOpen = !jdTableOpen; renderJdListOnly(); });
+  wireSort($('jdList'), jdSort, renderJdListOnly);
 
   // Anchors and the fields in a row do their own thing; the row click, meaning
   // anywhere else on it, is for opening that posting underneath.

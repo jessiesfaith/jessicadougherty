@@ -38,8 +38,8 @@ you edit and approve; versions; score history.
 **Other** — four plans: Education, Experience, Events and Project. Each is a flat
 sortable list — Type, Company, Item, Enrolled, Duration, Link, Notes, Priority — of what you
 intend to do, kept apart from the career master, which is the record of what you
-have done. Sorting is display-only; the stored order is the order you added
-things. Stored in `career/plans.json`. **No agent reads them and no version is
+have done. Rows move up and down with the arrows on each row — that is the stored
+order. Sorting is display-only, so it never rewrites it. Stored in `career/plans.json`. **No agent reads them and no version is
 built from them** — when something on a plan happens, it goes into the master by
 hand, which is the moment it becomes a fact.
 

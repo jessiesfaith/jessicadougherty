@@ -171,6 +171,9 @@
   /* A version is a resume and a letter and a score all at once, so each gets
      its own column rather than being run together in one line of prose. */
   .planrow > div{overflow:visible;display:flex;align-items:center;gap:6px}
+  .planrow .acts{gap:2px;justify-content:flex-end}
+  .planrow .acts .icon{padding:2px 4px;font-size:11px;line-height:1}
+  .planrow .acts .icon[disabled]{opacity:.25;cursor:default}
   .planrow .f{width:100%;padding:5px 8px;font-size:13px;min-width:0}
   .planrow input[readonly]{cursor:pointer;text-overflow:ellipsis}
   .planrow.head > div[data-plansort]{cursor:pointer;user-select:none}
@@ -565,7 +568,7 @@
     <p>Four plans &mdash; <strong>Education</strong>, <strong>Experience</strong>, <strong>Events</strong> and <strong>Project</strong>. They are what you intend to do, kept deliberately apart from the career master, which is the record of what you have done.</p>
     <p><strong>Nothing here can reach a resume.</strong> No agent reads these, and no version is built from them. When something on a plan actually happens, you add it to your master by hand &mdash; and that is the moment it becomes a fact rather than an intention.</p>
     <p>Each is a flat list with the same eight columns: <strong>Type</strong>, <strong>Company</strong>, <strong>Item</strong>, <strong>Enrolled</strong>, <strong>Duration</strong>, <strong>Link</strong>, <strong>Notes</strong> and <strong>Priority</strong>. <strong>Notes</strong> shows a one-line preview &mdash; click it and the same full, scrollable box the postings table uses opens. <strong>+ add</strong> puts a row on the list and the bin removes one &mdash; it asks first if you have typed a name into it. A link you fill in gets an <em>open</em> beside it.</p>
-    <p>Click any column heading to sort by it, again to reverse it. <strong>Sorting only changes what you see</strong>: the stored order stays the order you added things in, so a sort never quietly rewrites your list. Blanks sort last either way, and Priority sorts high, medium, low rather than alphabetically.</p>
+    <p>The arrows on each row move it up and down &mdash; that is your own order, and it is what is stored. Click any column heading to sort by it, again to reverse it. <strong>Sorting only changes what you see</strong>: the stored order stays the one you arranged, so a sort never quietly rewrites your list. Because of that, moving a row while a column is sorted first drops you back to your own order and stops, rather than sliding a row somewhere you did not point at. Blanks sort last either way, and Priority sorts high, medium, low rather than alphabetically.</p>
     <p>The count on each heading is how many rows it holds, and how many of those are high priority. All four start collapsed, like everything else.</p>
     </div>
 
@@ -3541,7 +3544,7 @@ const PLAN_COLS = [
   { key: 'notes', label: 'Notes', kind: 'notes', ph: 'why, or what it takes…', w: 'minmax(0,1.1fr)' },
   { key: 'priority', label: 'Priority', kind: 'select', opts: ['high', 'medium', 'low'], w: '102px' },
 ];
-const PLAN_GRID = PLAN_COLS.map((c) => c.w).join(' ') + ' 46px';
+const PLAN_GRID = PLAN_COLS.map((c) => c.w).join(' ') + ' 96px';
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const planOpen = {};
 const planSort = {};
@@ -3612,7 +3615,11 @@ function renderPlan(pl) {
           planOrder(items, sort).map(({ it, i }) =>
             '<div class="lrow planrow" style="grid-template-columns:' + PLAN_GRID + '">' +
               PLAN_COLS.map((c) => '<div>' + planCell(pl, i, c, it) + '</div>').join('') +
-              '<div class="acts"><button class="icon" data-plandel="' + pl.key + '|' + i + '" title="Remove">&#128465;</button></div>' +
+              '<div class="acts">' +
+                '<button class="icon" data-planmove="' + pl.key + '|' + i + '|-1"' + (i === 0 ? ' disabled' : '') + ' title="Move up">&#9650;</button>' +
+                '<button class="icon" data-planmove="' + pl.key + '|' + i + '|1"' + (i === items.length - 1 ? ' disabled' : '') + ' title="Move down">&#9660;</button>' +
+                '<button class="icon" data-plandel="' + pl.key + '|' + i + '" title="Remove">&#128465;</button>' +
+              '</div>' +
             '</div>').join('')));
 
   el.querySelector('[data-plantoggle]').addEventListener('click', () => {
@@ -3631,6 +3638,22 @@ function renderPlan(pl) {
   el.querySelectorAll('[data-planf]').forEach((f) => f.addEventListener('input', () => {
     const [, i, field] = f.dataset.planf.split('|');
     if (items[+i]) { items[+i][field] = f.value; queueSavePlans(); }
+  }));
+  /* Moving a row rearranges the stored order — the one a sort is hiding. So if
+     a column is sorted, the first click drops back to your own order and stops
+     there, rather than sliding a row somewhere you did not point at. */
+  el.querySelectorAll('[data-planmove]').forEach((b) => b.addEventListener('click', () => {
+    const [, iStr, dStr] = b.dataset.planmove.split('|');
+    if (sort.key) {
+      sort.key = null; sort.dir = 1;
+      renderPlan(pl);
+      return toast('Back to your own order — move it now.');
+    }
+    const i = +iStr, to = i + +dStr;
+    if (to < 0 || to >= items.length) return;
+    const [row] = items.splice(i, 1);
+    items.splice(to, 0, row);
+    queueSavePlans(); renderPlan(pl);
   }));
   el.querySelectorAll('[data-plannotes]').forEach((f) => f.addEventListener('click', () => {
     const i = +f.dataset.plannotes.split('|')[1];

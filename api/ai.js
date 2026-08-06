@@ -149,6 +149,79 @@ The distinction between "omitted" and "missing" is the whole point of this task:
 - missing = she does not have it. Say so plainly rather than stretching something to fit.
 If a requirement is genuinely unclear from the posting, leave it out rather than guessing.`,
 
+  questions: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+JOB DESCRIPTION:
+"""
+${b.posting}
+"""
+
+THE CURRENT RESUME:
+"""
+${b.resumeText || '(none yet)'}
+"""
+
+THE CURRENT COVER LETTER:
+"""
+${b.coverText || '(none yet)'}
+"""
+
+The posting asks for things these documents do not answer. Ask HER about them, so she can supply the truth rather than have it invented. Return JSON:
+{
+ "questions": [
+   {
+     "requirement": "what the posting asks for, in its words",
+     "question": "a direct question to Jessica, answerable in a sentence or two",
+     "why": "what answering it would let the documents claim",
+     "guess": "if the career data hints at an answer, say what it hints; otherwise empty"
+   }
+ ]
+}
+Rules:
+- Only ask where the answer is genuinely absent from the career data. Do not ask about things already evidenced.
+- Ask about real experience, not about how she would like to be described.
+- If she plainly does not have something, still ask once — but phrase it so a "no" is an easy and expected answer.
+- At most 8 questions, most important first. Fewer is better.`,
+
+  revise: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+JOB DESCRIPTION:
+"""
+${b.posting}
+"""
+
+CURRENT RESUME:
+"""
+${b.resumeText || ''}
+"""
+
+CURRENT COVER LETTER:
+"""
+${b.coverText || ''}
+"""
+
+HER ANSWERS to the gaps you raised (these are new facts from her, and you MAY use them):
+${JSON.stringify(b.answers || [])}
+
+SCORING FEEDBACK from the last comparison, if any:
+${JSON.stringify(b.fixes || [])}
+
+Produce the next version of both documents. Return JSON:
+{
+ "summary": "the professional summary for this version",
+ "itemIds": ["career data ids to include, best first"],
+ "coverLetter": ["paragraph 1", "paragraph 2", "paragraph 3", "paragraph 4"],
+ "changelog": ["short plain-language note per change you made"],
+ "stillMissing": ["anything the posting wants that remains unanswered"]
+}
+Rules:
+- You may use HER ANSWERS as fact. Everything else must come from the career data.
+- Where an answer says she does not have something, do NOT write around it. Leave it in stillMissing.
+- The letter must read as continuous prose in her voice, not as assembled fragments.
+- changelog is for her to review at a glance: say what changed and why, one line each.`,
+
   keywords: (b) => `CAREER DATA (for context):
 ${JSON.stringify(b.master)}
 
@@ -263,7 +336,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Unknown action. Expected one of: ' + Object.keys(PROMPTS).join(', ') });
     }
     if (!body.master) return res.status(400).json({ ok: false, error: 'Missing career data.' });
-    if (['analyze', 'cover', 'score', 'scoresections', 'coversuggest'].includes(action) && !body.posting) {
+    if (['analyze', 'cover', 'score', 'scoresections', 'coversuggest', 'questions', 'revise'].includes(action) && !body.posting) {
       return res.status(400).json({ ok: false, error: 'Paste the job posting first.' });
     }
     if (action === 'keywords' && !body.entry) {
@@ -279,7 +352,7 @@ module.exports = async (req, res) => {
     const { text, model } = await callClaude({
       system: GUARDRAILS,
       user: PROMPTS[action](body),
-      maxTokens: action === 'cover' ? 2000 : action === 'keywords' ? 800 : action === 'scoresections' ? 8000 : 5000,
+      maxTokens: action === 'cover' ? 2000 : action === 'keywords' ? 800 : (action === 'scoresections' || action === 'revise') ? 8000 : 5000,
     });
 
     const parsed = parseJson(text);

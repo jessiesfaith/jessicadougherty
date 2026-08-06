@@ -17,6 +17,7 @@
     --radius:14px; --shadow:0 16px 42px rgba(0,0,0,.42);
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none !important}
   html{background:var(--bg)}
   body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;min-height:100vh}
   a{color:var(--accent);text-decoration:none}
@@ -259,11 +260,17 @@
     <div class="head">
       <div>
         <h1>Master resume</h1>
-        <p>Your source of truth. Every application draws from here, and nothing an agent writes is saved back into it unless you promote it. Keywords are what let the agent pick the right entries for a posting.</p>
+        <p>Your source of truth, shown exactly as it prints. Every application draws from here, and nothing an agent writes is saved back unless you promote it.</p>
       </div>
+      <div class="spacer"></div>
+      <button class="btn" id="masterPdf">Resume PDF</button>
+      <button class="btn" id="masterEditToggle">Edit</button>
     </div>
-    <div class="card" id="profileCard"></div>
-    <div id="sections"></div>
+    <div class="card" id="masterView"></div>
+    <div id="masterEdit" hidden>
+      <div class="card" id="profileCard"></div>
+      <div id="sections"></div>
+    </div>
   </section>
 
   <!-- COVER LETTER -->
@@ -271,12 +278,15 @@
     <div class="head">
       <div>
         <h1>Master cover letter</h1>
-        <p>A real letter, not a pile of blocks &mdash; the agent rewrites it against each posting rather than reassembling it, so the result still reads like prose. Proof paragraphs are the pool it can draw on.</p>
+        <p>Shown as it prints. The agent rewrites it against each posting rather than reassembling blocks, so the result still reads like prose.</p>
       </div>
       <div class="spacer"></div>
-      <button class="btn primary" id="saveCover">Save</button>
+      <button class="btn" id="coverPdf">Cover letter PDF</button>
+      <button class="btn" id="coverEditToggle">Edit</button>
+      <button class="btn primary" id="saveCover" hidden>Save</button>
     </div>
-    <div class="split">
+    <div class="card" id="coverView"></div>
+    <div class="split" id="coverEdit" hidden>
       <div class="card" id="coverLetter"></div>
       <div class="card" id="coverLibrary"></div>
     </div>
@@ -287,7 +297,7 @@
     <div class="head">
       <div>
         <h1>Archive</h1>
-        <p>One group per application: the job description, the resume, the cover letter. Marking something complete freezes its text, so you always know what the employer actually received.</p>
+        <p>Where job descriptions land &mdash; by capture, by the inbox agent, or pasted in. Everything you do <em>with</em> one happens in Fit Score.</p>
       </div>
       <div class="spacer"></div>
       <button class="btn" id="jdNew">Add posting</button>
@@ -310,6 +320,9 @@
       </div>
     </div>
     <div class="card" id="fitPicked"></div>
+    <div class="card" id="fitJdCard"></div>
+    <div class="card" id="jdQuestions"></div>
+    <div class="card" id="jdVersions"></div>
     <div id="fitOut"></div>
     <div id="fitDetail"></div>
     <div class="card" id="fitHistory"></div>
@@ -513,6 +526,8 @@ async function boot() {
     $('boot').remove();
     $('storeInfo').textContent = 'Career master v' + master.version + (master.updatedAt ? ' · updated ' + new Date(master.updatedAt).toLocaleString() : '');
     renderCareer();
+    renderMasterView();
+    renderCoverView();
 
     const captured = readCapture();
     if (captured) { await acceptCapture(captured); return; }
@@ -530,7 +545,8 @@ function show(tab) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tab));
-  if (tab === 'cover') renderCover();
+  if (tab === 'career') renderMasterView();
+  if (tab === 'cover') { renderCoverView(); if (!$('coverEdit').hidden) renderCover(); }
   if (tab === 'archive') renderArchive();
   if (tab === 'fit') { renderFit(); renderFitHistory(); }
 }
@@ -619,6 +635,48 @@ function itemHtml(it, si, sec) {
       '<button class="icon" data-del="'+si+','+ii+'" title="Delete">🗑</button>' +
     '</div></div></div>';
 }
+
+/* ── MASTERS AS THEY PRINT ─────────────────────────────
+   Read-only by default: what you see is what a PDF would contain. Editing is a
+   deliberate switch, not the resting state. */
+function allMasterIds() {
+  return state.master.sections.flatMap((s) => s.items.map((i) => i.id));
+}
+function renderMasterView() {
+  $('masterView').innerHTML =
+    '<div class="preview">' + renderResume({ itemIds: allMasterIds(), summary: '', targetRole: '' }) + '</div>';
+}
+function renderCoverView() {
+  const L = state.cover.letter;
+  const paras = L.paragraphs.map((p) => p.text).filter((t) => t && t.trim());
+  $('coverView').innerHTML = '<div class="preview">' +
+    (paras.length
+      ? '<p style="margin-bottom:12px">' + esc(L.greeting || '') + '</p>' +
+        paras.map((t) => '<p style="margin-bottom:12px">' + esc(t) + '</p>').join('') +
+        '<p style="white-space:pre-line">' + esc(L.signoff || '') + '</p>'
+      : '<p style="color:#666">Nothing written yet. Hit Edit and write your letter once — the agent adapts it per posting.</p>') +
+    '</div>';
+}
+function toggleEditor(viewId, editId, btnId, onOpen) {
+  const view = $(viewId), edit = $(editId), btn = $(btnId);
+  const opening = edit.hidden;
+  edit.hidden = !opening;
+  view.hidden = opening;
+  btn.textContent = opening ? 'Done editing' : 'Edit';
+  if (opening && onOpen) onOpen();
+  return opening;
+}
+$('masterEditToggle').addEventListener('click', () => {
+  const opened = toggleEditor('masterView', 'masterEdit', 'masterEditToggle');
+  if (!opened) renderMasterView();
+});
+$('masterPdf').addEventListener('click', () => printMasterResume());
+$('coverEditToggle').addEventListener('click', () => {
+  const opened = toggleEditor('coverView', 'coverEdit', 'coverEditToggle', renderCover);
+  $('saveCover').hidden = !opened;
+  if (!opened) renderCoverView();
+});
+$('coverPdf').addEventListener('click', () => printMasterCover());
 
 /* ── TAILOR ONE ENTRY WITH AI ──────────────────────────
    Same guarantee as everywhere else: it proposes, you accept. Nothing is
@@ -1034,29 +1092,35 @@ function currentJd() {
 }
 const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
 
-function renderArchive() {
+// The list alone, leaving whatever you are typing in untouched.
+function renderJdListOnly() {
   const list = jdList();
   $('jdList').innerHTML =
-    '<div class="sec-head"><h2>Applications</h2><span class="count">' + list.length + '</span></div>' +
+    '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span></div>' +
     (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
       : list.map((j) =>
         '<div class="jdrow' + (j.id === state.jdId ? ' on' : '') + '" data-jd="' + esc(j.id) + '">' +
           '<div class="m"><b>' + esc(j.company || 'Untitled') + '</b><p>' + esc(j.role || 'no role yet') + '</p>' +
-          '<p class="s">' + statusChip(j.status) + ' resume ' + statusChip(j.resume.status) + ' letter ' + statusChip(j.coverLetter.status) +
+          '<p class="s">' + statusChip(j.status) +
             (needsJd(j) ? ' <span class="chip st-draft">needs posting</span>' : '') +
+            ((j.versions || []).length ? ' <span class="chip">v' + j.versions.length + '</span>' : '') +
             (j.source ? ' <span class="chip">inbox</span>' : '') + '</p></div>' +
         '</div>').join(''));
 
   document.querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', () => {
     state.jdId = el.dataset.jd; renderArchive();
   }));
+}
+
+function renderArchive() {
+  renderJdListOnly();
   renderJdDetail();
 }
 
 function renderJdDetail() {
   const j = currentJd();
-  if (!j) { $('jdDetail').innerHTML = '<div class="card"><div class="empty">Select or add an application.</div></div>'; return; }
-  const sel = (name, val, id) => '<select class="f" data-jdf="' + id + '">' +
+  if (!j) { $('jdDetail').innerHTML = '<div class="card"><div class="empty">Select or add a posting.</div></div>'; return; }
+  const sel = (val, id) => '<select class="f" data-jdf="' + id + '">' +
     STATUSES.map((st) => '<option value="' + st + '"' + (val === st ? ' selected' : '') + '>' + st + '</option>').join('') + '</select>';
 
   $('jdDetail').innerHTML =
@@ -1065,7 +1129,7 @@ function renderJdDetail() {
       '<div class="row">' +
         '<div><label class="f">Company</label><input class="f" data-jdf="company" value="' + esc(j.company || '') + '" /></div>' +
         '<div><label class="f">Role</label><input class="f" data-jdf="role" value="' + esc(j.role || '') + '" /></div>' +
-        '<div><label class="f">Status</label>' + sel('status', j.status, 'status') + '</div>' +
+        '<div><label class="f">Status</label>' + sel(j.status, 'status') + '</div>' +
       '</div>' +
       '<div class="row">' +
         '<div><label class="f">Posting URL</label><input class="f" data-jdf="url" value="' + esc(j.url || '') + '" /></div>' +
@@ -1074,71 +1138,40 @@ function renderJdDetail() {
       '</div>' +
       (needsJd(j)
         ? '<div class="banner warn"><b>Only the alert, not the posting</b>' +
-          'This arrived from your inbox as a job alert, which carries a teaser and a link. ' +
-          'Open it and use one-click capture, or paste the description below &mdash; generating from a teaser produces a resume aimed at nothing.' +
+          'This arrived as a job alert, which carries a teaser and a link. Open it and use one-click capture, or paste the description below.' +
           (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener">Open the posting &rarr;</a>' : '') + '</div>' +
           (j.teaser ? '<label class="f">From the alert</label><pre class="frozen" style="max-height:130px">' + esc(j.teaser) + '</pre>' : '')
         : '') +
       '<label class="f">Job description</label>' +
-      '<textarea class="f" data-jdf="text" style="min-height:170px">' + esc(j.text || '') + '</textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">' +
-        '<button class="btn primary" id="genBoth">Generate resume + letter</button>' +
-        '<button class="btn" id="goFit">Score this application</button>' +
+      '<textarea class="f" data-jdf="text" style="min-height:260px">' + esc(j.text || '') + '</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;align-items:center">' +
+        '<button class="btn primary" id="goFit">Work on this in Fit Score</button>' +
         '<button class="btn danger ghost" id="jdDel">' + (j.status === 'deleted' ? 'Restore' : 'Delete') + '</button>' +
+        '<span class="tagline">' + ((j.versions || []).length ? (j.versions.length + ' version(s) built') : 'nothing built yet') + '</span>' +
       '</div>' +
-    '</div>' +
-
-    '<div class="card">' +
-      '<div class="sec-head"><h2>Resume</h2>' + sel('r', j.resume.status, 'resume.status') +
-        (j.resume.frozenText ? '<span class="chip">frozen</span>' : '') +
-        '<button class="btn" id="rPrint">Print / PDF</button></div>' +
-      (j.resume.frozenText
-        ? '<pre class="frozen">' + esc(j.resume.frozenText) + '</pre>'
-        : '<div class="preview" style="max-height:46vh">' + (j.resume.itemIds.length ? renderResume({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role }) : '<p style="color:#666">Nothing selected yet — generate, or tick entries below.</p>') + '</div>') +
-      (j.resume.frozenText ? '' : '<div id="jdPicker"></div>') +
-    '</div>' +
-    '<div class="card" id="jdQuestions"></div>' +
-    '<div class="card" id="jdVersions"></div>' +
-
-    '<div class="card">' +
-      '<div class="sec-head"><h2>Cover letter</h2>' + sel('c', j.coverLetter.status, 'coverLetter.status') +
-        (j.coverLetter.frozenText ? '<span class="chip">frozen</span>' : '') +
-        '<button class="btn" id="cPrint">Print / PDF</button></div>' +
-      (j.coverLetter.frozenText
-        ? '<pre class="frozen">' + esc(j.coverLetter.frozenText) + '</pre>'
-        : '<textarea class="f" id="jdCover" style="min-height:230px">' + esc(coverLetterText(j.coverLetter)) + '</textarea>') +
     '</div>';
 
   wireJdDetail(j);
-  if (!j.resume.frozenText) renderJdPicker(j);
-  renderQuestions(j);
-  renderVersions(j);
 }
 
 function wireJdDetail(j) {
-  document.querySelectorAll('[data-jdf]').forEach((el) => el.addEventListener('input', () => {
+  document.querySelectorAll('#jdDetail [data-jdf]').forEach((el) => el.addEventListener('input', () => {
     const path = el.dataset.jdf;
     const before = path.endsWith('.status') ? getPath(j, path) : null;
     setJdPath(j, path, el.value);
     if (path.endsWith('.status')) handleFreeze(j, path, before, el.value);
     queueSaveJobs();
-    if (path === 'status' || path === 'company' || path === 'role') renderArchive();
+    // Only the list needs refreshing as you type — re-rendering the detail would
+    // rip the field out from under the cursor.
+    if (path === 'status' || path === 'company' || path === 'role') renderJdListOnly();
   }));
-  const cov = $('jdCover');
-  if (cov) cov.addEventListener('input', () => {
-    j.coverLetter.paragraphs = [{ id: uid('p'), kind: 'opening', title: 'Letter', text: cov.value }];
-    queueSaveJobs();
-  });
-  $('jdDel').addEventListener('click', () => {
+  const del = $('jdDel');
+  if (del) del.addEventListener('click', () => {
     j.status = j.status === 'deleted' ? 'draft' : 'deleted';
     queueSaveJobs(); renderArchive();
   });
-  $('goFit').addEventListener('click', () => { show('fit'); });
-  $('genBoth').addEventListener('click', () => generateForJd(j));
-  const rp = $('rPrint');
-  if (rp) rp.addEventListener('click', () => printResume(j));
-  const cp = $('cPrint');
-  if (cp) cp.addEventListener('click', () => printCoverLetter(j));
+  const go = $('goFit');
+  if (go) go.addEventListener('click', () => { state.jdId = j.id; show('fit'); });
 }
 
 function getPath(o, p) { return p.split('.').reduce((a, k) => (a ? a[k] : undefined), o); }
@@ -1160,13 +1193,11 @@ function handleFreeze(j, path, before, after) {
     if (which === 'resume') doc.frozenHtml = renderResume({ itemIds: doc.itemIds, summary: doc.summary, targetRole: j.role });
     doc.completedAt = new Date().toISOString();
     toast('Frozen — this is now the record of what you sent.');
-    renderJdDetail();
   } else if (before === 'complete' && after !== 'complete' && doc.frozenText) {
     if (confirm('Unfreeze this? The saved copy of what you sent will be replaced by the live version.')) {
       doc.frozenText = ''; doc.frozenHtml = ''; doc.completedAt = null;
-      renderJdDetail();
     } else {
-      doc.status = 'complete'; renderJdDetail();
+      doc.status = 'complete';
     }
   }
 }
@@ -1174,7 +1205,7 @@ function handleFreeze(j, path, before, after) {
 function renderJdPicker(j) {
   const el = $('jdPicker');
   if (!el) return;
-  el.innerHTML = '<div class="group-label"><span>What goes in</span><span class="line"></span><span>' + j.resume.itemIds.length + '</span></div>' +
+  el.innerHTML = '<div class="group-label"><span>Adjust what goes in</span><span class="line"></span><span>' + j.resume.itemIds.length + '</span></div>' +
     state.master.sections.filter((s) => s.items.length).map((s) =>
       '<div class="tagline" style="margin-top:6px">' + esc(s.title) + '</div>' +
       s.items.map((it) =>
@@ -1236,6 +1267,13 @@ function printCoverLetter(j) {
   w.document.close(); setTimeout(() => w.print(), 350);
 }
 
+function printMasterResume() {
+  printResume({ company: '', role: '', resume: { itemIds: allMasterIds(), summary: '', frozenHtml: '' } });
+}
+function printMasterCover() {
+  printCoverLetter({ company: '', role: '', coverLetter: { paragraphs: state.cover.letter.paragraphs, frozenText: '' } });
+}
+
 let jobsTimer = null;
 function queueSaveJobs() { clearTimeout(jobsTimer); jobsTimer = setTimeout(saveJobs, 700); }
 
@@ -1294,14 +1332,14 @@ function pushVersion(j, payload, note) {
    documents cannot answer. */
 async function generateForJd(j) {
   if (!(j.text || '').trim()) return toast('No job description yet — capture the posting first. A teaser is not enough to tailor against.', true);
-  const btn = $('genBoth');
-  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading the posting…';
+  const btn = $('fitGen') || { style: {} };
+  if (btn.style) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading the posting…'; }
   try {
     const a = await ai({ action: 'analyze', master: state.master, posting: j.text });
     if (!j.company && a.result.company) j.company = a.result.company;
     if (!j.role && a.result.roleTitle) j.role = a.result.roleTitle;
 
-    btn.innerHTML = '<span class="spin"></span> Writing the letter…';
+    if (btn.style) btn.innerHTML = '<span class="spin"></span> Writing the letter…';
     const c = await ai({ action: 'cover', master: state.master, posting: j.text,
       notes: state.cover.letter.paragraphs.map((p) => p.title + ': ' + p.text).join('\n') });
 
@@ -1312,13 +1350,13 @@ async function generateForJd(j) {
       changelog: ['Drafted from your master resume and master cover letter, aimed at this posting.'],
     }, 'first draft');
 
-    await saveJobs(); renderArchive();
-    btn.innerHTML = '<span class="spin"></span> Working out what to ask you…';
+    await saveJobs();
+    if (btn.style) btn.innerHTML = '<span class="spin"></span> Working out what to ask you…';
     await askQuestions(j, true);
     toast('Draft v1 ready. Answer the questions below, then Revise.');
   } catch (err) {
     toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet — add it in Vercel.' : err.message, true);
-  } finally { btn.disabled = false; btn.textContent = 'Generate resume + letter'; }
+  } finally { renderFitDocs(); renderFitWork(); }
 }
 
 /* Step 2 — the questions. This is where new truth enters the system: the agent
@@ -1335,7 +1373,7 @@ async function askQuestions(j, quiet) {
       j.questions.push({ id: uid('q'), requirement: q.requirement, question: q.question, why: q.why, guess: q.guess || '',
         answer: '', status: 'open', toMaster: false });
     });
-    await saveJobs(); renderJdDetail();
+    await saveJobs(); renderFitWork();
     if (!quiet) toast((r.result.questions || []).length + ' question(s) — answer what you can, skip the rest.');
   } catch (err) {
     if (!quiet) toast(err.message, true);
@@ -1360,7 +1398,7 @@ async function reviseJd(j) {
       resumeText: versionResumeText(j, v), coverText: versionCoverText(v), answers, fixes });
     const nv = pushVersion(j, r.result, 'revised from ' + answers.length + ' answer(s)' + (fixes.length ? ' and scoring feedback' : ''));
     (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
-    await saveJobs(); renderArchive();
+    await saveJobs(); renderFitDocs(); renderFitWork();
     toast('v' + nv.v + ' created — ' + (nv.changelog.length || 0) + ' change(s). Review before marking complete.');
   } catch (err) {
     toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
@@ -1414,18 +1452,18 @@ function renderQuestions(j) {
     if (!q.answer.trim()) return toast('Write an answer first, or Skip it.', true);
     q.status = 'answered';
     if (q.toMaster) addAnswerToMaster(q);
-    queueSaveJobs(); renderJdDetail();
+    queueSaveJobs(); renderFitWork();
     toast('Approved. It will be used on the next revision.');
   }));
   el.querySelectorAll('[data-qundo]').forEach((b) => b.addEventListener('click', () => {
     const q = j.questions.find((x) => x.id === b.dataset.qundo);
     if (q) q.status = 'open';
-    queueSaveJobs(); renderJdDetail();
+    queueSaveJobs(); renderFitWork();
   }));
   el.querySelectorAll('[data-qskip]').forEach((b) => b.addEventListener('click', () => {
     const q = j.questions.find((x) => x.id === b.dataset.qskip);
     if (q) q.status = 'skipped';
-    queueSaveJobs(); renderJdDetail();
+    queueSaveJobs(); renderFitWork();
   }));
   const ask = $('btnAsk'); if (ask) ask.addEventListener('click', () => askQuestions(j));
   const rev = $('btnRevise'); if (rev) rev.addEventListener('click', () => reviseJd(j));
@@ -1474,7 +1512,7 @@ function renderVersions(j) {
     j.resume.itemIds = v.resume.itemIds.slice();
     j.resume.summary = v.resume.summary;
     j.coverLetter.paragraphs = v.coverLetter.paragraphs.map((p) => ({ ...p }));
-    queueSaveJobs(); renderJdDetail();
+    queueSaveJobs(); renderFitDocs(); renderFitWork();
     toast('Switched to v' + v.v);
   }));
 }
@@ -1565,14 +1603,50 @@ function renderFit() {
         '<div style="margin-top:12px"><button class="btn primary" id="btnScore">Score against resume and letter</button></div>');
 
   const selEl = $('fitJd');
-  if (selEl) selEl.addEventListener('change', () => { state.jdId = selEl.value; renderFitDocs(); });
-  renderFitDocs();
+  if (selEl) selEl.addEventListener('change', () => { state.jdId = selEl.value; renderFitJd(); renderFitDocs(); renderFitWork(); });
+  renderFitJd(); renderFitDocs(); renderFitWork();
   const b = $('btnScore');
   if (b) b.addEventListener('click', runSectionScoring);
 }
 
 // The documents being scored, with their PDFs, right where you are comparing
 // them — so grabbing what you are about to send is one click from the score.
+// The posting itself, on the page where you work against it — collapsed by
+// default so it does not push the scores off screen.
+function renderFitJd() {
+  const el = $('fitJdCard');
+  if (!el) return;
+  const j = fitJob();
+  if (!j) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<div class="sec-head"><h2>Job description</h2>' + statusChip(j.status) +
+      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' · ')) + '</span>' +
+      '<button class="btn ghost" id="jdToggle">' + (fitJdOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (fitJdOpen
+      ? '<textarea class="f" id="fitJdText" style="min-height:240px">' + esc(j.text || '') + '</textarea>' +
+        '<div class="tagline" style="margin-top:6px">Edits here save to this application.</div>'
+      : '<p class="tagline">' + esc((j.text || '').slice(0, 220) || 'No description yet — paste it here or capture it from the posting.') + (((j.text || '').length > 220) ? '…' : '') + '</p>');
+
+  $('jdToggle').addEventListener('click', () => { fitJdOpen = !fitJdOpen; renderFitJd(); });
+  const t = $('fitJdText');
+  if (t) t.addEventListener('input', () => { j.text = t.value; queueSaveJobs(); });
+}
+let fitJdOpen = false;
+
+function fitJob() {
+  const id = $('fitJd') ? $('fitJd').value : state.jdId;
+  return state.jobs.items.find((x) => x.id === id) || null;
+}
+
+// Generate / questions / versions all live here now.
+function renderFitWork() {
+  const j = fitJob();
+  if (!j) { $('jdQuestions').innerHTML = ''; $('jdVersions').innerHTML = ''; return; }
+  state.jdId = j.id;
+  renderQuestions(j);
+  renderVersions(j);
+}
+
 function renderFitDocs() {
   const el = $('fitDocs');
   if (!el) return;
@@ -1584,16 +1658,35 @@ function renderFitDocs() {
   el.innerHTML =
     '<div class="split" style="gap:12px;margin-top:12px">' +
       '<div><div class="group-label"><span>Resume ' + (v ? 'v' + v.v : '') + '</span><span class="line"></span>' +
-        statusChip(j.resume.status) + '</div>' +
+        '<select class="f" style="width:auto;font-size:12px;padding:4px 7px" data-jdf="resume.status">' +
+          STATUSES.map((st) => '<option value="' + st + '"' + (j.resume.status === st ? ' selected' : '') + '>' + st + '</option>').join('') +
+        '</select>' + (j.resume.frozenText ? '<span class="chip">frozen</span>' : '') + '</div>' +
         '<pre class="frozen" style="max-height:200px">' + esc(rTxt || 'Nothing yet — generate it in Archive.') + '</pre>' +
-        '<button class="btn" id="fitPdfR"' + (rTxt ? '' : ' disabled') + '>Resume PDF</button></div>' +
+        '<button class="btn" id="fitPdfR"' + (rTxt ? '' : ' disabled') + '>Resume PDF</button>' +
+        (j.resume.frozenText ? '' : '<div id="jdPicker"></div>') + '</div>' +
       '<div><div class="group-label"><span>Cover letter</span><span class="line"></span>' +
-        statusChip(j.coverLetter.status) + '</div>' +
+        '<select class="f" style="width:auto;font-size:12px;padding:4px 7px" data-jdf="coverLetter.status">' +
+          STATUSES.map((st) => '<option value="' + st + '"' + (j.coverLetter.status === st ? ' selected' : '') + '>' + st + '</option>').join('') +
+        '</select>' + (j.coverLetter.frozenText ? '<span class="chip">frozen</span>' : '') + '</div>' +
         '<pre class="frozen" style="max-height:200px">' + esc(cTxt || 'Nothing yet.') + '</pre>' +
         '<button class="btn" id="fitPdfC"' + (cTxt ? '' : ' disabled') + '>Cover letter PDF</button></div>' +
-    '</div>';
+    '</div>' +
+    '<div style="margin-top:12px"><button class="btn' + (v ? '' : ' primary') + '" id="fitGen">' +
+      (v ? 'Regenerate from scratch' : 'Generate resume + letter') + '</button>' +
+      '<span class="tagline" style="margin-left:9px">' + (v ? 'Creates a fresh v' + ((j.versions || []).length + 1) + ' from your masters, ignoring answers so far.' : 'Drafts v1 from your master resume and letter.') + '</span></div>';
   const r = $('fitPdfR'); if (r) r.addEventListener('click', () => printResume(j));
   const c = $('fitPdfC'); if (c) c.addEventListener('click', () => printCoverLetter(j));
+  const g = $('fitGen'); if (g) g.addEventListener('click', () => generateForJd(j));
+  // Marking a document complete is what freezes it — the control belongs beside
+  // the document it freezes.
+  el.querySelectorAll('[data-jdf]').forEach((sel2) => sel2.addEventListener('change', () => {
+    const path = sel2.dataset.jdf;
+    const before = getPath(j, path);
+    setJdPath(j, path, sel2.value);
+    handleFreeze(j, path, before, sel2.value);
+    queueSaveJobs(); renderFitDocs();
+  }));
+  if (!j.resume.frozenText) renderJdPicker(j);
 }
 
 async function runSectionScoring() {
@@ -1669,7 +1762,6 @@ function renderSectionScores(a, j) {
     const jj = state.jobs.items.find((x) => x.id === state.jdId);
     if (!jj) return;
     await reviseJd(jj);
-    show('archive');
   });
 
   document.querySelectorAll('[data-fixr]').forEach((b) => b.addEventListener('click', async () => {

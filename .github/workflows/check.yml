@@ -1,0 +1,52 @@
+# The two bugs that came closest to shipping here were both a stray bracket in a
+# template-string expression: invisible in a diff, fatal at load, and not
+# something a static host will ever tell you about. This parses everything
+# before it can reach a deployment.
+name: check
+on:
+  push:
+  pull_request:
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Every API module loads
+        run: |
+          for f in api/*.js; do
+            node -e "require('./$f')" || exit 1
+          done
+          echo "all api modules load"
+
+      - name: Every inline script parses
+        run: |
+          node -e '
+            const fs = require("fs");
+            // Only real JavaScript: a <script type="application/json"> block is
+            // data, and feeding it to a parser is how a green check goes red for
+            // no reason.
+            const JS = /^(|text\/javascript|application\/javascript|module)$/i;
+            let bad = 0, seen = 0;
+            for (const f of fs.readdirSync(".").filter((x) => x.endsWith(".html"))) {
+              const html = fs.readFileSync(f, "utf8");
+              for (const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+                const attrs = m[1];
+                if (/\bsrc=/i.test(attrs)) continue;
+                const type = (attrs.match(/\btype\s*=\s*["\x27]?([^"\x27\s>]*)/i) || [, ""])[1];
+                if (!JS.test(type)) continue;
+                seen++;
+                try { new Function(m[2]); }
+                catch (e) { console.error(f + ": " + e.message); bad++; }
+              }
+            }
+            if (bad) { console.error(bad + " of " + seen + " script blocks failed to parse"); process.exit(1); }
+            console.log(seen + " inline script blocks parse");
+          '
+
+      - name: Edge middleware parses
+        run: cp middleware.js /tmp/mw.mjs && node --check /tmp/mw.mjs && echo "middleware parses"

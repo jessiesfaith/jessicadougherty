@@ -113,15 +113,38 @@ async function readDoc(kind) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* The Contents API reads and writes files up to 1 MB. Past that GitHub returns
+   a 403 whose message is about blobs, which is not something you can act on
+   halfway through a save. These documents grow — every score run keeps its full
+   result, every prep redraft keeps a snapshot — so the wall is reachable. Say
+   which file, how big it got, and what to prune, while a save still works. */
+const MAX_BYTES = 1000 * 1024;
+const WARN_BYTES = 800 * 1024;
+const PRUNE_HINT = {
+  fits: 'Delete older runs in Score history.',
+  jobs: 'Delete prep versions you no longer need, or remove applications you are done with (tick them and Remove).',
+};
+function checkSize(kind, json) {
+  const bytes = Buffer.byteLength(json, 'utf8');
+  if (bytes > MAX_BYTES) {
+    throw new Error('Your ' + kind + ' file has reached ' + Math.round(bytes / 1024) + ' KB. GitHub will not store a file over 1 MB through this API, so this save was stopped before anything was lost. ' +
+      (PRUNE_HINT[kind] || 'Remove some older entries.') + ' Nothing already saved has been touched.');
+  }
+  return bytes;
+}
+
 // A 409 from the Contents API means the file moved under us between reading its
 // sha and writing — another commit landed on the branch first. That is normal
 // git behaviour, not an error to show the user: re-read the sha and try again.
 async function writeDoc(kind, data, attempt = 0) {
   const { repo, branch } = cfg();
+  const json = JSON.stringify(data, null, 2);
+  const bytes = checkSize(kind, json);
   const existing = await getFile(kind); // fetch sha immediately before writing
   const payload = {
-    message: 'Update ' + kind + (typeof data.version === 'number' ? ' (v' + data.version + ')' : ''),
-    content: Buffer.from(JSON.stringify(data, null, 2), 'utf8').toString('base64'),
+    message: 'Update ' + kind + (typeof data.version === 'number' ? ' (v' + data.version + ')' : '') +
+      (bytes > WARN_BYTES ? ' [' + Math.round(bytes / 1024) + ' KB — approaching the 1 MB limit]' : ''),
+    content: Buffer.from(json, 'utf8').toString('base64'),
     branch,
   };
   if (existing && existing.sha) payload.sha = existing.sha;
@@ -140,4 +163,4 @@ async function writeDoc(kind, data, attempt = 0) {
   return data;
 }
 
-module.exports = { readDoc, writeDoc, configured, PATHS };
+module.exports = { readDoc, writeDoc, configured, PATHS, MAX_BYTES, WARN_BYTES };

@@ -79,6 +79,9 @@
   .item.drop-above{box-shadow:0 -3px 0 var(--accent)}
   .item.drop-below{box-shadow:0 3px 0 var(--accent)}
   .tailorbox:not(:empty){margin-bottom:10px}
+  .kw{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.08)}
+  .kw .kwin{font-size:13px}
+  @media(max-width:760px){.kw{grid-template-columns:1fr}}
   .item-actions button.icon:disabled{opacity:.25;cursor:default;background:none}
   .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px}
   label.f{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
@@ -165,6 +168,31 @@
   td.cell.err{color:var(--danger)}
   .cellbtn{background:none;border:none;color:var(--text);font:inherit;font-size:17px;font-weight:700;padding:12px 10px;cursor:pointer;width:100%;border-radius:9px}
   .cellbtn:hover{background:rgba(255,255,255,.07)}
+  .jdrow{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:7px;background:rgba(0,0,0,.16);cursor:pointer}
+  .jdrow:hover{border-color:var(--accent)}
+  .jdrow.on{border-color:var(--accent-2);background:rgba(159,199,166,.08)}
+  .jdrow .m{flex:1;min-width:0}
+  .jdrow .m b{font-size:14px}
+  .jdrow .m p{font-size:12.5px;color:var(--faint)}
+  .jdrow .m p.s{margin-top:5px}
+  .chip.st-draft{color:var(--warn);border-color:rgba(232,176,106,.35)}
+  .chip.st-complete{color:var(--accent-2);border-color:rgba(159,199,166,.35)}
+  .chip.st-deleted{color:var(--danger);border-color:rgba(224,122,106,.35)}
+  pre.frozen{white-space:pre-wrap;font-family:'DM Sans',sans-serif;font-size:13.5px;color:var(--muted);background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:46vh;overflow:auto}
+  .secrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+  .secrow.head{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border-bottom-width:2px}
+  .secreq b{font-size:14px}
+  .secreq p{font-size:12.5px;color:var(--faint)}
+  .seccol .ev{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .seccol .ev.none{color:var(--faint);font-style:italic}
+  .pill2{display:inline-block;font-weight:700;font-size:15px;padding:3px 11px;border-radius:20px;background:var(--card-2)}
+  .pill2.good{background:rgba(159,199,166,.22)}
+  .pill2.ok{background:rgba(159,199,166,.11)}
+  .pill2.thin{background:rgba(232,176,106,.16)}
+  .pill2.weak{background:rgba(224,122,106,.16)}
+  .fix{margin-top:7px;border-left:2px solid var(--accent);padding-left:9px}
+  .fix p{font-size:12.5px;color:var(--muted);margin-bottom:5px}
+  @media(max-width:900px){.secrow{grid-template-columns:1fr}}
   .foot{border-top:1px solid var(--border);padding:18px 0 40px;font-size:12.5px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 
   /* ── slide-out user guide ── */
@@ -209,10 +237,9 @@
       Career
     </span>
     <div class="tabs">
-      <button class="tab active" data-tab="career">Career</button>
-      <button class="tab" data-tab="builder">Resume Builder</button>
+      <button class="tab active" data-tab="career">Resume</button>
+      <button class="tab" data-tab="cover">Cover Letter</button>
       <button class="tab" data-tab="archive">Archive</button>
-      <button class="tab" data-tab="jobs">Jobs</button>
       <button class="tab" data-tab="fit">Fit Score</button>
     </div>
     <div class="nav-right">
@@ -231,106 +258,46 @@
   <section class="panel" id="panel-career">
     <div class="head">
       <div>
-        <h1>Career master</h1>
-        <p>One source of truth. Everything else on this site pulls from here — edit once and every resume template inherits it. Completed entries sit above in-progress ones in each section.</p>
+        <h1>Master resume</h1>
+        <p>Your source of truth. Every application draws from here, and nothing an agent writes is saved back into it unless you promote it. Keywords are what let the agent pick the right entries for a posting.</p>
       </div>
     </div>
     <div class="card" id="profileCard"></div>
     <div id="sections"></div>
   </section>
 
-  <!-- ═══ BUILDER ═══ -->
-  <section class="panel" id="panel-builder">
+  <!-- COVER LETTER -->
+  <section class="panel" id="panel-cover">
     <div class="head">
       <div>
-        <h1>Resume builder</h1>
-        <p>Pick what belongs in this version. Templates store references to your master, not copies — fix a typo in Career and every template updates.</p>
+        <h1>Master cover letter</h1>
+        <p>A real letter, not a pile of blocks &mdash; the agent rewrites it against each posting rather than reassembling it, so the result still reads like prose. Proof paragraphs are the pool it can draw on.</p>
       </div>
       <div class="spacer"></div>
-      <select class="f" id="tplSelect" style="max-width:250px"></select>
-      <button class="btn" id="tplNew">New</button>
-      <button class="btn danger ghost" id="tplDelete">Delete</button>
+      <button class="btn primary" id="saveCover">Save</button>
     </div>
     <div class="split">
-      <div>
-        <div class="card">
-          <div class="row">
-            <div><label class="f">Template name</label><input class="f" id="tplName" placeholder="Auto-named from target role" /></div>
-            <div><label class="f">Target role</label><input class="f" id="tplRole" placeholder="Controller" /></div>
-          </div>
-          <label class="f">Professional summary for this version</label>
-          <textarea class="f" id="tplSummary" style="min-height:110px"></textarea>
-          <div class="tagline">Leave the summary blank to use the one from your Career master. The template name follows the target role until you type a name of your own.</div>
-        </div>
-        <div class="card" id="pickers"></div>
-      </div>
-      <div class="sticky">
-        <div class="card">
-          <div class="sec-head">
-            <h2>Preview</h2>
-            <button class="btn" id="btnPrint">Print / PDF</button>
-            <button class="btn" id="btnTailor">Tailor with AI</button>
-            <button class="btn primary" id="btnArchive">Save to archive</button>
-          </div>
-          <div class="preview" id="preview"></div>
-        </div>
-        <div id="tailorOut"></div>
-      </div>
+      <div class="card" id="coverLetter"></div>
+      <div class="card" id="coverLibrary"></div>
     </div>
   </section>
 
-  <!-- ═══ ARCHIVE ═══ -->
+  <!-- ARCHIVE: JOB DESCRIPTION GROUPS -->
   <section class="panel" id="panel-archive">
     <div class="head">
       <div>
         <h1>Archive</h1>
-        <p>Frozen snapshots. Each one is the exact text as it existed when you saved it, so you can always answer "what did I actually send them?"</p>
-      </div>
-    </div>
-    <div class="card" id="archiveList"></div>
-  </section>
-
-  <!-- ═══ JOBS ═══ -->
-  <section class="panel" id="panel-jobs">
-    <div class="head">
-      <div>
-        <h1>Jobs</h1>
-        <p>Paste a posting. You get a fit read, an honest gap list, and a starting template — plus a cover letter draft you review before it goes anywhere.</p>
+        <p>One group per application: the job description, the resume, the cover letter. Marking something complete freezes its text, so you always know what the employer actually received.</p>
       </div>
       <div class="spacer"></div>
-      <select class="f" id="jobSelect" style="max-width:250px"></select>
-      <button class="btn" id="jobNew">New</button>
+      <button class="btn" id="jdNew">Add posting</button>
       <button class="btn" id="jobGrabber">One-click capture</button>
-      <button class="btn danger ghost" id="jobDelete">Delete</button>
+      <label class="pick" style="padding:0"><input type="checkbox" id="showDeleted" /> <span class="s">show deleted</span></label>
     </div>
     <div class="card" id="grabberCard" style="display:none"></div>
-    <div class="card" id="jobList"></div>
-    <div class="split">
-      <div class="card">
-        <div class="row">
-          <div><label class="f">Company</label><input class="f" id="jobCompany" /></div>
-          <div><label class="f">Role</label><input class="f" id="jobRole" /></div>
-        </div>
-        <div class="row">
-          <div><label class="f">Posting URL</label><input class="f" id="jobUrl" placeholder="https://linkedin.com/jobs/view/…" /></div>
-          <div><label class="f">Status</label>
-            <select class="f" id="jobStatus">
-              <option value="considering">Considering</option>
-              <option value="applied">Applied</option>
-              <option value="interviewing">Interviewing</option>
-              <option value="closed">Closed / no</option>
-            </select>
-          </div>
-        </div>
-        <label class="f">Job description — paste the whole posting</label>
-        <textarea class="f" id="jobText" style="min-height:230px"></textarea>
-        <div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">
-          <button class="btn primary" id="btnAnalyze">Analyse fit</button>
-          <button class="btn" id="btnCover">Draft cover letter</button>
-          <button class="btn" id="btnJobSave">Save job</button>
-        </div>
-      </div>
-      <div id="jobOut"></div>
+    <div class="split" style="grid-template-columns:minmax(0,330px) minmax(0,1fr)">
+      <div class="card" id="jdList"></div>
+      <div id="jdDetail"></div>
     </div>
   </section>
 
@@ -339,7 +306,7 @@
     <div class="head">
       <div>
         <h1>Fit score</h1>
-        <p>Tick resumes in <strong>Archive</strong> and postings in <strong>Jobs</strong>, then score every pairing at once. The useful part is the split between what a resume left out and what you genuinely don't have.</p>
+        <p>Pick an application from the Archive. Every requirement in the posting is scored twice &mdash; once against the resume, once against the cover letter &mdash; each with a concrete fix.</p>
       </div>
     </div>
     <div class="card" id="fitPicked"></div>
@@ -363,9 +330,9 @@
   </div>
   <div class="guide-nav">
     <button data-goto="g-career">Career</button>
-    <button data-goto="g-builder">Builder</button>
+    <button data-goto="g-cover">Cover letter</button>
     <button data-goto="g-archive">Archive</button>
-    <button data-goto="g-jobs">Jobs</button>
+    
     <button data-goto="g-fit">Fit score</button>
     <button data-goto="g-capture">Capture</button>
     <button data-goto="g-data">Your data</button>
@@ -373,83 +340,53 @@
   </div>
   <div class="guide-body" id="guideBody">
 
-    <h3 id="g-career">Career master</h3>
-    <p>This is the only place your career facts live. Everything else — templates, archived resumes, job matching — reads from here. Fix a typo once and every resume inherits it.</p>
-    <h4>Editing</h4>
-    <p>Type directly into any field. The top right shows <strong>Unsaved changes</strong> and the <strong>Save</strong> button lights up. Nothing is stored until you press Save.</p>
-    <div class="warn">If you try to leave with unsaved edits, your browser will warn you. That warning is the only thing standing between you and losing work — don't click through it out of habit.</div>
-    <h4>Completed vs In progress</h4>
-    <p>Every entry has a status dropdown. Completed entries group at the top of a section, in-progress below. Your CPA sits in progress until results land — flip the dropdown then, no retyping.</p>
-    <h4>Reordering</h4>
-    <ul>
-      <li><span class="kbd">⤒</span> to the top of its group, <span class="kbd">⤓</span> to the bottom</li>
-      <li><span class="kbd">▲</span> <span class="kbd">▼</span> one position at a time</li>
-      <li><span class="kbd">⠿</span> grab and drag; an orange line shows where it will land</li>
-    </ul>
-    <p>Reordering stays inside a group. Moving something within Completed never disturbs In progress. To move an entry between groups, use the status dropdown — dragging across the divider is ignored on purpose, so you can't change a status by slipping.</p>
-    <h4>Adding and removing</h4>
-    <p><strong>+ Add</strong> at the top of a section creates a blank entry, marked in progress. <strong>+ line</strong> adds a bullet. The bin deletes an entry — templates that referenced it just skip it, they don't break.</p>
+    <h3 id="g-career">Master resume</h3>
+    <p>Your source of truth. Every application draws from here. <strong>Nothing an agent writes is saved back into this</strong> unless you deliberately promote it &mdash; thirty applications should not slowly erode what you actually wrote.</p>
+    <h4>Keywords</h4>
+    <p>Every entry carries two lists: the <strong>job titles</strong> it is evidence for, and the <strong>skills</strong> it demonstrates. These are what the agent matches a posting against. An untagged entry is invisible to it.</p>
+    <p><strong>&#10022; Tag</strong> fills both with AI. Read what it suggests &mdash; the first pass is a review, after that it is maintenance. Nothing saves until you press Save.</p>
+    <h4>Editing and ordering</h4>
+    <p>Type into any field; the top right shows <strong>Unsaved changes</strong>. Completed entries group above in-progress ones. Reorder with <span class="kbd">&#10514;</span> <span class="kbd">&#9650;</span> <span class="kbd">&#9660;</span> <span class="kbd">&#10515;</span> or the <span class="kbd">&#10303;</span> grip &mdash; always within a group. Use the status dropdown to move between groups.</p>
+    <p>The <strong>&#10022;</strong> button on an entry suggests tighter wording for its lines, one Accept or Reject at a time.</p>
 
-    <h3 id="g-builder">Resume builder</h3>
-    <p>A template is a <em>selection</em>, not a copy. It stores which entries to include and in what order. Your actual words stay in Career master, so a fix there flows into every template automatically.</p>
-    <ol>
-      <li><strong>New</strong> creates a template. Name it for the role — "Controller — public company".</li>
-      <li>Set <strong>Target role</strong>. It replaces your headline at the top of that resume.</li>
-      <li><strong>Summary</strong> is optional. Leave it blank to use the one from Career master.</li>
-      <li>Tick what belongs in this version. The preview updates as you go.</li>
-      <li><strong>Print / PDF</strong> opens a clean print view — use your browser's "Save as PDF".</li>
-    </ol>
-    <div class="tip"><strong>Tailor with AI</strong> proposes bullet rewrites, one at a time, each with Accept or Reject. Nothing touches your master until you accept, and accepting still leaves you to press Save. It may only rephrase facts already in your master — it cannot invent numbers, employers, dates, or upgrade a credential. If a suggestion contains something you never wrote, reject it and tell me.</div>
+    <h3 id="g-cover">Master cover letter</h3>
+    <p>A real letter, written in your voice, with labelled paragraphs. The agent <em>rewrites</em> it against a posting rather than reassembling blocks &mdash; assembled letters read exactly like assembled letters.</p>
+    <p><strong>Proof paragraphs</strong> are the pool it can draw a stronger example from when a posting calls for one. Tag them so it can tell them apart. Two or three you actually reuse is plenty.</p>
+    <p>This tab has its own Save button, separate from the resume.</p>
 
     <h3 id="g-archive">Archive</h3>
-    <p><strong>Save to archive</strong> freezes the resume exactly as it reads at that moment — the text, not a pointer to it. Edit your master afterwards and the archived copy does not move.</p>
-    <p>That is deliberate. Six months from now, "what exactly did I send them?" needs a real answer.</p>
-    <p>Each snapshot records the career-master version it came from. <strong>View</strong> opens it, <strong>Copy text</strong> gives you plain text for a form field, <strong>Delete</strong> removes it — that last one is the record of what you actually sent, so think before using it.</p>
-
-    <h3 id="g-jobs">Jobs</h3>
-    <ol>
-      <li><strong>New</strong>, then paste the posting into the description box — or use one-click capture.</li>
-      <li><strong>Analyse fit</strong> reads it against your master.</li>
-      <li>You get a score, a short rationale, keywords worth mirroring, and a <strong>gap list</strong>.</li>
-      <li><strong>Build a resume from this</strong> creates a template with the recommended entries and a tailored summary, and drops you in the Builder.</li>
-      <li><strong>Draft cover letter</strong> gives you three or four paragraphs to edit.</li>
-    </ol>
-    <div class="tip">The gap list is the most useful part. "Wants NetSuite, you have nothing on NetSuite" tells you what to add to your master — or that this one isn't worth an application.</div>
-    <p>The <strong>Status</strong> dropdown (considering / applied / interviewing / closed) is your application log. Keep it current and after thirty applications you'll know which framing actually gets replies.</p>
-    <p>Anything the cover letter couldn't support from your master gets listed under <strong>flags</strong>. Read those before sending.</p>
+    <p>One group per application: the posting, the resume, the cover letter. Everything about one job lives in one place.</p>
+    <h4>Adding a posting</h4>
+    <p><strong>Add posting</strong> for a blank one, or <strong>One-click capture</strong> to grab it from a job page with a bookmarklet &mdash; see Capture below.</p>
+    <h4>Generating</h4>
+    <p><strong>Generate resume + letter</strong> reads the posting, picks entries from your master by keyword, writes a tailored summary, and drafts the letter. It writes only into this application.</p>
+    <h4>Statuses, and what freezing means</h4>
+    <p>Three statuses on the application, and again on the resume and the letter: <strong>draft</strong>, <strong>complete</strong>, <strong>deleted</strong>.</p>
+    <ul>
+      <li><strong>Draft</strong> stays live &mdash; edits to your masters flow through</li>
+      <li><strong>Complete freezes the text.</strong> That frozen copy is the record of what the employer received, and editing your master afterwards cannot change it</li>
+      <li><strong>Deleted</strong> hides it. The data stays in your repo; tick <em>show deleted</em> to bring it back</li>
+    </ul>
+    <div class="warn">Moving a completed document back to draft asks first, because it discards the record of what you sent.</div>
 
     <h3 id="g-fit">Fit score</h3>
-    <p>Jobs → <strong>Analyse fit</strong> asks "does my career suit this role?". This tab asks the narrower, more useful question: <strong>does this exact resume answer this exact posting?</strong> — and it does it for several at once.</p>
-    <h4>Choosing what to compare</h4>
-    <ol>
-      <li><strong>Jobs tab</strong> → tick the postings you want, in the Saved jobs list</li>
-      <li><strong>Archive tab</strong> → tick the resume versions you want</li>
-      <li><strong>Fit Score tab</strong> → it shows what you picked, then <strong>Score</strong></li>
-    </ol>
-    <p>The tab label shows your selection as <code>Fit Score (2×3)</code> — two resumes against three postings — so you can see what you've ticked without switching tabs.</p>
-    <h4>Reading the grid</h4>
-    <p>Resumes down the side, postings across the top, a score in each cell, colour-coded. Click any score for the detail. The strongest pairing opens automatically.</p>
-    <h4>The three lists that matter</h4>
+    <p>Pick an application. Every requirement in the posting is scored <strong>twice</strong> &mdash; once against the resume, once against the cover letter &mdash; because they fail in different ways. A resume can cover something the letter never mentions.</p>
     <ul>
-      <li><strong>Covered</strong> — the posting asks for it, this resume shows it</li>
-      <li><strong>You have it, this version left it out</strong> — a fix. The button adds those entries to the template this resume was built from.</li>
-      <li><strong>Not in your career data at all</strong> — no resume edit fixes this. Either add real experience to Career master, or take it as a signal about whether to apply.</li>
+      <li><strong>Copy fix</strong> on the resume side hands you the suggestion. There is no single unambiguous place to apply it, so it does not guess.</li>
+      <li><strong>Add to letter</strong> appends the suggestion to this application's letter as a draft paragraph for you to rewrite.</li>
     </ul>
-    <div class="tip">Only archived resumes can be scored, because only those are frozen text — the thing you'd actually send. Build a version in the Builder and <strong>Save to archive</strong> first, then it appears here.</div>
-    <div class="warn">A posting with no description pasted in is skipped and named, rather than silently scored as a zero. Twelve pairings is the cap per run; anything beyond that is reported, not quietly dropped.</div>
+    <div class="tip">A zero with "no evidence" is the honest answer, not a failure of the scorer. If the posting wants something you have never done, no wording fixes that &mdash; and the fix will say so rather than help you claim it.</div>
+    <p>Every run is saved to the score history, so you can see whether a rewrite actually moved the number.</p>
 
     <h3 id="g-capture">One-click capture</h3>
-    <p>Grabs a job posting from the page you're looking at, with no copy-paste.</p>
+    <p>Grabs a posting from the page you are looking at, with no copy-paste.</p>
     <ol>
       <li>Show your bookmarks bar: <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">B</span></li>
-      <li>Jobs tab → <strong>One-click capture</strong></li>
-      <li><strong>Drag</strong> the green "Grab this job" button up onto your bookmarks bar. Don't click it — dragging is the whole point.</li>
-      <li>Open any job posting: LinkedIn, Indeed, a company careers page</li>
-      <li>Click the bookmark. A tab opens here with the posting already loaded as a new job.</li>
-      <li>Check the company and role it guessed, then <strong>Analyse fit</strong>.</li>
+      <li>Archive tab &rarr; <strong>One-click capture</strong></li>
+      <li><strong>Drag</strong> the green button up onto your bookmarks bar &mdash; do not click it here</li>
+      <li>Open any job posting and click the bookmark. It arrives as a new application.</li>
     </ol>
     <p>It reads the page your browser already loaded and passes the text in the URL fragment, which never reaches any server. Nothing is scraped, which is why it works on sites that block automated fetching.</p>
-    <p>If dragging won't work, use <strong>Copy the code instead</strong>, then create a bookmark by hand and paste that as its URL.</p>
 
     <h3 id="g-data">Where your data lives</h3>
     <p>In <code>career-data</code> — your own private GitHub repo — as four plain JSON files under <code>career/</code>. Every save is a commit, so you have the full history.</p>
@@ -484,9 +421,48 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = (p) => p + '-' + Math.random().toString(36).slice(2, 9);
 
-const state = { master:null, templates:null, archives:null, jobs:null, fits:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
+const state = { master:null, templates:null, archives:null, jobs:null, fits:null, cover:null, jdId:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
   // ticked in the Jobs and Archive tabs, consumed by Fit Score
   fitJobs:new Set(), fitResumes:new Set() };
+
+/* ── MIGRATION ─────────────────────────────────────────
+   Runs on every load, in memory only. Nothing is written until you save, so an
+   old data file is never rewritten just by opening the app. */
+const STATUSES = ['draft', 'complete', 'deleted'];
+
+function migrate() {
+  // Entries gain two keyword lists. Old free-text tags become skills.
+  state.master.sections.forEach((sec) => sec.items.forEach((it) => {
+    if (!Array.isArray(it.titles)) it.titles = [];
+    if (!Array.isArray(it.skills)) it.skills = Array.isArray(it.tags) ? it.tags.slice() : [];
+  }));
+
+  // Jobs become application groups: the posting, plus a resume and a cover letter.
+  state.jobs.items.forEach((j) => {
+    if (!STATUSES.includes(j.status)) j.status = j.status === 'closed' ? 'complete' : 'draft';
+    if (typeof j.appliedOn !== 'string') j.appliedOn = '';
+    if (typeof j.deadline !== 'string') j.deadline = '';
+    if (!j.resume) j.resume = { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null };
+    if (!j.coverLetter) j.coverLetter = { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null };
+  });
+
+  // The master cover letter: a real letter, not a pile of blocks.
+  if (!state.cover.letter) {
+    state.cover.letter = {
+      paragraphs: [
+        { id: uid('p'), kind: 'opening', title: 'Opening', text: '' },
+        { id: uid('p'), kind: 'proof', title: 'Proof', text: '' },
+        { id: uid('p'), kind: 'why', title: 'Why them', text: '' },
+        { id: uid('p'), kind: 'closing', title: 'Closing', text: '' },
+      ],
+      greeting: 'Dear Hiring Manager,',
+      signoff: 'Sincerely,\nJessica Dougherty',
+    };
+  }
+  if (!Array.isArray(state.cover.items)) state.cover.items = [];
+}
+
+const notDeleted = (x) => x && x.status !== 'deleted';
 
 /* ── transport ─────────────────────────────────────────── */
 async function api(kind, method, doc, expectedVersion) {
@@ -522,17 +498,20 @@ function markClean() { state.dirty = false; $('saveBtn').disabled = true; $('sav
 /* ── boot ──────────────────────────────────────────────── */
 async function boot() {
   try {
-    const [master, templates, archives, jobs, fits] = await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits')]);
-    state.master = master; state.templates = templates; state.archives = archives; state.jobs = jobs; state.fits = fits;
+    const [master, templates, archives, jobs, fits, cover] =
+      await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits'), api('cover')]);
+    state.master = master; state.templates = templates; state.archives = archives;
+    state.jobs = jobs; state.fits = fits; state.cover = cover;
+    migrate();
     $('boot').remove();
     $('storeInfo').textContent = 'Career master v' + master.version + (master.updatedAt ? ' · updated ' + new Date(master.updatedAt).toLocaleString() : '');
-    renderCareer(); renderTplSelect(); renderJobSelect(); renderArchive();
+    renderCareer();
 
     const captured = readCapture();
     if (captured) { await acceptCapture(captured); return; }
 
     const wanted = (location.hash || '').replace('#', '');
-    show(['career','builder','archive','jobs'].includes(wanted) ? wanted : 'career');
+    show(['career','cover','archive','fit'].includes(wanted) ? wanted : 'career');
   } catch (err) {
     const b = $('boot');
     b.className = 'banner err';
@@ -544,7 +523,7 @@ function show(tab) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tab));
-  if (tab === 'builder') renderBuilder();
+  if (tab === 'cover') renderCover();
   if (tab === 'archive') renderArchive();
   if (tab === 'fit') { renderFit(); renderFitHistory(); }
 }
@@ -612,7 +591,13 @@ function itemHtml(it, si, sec) {
     '<div class="item-main">' + fields +
       '<div class="bullets">' + bullets +
       '<button class="icon" data-addbullet="'+si+','+ii+'">+ line</button></div>' +
-      (it.tags && it.tags.length ? '<div class="tagline">' + it.tags.map(esc).join(' · ') + '</div>' : '') +
+      '<div class="kw">' +
+        '<div><label class="f">Job titles this supports</label>' +
+          '<input class="f kwin" data-kw="' + si + '|' + it.id + '|titles" value="' + esc((it.titles || []).join(', ')) + '" placeholder="controller, assistant controller" /></div>' +
+        '<div><label class="f">Skills it evidences</label>' +
+          '<input class="f kwin" data-kw="' + si + '|' + it.id + '|skills" value="' + esc((it.skills || []).join(', ')) + '" placeholder="SOX, consolidations" /></div>' +
+        '<button class="btn ghost" data-kwai="' + si + '|' + it.id + '" title="Suggest keywords with AI">✦ Tag</button>' +
+      '</div>' +
     '</div>' +
     '<div class="item-actions">' +
       '<select class="f" style="width:auto;font-size:12px;padding:5px 7px" data-status="'+si+','+ii+'">' +
@@ -772,6 +757,31 @@ function bind() {
 
   document.querySelectorAll('[data-tailor]').forEach((el) => el.addEventListener('click', () => tailorItem(el.dataset.tailor)));
 
+  document.querySelectorAll('[data-kw]').forEach((el) => el.addEventListener('input', () => {
+    const [si, id, field] = el.dataset.kw.split('|');
+    const found = itemById(id);
+    if (!found) return;
+    found.item[field] = el.value.split(',').map((x) => x.trim()).filter(Boolean);
+    markDirty();
+  }));
+  document.querySelectorAll('[data-kwai]').forEach((el) => el.addEventListener('click', async () => {
+    const [si, id] = el.dataset.kwai.split('|');
+    const found = itemById(id);
+    if (!found) return;
+    const label = el.textContent;
+    el.disabled = true; el.textContent = '…';
+    try {
+      const r = await ai({ action: 'keywords', master: state.master, entry: found.item });
+      found.item.titles = (r.result.titles || []).slice(0, 8);
+      found.item.skills = (r.result.skills || []).slice(0, 8);
+      markDirty(); renderCareer();
+      toast('Tagged “' + (found.item.org || found.item.role) + '” — read them, then Save');
+    } catch (err) {
+      el.disabled = false; el.textContent = label;
+      toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
+    }
+  }));
+
   // Drag to reorder. The grip is the only draggable part, so dragging never
   // fights with selecting text inside the fields.
   let dragged = null;
@@ -883,453 +893,339 @@ function resumePlainText(tpl) {
   return d.innerText.replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/* ── BUILDER TAB ───────────────────────────────────────── */
-function currentTpl() {
-  let t = state.templates.items.find((x) => x.id === state.tplId);
-  if (!t) { t = state.templates.items[0]; state.tplId = t ? t.id : null; }
-  return t;
-}
-function renderTplSelect() {
-  const sel = $('tplSelect');
-  sel.innerHTML = state.templates.items.map((t) => '<option value="' + esc(t.id) + '">' + esc(t.name || 'Untitled') + '</option>').join('')
-    || '<option value="">No templates yet</option>';
-  if (state.tplId) sel.value = state.tplId;
-}
-function renderBuilder() {
-  if (!state.templates.items.length) newTemplate(true);
-  const t = currentTpl();
-  if (!t) return;
-  // Retro-fix templates created before auto-naming existed.
-  if (isAutoNamed(t) && (t.targetRole || '').trim() && t.name !== t.targetRole.trim()) {
-    t.name = t.targetRole.trim();
-    queueSaveTemplates();
-  }
-  $('tplSelect').value = t.id;
-  $('tplName').value = t.name || '';
-  $('tplRole').value = t.targetRole || '';
-  $('tplSummary').value = t.summary || '';
-  $('pickers').innerHTML = '<div class="sec-head"><h2>What goes in</h2><span class="count">' + (t.itemIds || []).length + ' selected</span>' +
-    '<button class="btn ghost" id="pickAll">All</button><button class="btn ghost" id="pickNone">None</button></div>' +
-    state.master.sections.filter((s) => s.items.length).map((s) =>
-      '<div class="group-label"><span>' + esc(s.title) + '</span><span class="line"></span></div>' +
-      s.items.map((it) =>
-        '<label class="pick"><input type="checkbox" data-pick="' + esc(it.id) + '"' + ((t.itemIds || []).includes(it.id) ? ' checked' : '') + ' />' +
-        '<span><span class="t">' + esc(it.org || it.role) + (it.status === 'in_progress' ? ' <span class="wipdot">· in progress</span>' : '') + '</span><br>' +
-        '<span class="s">' + esc([it.role !== it.org ? it.role : '', it.dates].filter(Boolean).join(' · ')) + '</span></span></label>').join('')
-    ).join('');
-
-  // Toggling a checkbox must NOT re-render the list — that would scroll you back
-  // to the top on every click. Only the count and the preview change.
-  document.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('change', () => {
-    const id = el.dataset.pick;
-    t.itemIds = t.itemIds || [];
-    if (el.checked) { if (!t.itemIds.includes(id)) t.itemIds.push(id); }
-    else t.itemIds = t.itemIds.filter((x) => x !== id);
-    refreshPreview(t);
-  }));
-  $('pickAll').onclick = () => setAllPicks(t, true);
-  $('pickNone').onclick = () => setAllPicks(t, false);
-  $('preview').innerHTML = renderResume(t);
-}
-function setAllPicks(t, on) {
-  t.itemIds = on ? state.master.sections.flatMap((s) => s.items.map((i) => i.id)) : [];
-  document.querySelectorAll('[data-pick]').forEach((el) => { el.checked = on; });
-  refreshPreview(t);
-}
-function refreshPreview(t) {
-  const c = document.querySelector('#pickers .count');
-  if (c) c.textContent = (t.itemIds || []).length + ' selected';
-  $('preview').innerHTML = renderResume(t);
-  queueSaveTemplates();
-}
-let tplSaveTimer = null;
-function queueSaveTemplates() { clearTimeout(tplSaveTimer); tplSaveTimer = setTimeout(saveTemplates, 600); }
-
-// Two fields, one expectation: typing a target role should name the template,
-// unless you have deliberately given it a name of its own.
-function isAutoNamed(t) {
-  return t.nameAuto !== false && (!t.name || !t.name.trim() || t.name.trim() === 'Untitled template' || t.name.trim() === (t.targetRole || '').trim());
-}
-$('tplName').addEventListener('input', () => {
-  const t = currentTpl(); if (!t) return;
-  t.name = $('tplName').value;
-  t.nameAuto = !t.name.trim();     // cleared it? fall back to auto-naming again
-  $('preview').innerHTML = renderResume(t);
-  renderTplSelect();
-  queueSaveTemplates();
-});
-$('tplRole').addEventListener('input', () => {
-  const t = currentTpl(); if (!t) return;
-  t.targetRole = $('tplRole').value;
-  if (isAutoNamed(t)) {
-    t.name = t.targetRole.trim() || 'Untitled template';
-    $('tplName').value = t.name;
-    renderTplSelect();
-  }
-  $('preview').innerHTML = renderResume(t);
-  queueSaveTemplates();
-});
-$('tplSummary').addEventListener('input', () => {
-  const t = currentTpl(); if (!t) return;
-  t.summary = $('tplSummary').value;
-  $('preview').innerHTML = renderResume(t);
-  queueSaveTemplates();
-});
-$('tplSelect').addEventListener('change', () => { state.tplId = $('tplSelect').value; renderBuilder(); });
-$('tplNew').addEventListener('click', () => newTemplate());
-function newTemplate(silent) {
-  const t = { id: uid('tpl'), name: 'Untitled template', nameAuto: true, targetRole: '', summary: '', itemIds: state.master.sections.flatMap((s) => s.items.map((i) => i.id)), createdAt: new Date().toISOString() };
-  state.templates.items.unshift(t); state.tplId = t.id;
-  saveTemplates(); // persist immediately, otherwise a template you never touched is lost on navigation
-  if (!silent) { renderTplSelect(); renderBuilder(); toast('New template'); }
-}
-$('tplDelete').addEventListener('click', () => {
-  const t = currentTpl(); if (!t) return;
-  if (!confirm('Delete template "' + (t.name || 'Untitled') + '"? Archived resumes made from it are kept.')) return;
-  state.templates.items = state.templates.items.filter((x) => x.id !== t.id);
-  state.tplId = null; saveTemplates(); renderTplSelect(); renderBuilder();
-});
-async function saveTemplates() {
-  try { adoptVersion(state.templates, await api('templates', 'PUT', state.templates, state.templates.version)); renderTplSelect(); }
-  catch (err) { toast('Template save failed: ' + err.message, true); }
-}
-
-// Take the server's version stamp without swapping the objects underneath the
-// UI. Replacing them is what silently detached open handlers.
+/* ── SAVING ────────────────────────────────────────────
+   Take the server's version stamp without swapping the objects underneath the
+   UI. Replacing them silently detaches every open handler. */
 function adoptVersion(local, saved) {
   if (!local || !saved) return local;
   local.version = saved.version;
   local.updatedAt = saved.updatedAt;
   return local;
 }
+async function saveJobs() {
+  try { adoptVersion(state.jobs, await api('jobs', 'PUT', state.jobs, state.jobs.version)); }
+  catch (err) { toast('Could not save: ' + err.message, true); }
+}
 
-$('btnPrint').addEventListener('click', () => {
-  const t = currentTpl(); if (!t) return;
+/* ── COVER LETTER TAB ───────────────────────────────────
+   A master letter you write once. The agent rewrites it per posting; it never
+   edits this copy. Proof paragraphs are a pool it can pull a stronger example
+   from when a posting calls for one. */
+const PARA_KINDS = [
+  ['opening', 'Opening — who you are, why this role'],
+  ['proof', 'Proof — a specific accomplishment'],
+  ['why', 'Why them — what draws you to the company'],
+  ['closing', 'Closing — the ask'],
+];
+
+function renderCover() {
+  const L = state.cover.letter;
+  $('coverLetter').innerHTML =
+    '<div class="sec-head"><h2>The letter</h2><span class="count">' + L.paragraphs.length + ' paragraphs</span>' +
+    '<button class="btn" id="addPara">+ Paragraph</button></div>' +
+    '<label class="f">Greeting</label><input class="f" id="clGreeting" value="' + esc(L.greeting || '') + '" />' +
+    L.paragraphs.map((p, i) =>
+      '<div class="item done" style="margin-top:9px"><div class="item-top"><div class="item-main">' +
+        '<div class="row">' +
+          '<div><label class="f">Label</label><input class="f" data-cl="' + i + '|title" value="' + esc(p.title || '') + '" /></div>' +
+          '<div><label class="f">Kind</label><select class="f" data-cl="' + i + '|kind">' +
+            PARA_KINDS.map(([k, lbl]) => '<option value="' + k + '"' + (p.kind === k ? ' selected' : '') + '>' + esc(lbl) + '</option>').join('') +
+          '</select></div>' +
+        '</div>' +
+        '<textarea class="f" data-cl="' + i + '|text" style="min-height:96px" placeholder="Write this in your own voice — the agent adapts it, it does not replace your voice.">' + esc(p.text || '') + '</textarea>' +
+      '</div><div class="item-actions" style="flex-direction:column;gap:4px">' +
+        '<button class="icon" data-clmove="' + i + '|-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+        '<button class="icon" data-clmove="' + i + '|1" title="Move down"' + (i === L.paragraphs.length - 1 ? ' disabled' : '') + '>▼</button>' +
+        '<button class="icon" data-cldel="' + i + '" title="Delete">🗑</button>' +
+      '</div></div></div>').join('') +
+    '<label class="f" style="margin-top:10px">Sign-off</label>' +
+    '<textarea class="f" id="clSignoff" style="min-height:56px">' + esc(L.signoff || '') + '</textarea>';
+
+  const lib = state.cover.items.filter(notDeleted);
+  $('coverLibrary').innerHTML =
+    '<div class="sec-head"><h2>Proof paragraphs</h2><span class="count">' + lib.length + '</span>' +
+    '<button class="btn" id="addProof">+ Add</button></div>' +
+    '<p class="tagline" style="margin-bottom:8px">Specific accomplishments the agent can swap into the Proof slot when a posting calls for one. Tag them so it can tell them apart.</p>' +
+    (!lib.length ? '<div class="empty">None yet. Add the two or three stories you actually reuse.</div>'
+      : lib.map((b) =>
+        '<div class="item done" style="margin-bottom:8px"><div class="item-top"><div class="item-main">' +
+          '<input class="f" data-pb="' + esc(b.id) + '|title" value="' + esc(b.title || '') + '" placeholder="Short label" />' +
+          '<textarea class="f" data-pb="' + esc(b.id) + '|text" style="min-height:80px;margin-top:6px">' + esc(b.text || '') + '</textarea>' +
+          '<input class="f kwin" data-pb="' + esc(b.id) + '|keywords" style="margin-top:6px" value="' + esc((b.keywords || []).join(', ')) + '" placeholder="keywords: SOX, systems migration" />' +
+        '</div><div class="item-actions"><button class="icon" data-pbdel="' + esc(b.id) + '" title="Delete">🗑</button></div></div></div>').join(''));
+
+  const L2 = () => state.cover.letter;
+  $('clGreeting').addEventListener('input', (e) => { L2().greeting = e.target.value; markCoverDirty(); });
+  $('clSignoff').addEventListener('input', (e) => { L2().signoff = e.target.value; markCoverDirty(); });
+  document.querySelectorAll('[data-cl]').forEach((el) => el.addEventListener('input', () => {
+    const [i, f] = el.dataset.cl.split('|');
+    L2().paragraphs[+i][f] = el.value; markCoverDirty();
+  }));
+  document.querySelectorAll('[data-clmove]').forEach((el) => el.addEventListener('click', () => {
+    const [i, d] = el.dataset.clmove.split('|').map(Number);
+    const a = L2().paragraphs, j = i + d;
+    if (j < 0 || j >= a.length) return;
+    [a[i], a[j]] = [a[j], a[i]]; markCoverDirty(); renderCover();
+  }));
+  document.querySelectorAll('[data-cldel]').forEach((el) => el.addEventListener('click', () => {
+    if (!confirm('Delete this paragraph?')) return;
+    L2().paragraphs.splice(+el.dataset.cldel, 1); markCoverDirty(); renderCover();
+  }));
+  $('addPara').addEventListener('click', () => {
+    L2().paragraphs.push({ id: uid('p'), kind: 'proof', title: 'New paragraph', text: '' });
+    markCoverDirty(); renderCover();
+  });
+  $('addProof').addEventListener('click', () => {
+    state.cover.items.unshift({ id: uid('pb'), status: 'draft', title: '', text: '', keywords: [] });
+    markCoverDirty(); renderCover();
+  });
+  document.querySelectorAll('[data-pb]').forEach((el) => el.addEventListener('input', () => {
+    const [id, f] = el.dataset.pb.split('|');
+    const b = state.cover.items.find((x) => x.id === id);
+    if (!b) return;
+    b[f] = f === 'keywords' ? el.value.split(',').map((x) => x.trim()).filter(Boolean) : el.value;
+    markCoverDirty();
+  }));
+  document.querySelectorAll('[data-pbdel]').forEach((el) => el.addEventListener('click', () => {
+    if (!confirm('Delete this proof paragraph? It is hidden, not destroyed.')) return;
+    const b = state.cover.items.find((x) => x.id === el.dataset.pbdel);
+    if (b) b.status = 'deleted';
+    markCoverDirty(); renderCover();
+  }));
+}
+
+let coverDirty = false;
+function markCoverDirty() { coverDirty = true; $('saveCover').textContent = 'Save •'; }
+$('saveCover').addEventListener('click', async () => {
+  $('saveCover').disabled = true;
+  try {
+    adoptVersion(state.cover, await api('cover', 'PUT', state.cover, state.cover.version));
+    coverDirty = false; $('saveCover').textContent = 'Saved ✓';
+    setTimeout(() => { $('saveCover').textContent = 'Save'; $('saveCover').disabled = false; }, 2000);
+    toast('Cover letter saved');
+  } catch (err) { $('saveCover').disabled = false; toast(err.message, true); }
+});
+
+function coverLetterText(cl) {
+  if (cl && cl.frozenText) return cl.frozenText;
+  const paras = (cl && cl.paragraphs && cl.paragraphs.length) ? cl.paragraphs : state.cover.letter.paragraphs;
+  const L = state.cover.letter;
+  return [L.greeting, ...paras.map((p) => p.text).filter(Boolean), L.signoff].filter(Boolean).join('\n\n');
+}
+
+/* ── ARCHIVE: ONE GROUP PER APPLICATION ─────────────────
+   The posting, the resume, the cover letter. Draft follows your masters;
+   complete freezes the text so the record of what you sent cannot drift. */
+function jdList() {
+  const showDel = $('showDeleted') && $('showDeleted').checked;
+  return state.jobs.items.filter((j) => showDel || j.status !== 'deleted');
+}
+function currentJd() {
+  let j = state.jobs.items.find((x) => x.id === state.jdId);
+  if (!j) { j = jdList()[0]; state.jdId = j ? j.id : null; }
+  return j;
+}
+const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
+
+function renderArchive() {
+  const list = jdList();
+  $('jdList').innerHTML =
+    '<div class="sec-head"><h2>Applications</h2><span class="count">' + list.length + '</span></div>' +
+    (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
+      : list.map((j) =>
+        '<div class="jdrow' + (j.id === state.jdId ? ' on' : '') + '" data-jd="' + esc(j.id) + '">' +
+          '<div class="m"><b>' + esc(j.company || 'Untitled') + '</b><p>' + esc(j.role || 'no role yet') + '</p>' +
+          '<p class="s">' + statusChip(j.status) + ' resume ' + statusChip(j.resume.status) + ' letter ' + statusChip(j.coverLetter.status) + '</p></div>' +
+        '</div>').join(''));
+
+  document.querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', () => {
+    state.jdId = el.dataset.jd; renderArchive();
+  }));
+  renderJdDetail();
+}
+
+function renderJdDetail() {
+  const j = currentJd();
+  if (!j) { $('jdDetail').innerHTML = '<div class="card"><div class="empty">Select or add an application.</div></div>'; return; }
+  const sel = (name, val, id) => '<select class="f" data-jdf="' + id + '">' +
+    STATUSES.map((st) => '<option value="' + st + '"' + (val === st ? ' selected' : '') + '>' + st + '</option>').join('') + '</select>';
+
+  $('jdDetail').innerHTML =
+    '<div class="card">' +
+      '<div class="sec-head"><h2>' + esc(j.company || 'Untitled') + '</h2>' + statusChip(j.status) + '</div>' +
+      '<div class="row">' +
+        '<div><label class="f">Company</label><input class="f" data-jdf="company" value="' + esc(j.company || '') + '" /></div>' +
+        '<div><label class="f">Role</label><input class="f" data-jdf="role" value="' + esc(j.role || '') + '" /></div>' +
+        '<div><label class="f">Status</label>' + sel('status', j.status, 'status') + '</div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<div><label class="f">Posting URL</label><input class="f" data-jdf="url" value="' + esc(j.url || '') + '" /></div>' +
+        '<div><label class="f">Deadline</label><input class="f" type="date" data-jdf="deadline" value="' + esc(j.deadline || '') + '" /></div>' +
+        '<div><label class="f">Applied on</label><input class="f" type="date" data-jdf="appliedOn" value="' + esc(j.appliedOn || '') + '" /></div>' +
+      '</div>' +
+      '<label class="f">Job description</label>' +
+      '<textarea class="f" data-jdf="text" style="min-height:170px">' + esc(j.text || '') + '</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">' +
+        '<button class="btn primary" id="genBoth">Generate resume + letter</button>' +
+        '<button class="btn" id="goFit">Score this application</button>' +
+        '<button class="btn danger ghost" id="jdDel">' + (j.status === 'deleted' ? 'Restore' : 'Delete') + '</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="sec-head"><h2>Resume</h2>' + sel('r', j.resume.status, 'resume.status') +
+        (j.resume.frozenText ? '<span class="chip">frozen</span>' : '') +
+        '<button class="btn" id="rPrint">Print / PDF</button></div>' +
+      (j.resume.frozenText
+        ? '<pre class="frozen">' + esc(j.resume.frozenText) + '</pre>'
+        : '<div class="preview" style="max-height:46vh">' + (j.resume.itemIds.length ? renderResume({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role }) : '<p style="color:#666">Nothing selected yet — generate, or tick entries below.</p>') + '</div>') +
+      (j.resume.frozenText ? '' : '<div id="jdPicker"></div>') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="sec-head"><h2>Cover letter</h2>' + sel('c', j.coverLetter.status, 'coverLetter.status') +
+        (j.coverLetter.frozenText ? '<span class="chip">frozen</span>' : '') + '</div>' +
+      (j.coverLetter.frozenText
+        ? '<pre class="frozen">' + esc(j.coverLetter.frozenText) + '</pre>'
+        : '<textarea class="f" id="jdCover" style="min-height:230px">' + esc(coverLetterText(j.coverLetter)) + '</textarea>') +
+    '</div>';
+
+  wireJdDetail(j);
+  if (!j.resume.frozenText) renderJdPicker(j);
+}
+
+function wireJdDetail(j) {
+  document.querySelectorAll('[data-jdf]').forEach((el) => el.addEventListener('input', () => {
+    const path = el.dataset.jdf;
+    const before = path.endsWith('.status') ? getPath(j, path) : null;
+    setJdPath(j, path, el.value);
+    if (path.endsWith('.status')) handleFreeze(j, path, before, el.value);
+    queueSaveJobs();
+    if (path === 'status' || path === 'company' || path === 'role') renderArchive();
+  }));
+  const cov = $('jdCover');
+  if (cov) cov.addEventListener('input', () => {
+    j.coverLetter.paragraphs = [{ id: uid('p'), kind: 'opening', title: 'Letter', text: cov.value }];
+    queueSaveJobs();
+  });
+  $('jdDel').addEventListener('click', () => {
+    j.status = j.status === 'deleted' ? 'draft' : 'deleted';
+    queueSaveJobs(); renderArchive();
+  });
+  $('goFit').addEventListener('click', () => { show('fit'); });
+  $('genBoth').addEventListener('click', () => generateForJd(j));
+  const rp = $('rPrint');
+  if (rp) rp.addEventListener('click', () => printResume(j));
+}
+
+function getPath(o, p) { return p.split('.').reduce((a, k) => (a ? a[k] : undefined), o); }
+function setJdPath(o, p, v) {
+  const parts = p.split('.');
+  const last = parts.pop();
+  const t = parts.reduce((a, k) => a[k], o);
+  t[last] = v;
+}
+// "complete" is what freezes a document. Going back to draft unfreezes it, but
+// only after saying so — that discards the record of what was sent.
+function handleFreeze(j, path, before, after) {
+  const which = path.startsWith('resume') ? 'resume' : 'coverLetter';
+  const doc = j[which];
+  if (after === 'complete' && !doc.frozenText) {
+    doc.frozenText = which === 'resume'
+      ? resumePlainText({ itemIds: doc.itemIds, summary: doc.summary, targetRole: j.role })
+      : coverLetterText(doc);
+    if (which === 'resume') doc.frozenHtml = renderResume({ itemIds: doc.itemIds, summary: doc.summary, targetRole: j.role });
+    doc.completedAt = new Date().toISOString();
+    toast('Frozen — this is now the record of what you sent.');
+    renderJdDetail();
+  } else if (before === 'complete' && after !== 'complete' && doc.frozenText) {
+    if (confirm('Unfreeze this? The saved copy of what you sent will be replaced by the live version.')) {
+      doc.frozenText = ''; doc.frozenHtml = ''; doc.completedAt = null;
+      renderJdDetail();
+    } else {
+      doc.status = 'complete'; renderJdDetail();
+    }
+  }
+}
+
+function renderJdPicker(j) {
+  const el = $('jdPicker');
+  if (!el) return;
+  el.innerHTML = '<div class="group-label"><span>What goes in</span><span class="line"></span><span>' + j.resume.itemIds.length + '</span></div>' +
+    state.master.sections.filter((s) => s.items.length).map((s) =>
+      '<div class="tagline" style="margin-top:6px">' + esc(s.title) + '</div>' +
+      s.items.map((it) =>
+        '<label class="pick"><input type="checkbox" data-jdpick="' + esc(it.id) + '"' + (j.resume.itemIds.includes(it.id) ? ' checked' : '') + ' />' +
+        '<span><span class="t">' + esc(it.org || it.role) + '</span> <span class="s">' + esc(it.dates || '') + '</span></span></label>').join('')
+    ).join('');
+  el.querySelectorAll('[data-jdpick]').forEach((c) => c.addEventListener('change', () => {
+    const id = c.dataset.jdpick;
+    if (c.checked) { if (!j.resume.itemIds.includes(id)) j.resume.itemIds.push(id); }
+    else j.resume.itemIds = j.resume.itemIds.filter((x) => x !== id);
+    queueSaveJobs();
+    renderJdDetail();
+  }));
+}
+
+function printResume(j) {
+  const html = j.resume.frozenHtml || renderResume({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role });
   const w = window.open('', '_blank');
-  w.document.write('<html><head><title>' + esc(t.name || 'Resume') + '</title><style>' +
+  w.document.write('<html><head><title>' + esc(j.company || 'Resume') + '</title><style>' +
     'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.5in;font-size:11pt;line-height:1.45}' +
     'h1{font-size:20pt;margin-bottom:2px}.ph{font-size:11pt;color:#444}.pc{font-size:9.5pt;color:#555;margin-bottom:14px}' +
     'h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#2f5a45;border-bottom:1.5px solid #2f5a45;padding-bottom:2px;margin:14px 0 8px;font-family:Helvetica,Arial,sans-serif}' +
     '.e{margin-bottom:10px}.e-top{display:flex;justify-content:space-between}.e-org{font-weight:700}.e-meta{font-size:9.5pt;color:#666}' +
     '.e-role{font-style:italic;font-size:10.5pt;margin-bottom:2px}ul{margin:0 0 0 18px}li{margin-bottom:2px}' +
-    '@media print{@page{margin:.5in}}</style></head><body>' + renderResume(t) + '</body></html>');
+    '@media print{@page{margin:.5in}}</style></head><body>' + html + '</body></html>');
   w.document.close(); setTimeout(() => w.print(), 350);
+}
+
+let jobsTimer = null;
+function queueSaveJobs() { clearTimeout(jobsTimer); jobsTimer = setTimeout(saveJobs, 700); }
+
+$('jdNew').addEventListener('click', () => {
+  const j = { id: uid('job'), company: '', role: '', url: '', text: '', status: 'draft',
+    deadline: '', appliedOn: '', createdAt: new Date().toISOString(),
+    resume: { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null },
+    coverLetter: { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null } };
+  state.jobs.items.unshift(j); state.jdId = j.id;
+  queueSaveJobs(); renderArchive();
 });
+$('showDeleted').addEventListener('change', renderArchive);
+$('jobGrabber').addEventListener('click', showGrabber);
 
-$('btnArchive').addEventListener('click', async () => {
-  const t = currentTpl(); if (!t) return;
-  const btn = $('btnArchive');
-  if (btn.disabled) return;
-
-  const ticked = [...document.querySelectorAll('[data-pick]')].filter((c) => c.checked).map((c) => c.dataset.pick);
-  if (ticked.length && !(t.itemIds || []).length) t.itemIds = ticked;  // trust what is on screen
-  if (!(t.itemIds || []).length) return toast('Nothing selected — tick some entries in "What goes in" first.', true);
-
-  const text = resumePlainText(t);
-
-  // You clicked it four times because it looked dead. Guard the duplicate too.
-  const prev = state.archives.items[0];
-  if (prev && prev.templateId === t.id && prev.text === text) {
-    if (!confirm('This is identical to the snapshot you saved at ' + new Date(prev.createdAt).toLocaleTimeString() + '.\n\nSave another copy anyway?')) return;
-  }
-
-  // An archive full of "Untitled template" is useless six months from now.
-  const named = (t.name && t.name.trim() && t.name.trim() !== 'Untitled template') ? t.name.trim() : '';
-  const job = state.jobs.items.find((j) => j.id === state.jobId);
-  const label = named || [t.targetRole, job && job.company].filter(Boolean).join(' — ') ||
-    ('Resume ' + new Date().toLocaleDateString());
-
-  const original = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-
-  const snap = {
-    id: uid('arc'), name: label, targetRole: t.targetRole || '',
-    templateId: t.id, masterVersion: state.master.version, itemIds: (t.itemIds || []).slice(),
-    company: job ? (job.company || '') : '', jobId: state.jobId || null, note: '',
-    createdAt: new Date().toISOString(),
-    html: renderResume(t), text,
-  };
-  state.archives.items.unshift(snap);
-
+/* Generation: the agent reads the posting, picks entries from your master by
+   keyword, and rewrites the master letter. It writes only into this
+   application — your masters are never touched. */
+async function generateForJd(j) {
+  if (!(j.text || '').trim()) return toast('Paste the job description first.', true);
+  const btn = $('genBoth');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading the posting…';
   try {
-    adoptVersion(state.archives, await api('archives', 'PUT', state.archives, state.archives.version));
-    btn.textContent = 'Saved ✓';
-    toast('“' + label + '” archived — ' + state.archives.items.length + ' snapshot' + (state.archives.items.length === 1 ? '' : 's') + ' now. Open the Archive tab to rename or tick it for Fit Score.');
-    renderArchive(); updateFitBadges();
-    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2500);
+    const a = await ai({ action: 'analyze', master: state.master, posting: j.text });
+    const ids = (a.result.recommendedItemIds || []).filter((id) => itemById(id));
+    j.resume.itemIds = ids.length ? ids : state.master.sections.flatMap((s) => s.items.map((i) => i.id));
+    j.resume.summary = a.result.summaryRewrite || '';
+    j.resume.generatedAt = new Date().toISOString();
+    if (!j.company && a.result.company) j.company = a.result.company;
+    if (!j.role && a.result.roleTitle) j.role = a.result.roleTitle;
+
+    btn.innerHTML = '<span class="spin"></span> Writing the letter…';
+    const c = await ai({ action: 'cover', master: state.master, posting: j.text,
+      notes: state.cover.letter.paragraphs.map((p) => p.title + ': ' + p.text).join('\n') });
+    const body = (c.result.body || []).map((t, i) => ({ id: uid('p'), kind: i === 0 ? 'opening' : 'proof', title: 'Paragraph ' + (i + 1), text: t }));
+    j.coverLetter.paragraphs = body;
+    j.coverLetter.generatedAt = new Date().toISOString();
+
+    await saveJobs(); renderArchive();
+    toast('Drafted from your masters — review both, then mark complete to freeze.');
   } catch (err) {
-    state.archives.items = state.archives.items.filter((x) => x.id !== snap.id); // don't leave a phantom in the list
-    btn.textContent = original; btn.disabled = false;
-    toast('Archive failed: ' + err.message, true);
+    toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet — add it in Vercel.' : err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate resume + letter';
   }
-});
-
-$('btnTailor').addEventListener('click', async () => {
-  const t = currentTpl(); if (!t) return;
-  const job = state.jobs.items.find((j) => j.id === state.jobId);
-  const out = $('tailorOut');
-  out.innerHTML = '<div class="card"><span class="spin"></span> Asking Claude for bullet-level suggestions…</div>';
-  try {
-    const r = await ai({ action:'tailor', master: state.master, itemIds: t.itemIds, targetRole: t.targetRole, posting: job ? job.text : '' });
-    const s = r.result.suggestions || [];
-    if (!s.length) { out.innerHTML = '<div class="banner info">No changes suggested — the selected bullets already read well for this role.</div>'; return; }
-    out.innerHTML = '<div class="card"><div class="sec-head"><h2>Suggestions</h2><span class="count">' + s.length + '</span></div>' +
-      '<div class="banner warn"><b>Review each one.</b>Nothing is applied until you accept it. Claude may only rephrase facts already in your master — if something looks new, reject it and tell me.</div>' +
-      s.map((x, i) =>
-        '<div class="sug" id="sug' + i + '"><div class="o">' + esc(x.original) + '</div><div class="n">' + esc(x.suggested) + '</div>' +
-        '<div class="r">' + esc(x.reason || '') + '</div>' +
-        '<button class="btn primary" data-accept="' + i + '">Accept</button> ' +
-        '<button class="btn ghost" data-reject="' + i + '">Reject</button></div>').join('') + '</div>';
-    document.querySelectorAll('[data-accept]').forEach((el) => el.addEventListener('click', () => {
-      const x = s[+el.dataset.accept];
-      const found = itemById(x.itemId);
-      if (found) {
-        const b = (found.item.bullets || []).find((bb) => bb.id === x.bulletId || bb.text === x.original);
-        if (b) { b.text = x.suggested; markDirty(); renderBuilder(); toast('Applied — remember to hit Save'); }
-        else toast('Could not find that bullet any more.', true);
-      }
-      $('sug' + el.dataset.accept).remove();
-    }));
-    document.querySelectorAll('[data-reject]').forEach((el) => el.addEventListener('click', () => $('sug' + el.dataset.reject).remove()));
-  } catch (err) {
-    out.innerHTML = '<div class="banner err"><b>' + (err.code === 'NO_KEY' ? 'API key not set' : 'Tailoring failed') + '</b>' + esc(err.message) + '</div>';
-  }
-});
-
-/* ── ARCHIVE TAB ───────────────────────────────────────── */
-function renderArchive() {
-  const list = state.archives.items;
-  $('archiveList').innerHTML =
-    '<div class="sec-head"><h2>Saved resumes</h2><span class="count">' + list.length + '</span></div>' +
-    (!list.length
-    ? '<div class="empty">Nothing archived yet. Build a resume, then hit "Save to archive".</div>'
-    : list.map((a) =>
-      '<div class="item done" style="margin-bottom:10px">' +
-        '<div class="item-top">' +
-          '<input type="checkbox" class="fitpick" data-fitres="' + esc(a.id) + '"' + (state.fitResumes.has(a.id) ? ' checked' : '') + ' title="Compare in Fit Score" style="margin-top:10px" />' +
-          '<div class="item-main">' +
-            '<div class="row">' +
-              '<div><label class="f">Name</label><input class="f" data-arcname="' + esc(a.id) + '" value="' + esc(a.name) + '" /></div>' +
-              '<div><label class="f">Company / context</label><input class="f" data-arccompany="' + esc(a.id) + '" value="' + esc(a.company || '') + '" /></div>' +
-            '</div>' +
-            '<label class="f">Note to yourself</label>' +
-            '<textarea class="f" data-arcnote="' + esc(a.id) + '" style="min-height:44px" placeholder="Sent 6 Aug, referred by …">' + esc(a.note || '') + '</textarea>' +
-            '<div class="tagline">' + esc([a.targetRole, new Date(a.createdAt).toLocaleString(), 'career master v' + a.masterVersion].filter(Boolean).join(' · ')) + '</div>' +
-          '</div>' +
-          '<div class="item-actions" style="flex-direction:column;gap:5px">' +
-            '<button class="btn" data-view="' + esc(a.id) + '">View</button>' +
-            '<button class="btn" data-copy="' + esc(a.id) + '">Copy text</button>' +
-            '<button class="btn" data-restore="' + esc(a.id) + '">Reopen in builder</button>' +
-            '<button class="btn danger ghost" data-delarc="' + esc(a.id) + '">Delete</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>').join('')) +
-    (list.length ? '<div class="tagline">The resume text itself stays frozen — that is the point of an archive. To change the content, reopen it in the builder and archive a new version.</div>' : '');
-
-  let t = null;
-  const live = (id) => state.archives.items.find((x) => x.id === id);
-  const editArc = (id, field, value) => {
-    const a = live(id);
-    if (!a) return;
-    a[field] = value;
-    clearTimeout(t); t = setTimeout(saveArchives, 700);
-  };
-  document.querySelectorAll('[data-arcname]').forEach((el) => el.addEventListener('input', () => editArc(el.dataset.arcname, 'name', el.value)));
-  document.querySelectorAll('[data-arccompany]').forEach((el) => el.addEventListener('input', () => editArc(el.dataset.arccompany, 'company', el.value)));
-  document.querySelectorAll('[data-arcnote]').forEach((el) => el.addEventListener('input', () => editArc(el.dataset.arcnote, 'note', el.value)));
-
-  document.querySelectorAll('[data-fitres]').forEach((el) => el.addEventListener('change', () => {
-    if (el.checked) state.fitResumes.add(el.dataset.fitres); else state.fitResumes.delete(el.dataset.fitres);
-    updateFitBadges();
-  }));
-
-  document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => {
-    const a = live(el.dataset.view);
-    const w = window.open('', '_blank');
-    w.document.write('<html><head><title>' + esc(a.name) + '</title><style>body{font-family:Georgia,serif;max-width:7.5in;margin:0 auto;padding:.5in;color:#1a1a1a;line-height:1.45}h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#2f5a45;border-bottom:1.5px solid #2f5a45;font-family:Helvetica,sans-serif;margin:14px 0 8px}.e-top{display:flex;justify-content:space-between}.e-org{font-weight:700}.e-meta{font-size:9.5pt;color:#666}.e-role{font-style:italic}ul{margin-left:18px}</style></head><body>' + a.html + '</body></html>');
-    w.document.close();
-  }));
-  document.querySelectorAll('[data-copy]').forEach((el) => el.addEventListener('click', async () => {
-    const a = live(el.dataset.copy);
-    try { await navigator.clipboard.writeText(a.text); toast('Plain text copied'); } catch { toast('Clipboard blocked — use View instead', true); }
-  }));
-  document.querySelectorAll('[data-restore]').forEach((el) => el.addEventListener('click', () => {
-    const a = live(el.dataset.restore);
-    const ids = (a.itemIds || []).filter((id) => itemById(id));
-    if (!ids.length) return toast('This snapshot predates entry tracking, so it cannot be reopened. View and copy it instead.', true);
-    const tpl = { id: uid('tpl'), name: a.name + ' (reopened)', targetRole: a.targetRole || '', summary: '', itemIds: ids, createdAt: new Date().toISOString() };
-    state.templates.items.unshift(tpl); state.tplId = tpl.id;
-    saveTemplates(); renderTplSelect(); show('builder');
-    toast('Reopened as an editable version — the original archive is untouched');
-  }));
-  document.querySelectorAll('[data-delarc]').forEach((el) => el.addEventListener('click', async () => {
-    const a = live(el.dataset.delarc);
-    if (!confirm('Delete "' + (a.name || 'this snapshot') + '"? This is the record of what you actually sent.')) return;
-    state.archives.items = state.archives.items.filter((x) => x.id !== el.dataset.delarc);
-    state.fitResumes.delete(el.dataset.delarc);
-    await saveArchives(); renderArchive(); updateFitBadges();
-  }));
 }
 
-async function saveArchives() {
-  try { adoptVersion(state.archives, await api('archives', 'PUT', state.archives, state.archives.version)); }
-  catch (err) { toast('Could not save the archive: ' + err.message, true); }
-}
-
-/* ── JOBS TAB ──────────────────────────────────────────── */
-function currentJob() {
-  let j = state.jobs.items.find((x) => x.id === state.jobId);
-  if (!j) { j = state.jobs.items[0]; state.jobId = j ? j.id : null; }
-  return j;
-}
-function renderJobSelect() {
-  const sel = $('jobSelect');
-  sel.innerHTML = state.jobs.items.map((j) => '<option value="' + esc(j.id) + '">' + esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '</option>').join('')
-    || '<option value="">No jobs yet</option>';
-  if (state.jobId) sel.value = state.jobId;
-  loadJobForm();
-  renderJobList();
-}
-function loadJobForm() {
-  const j = currentJob();
-  $('jobCompany').value = j ? j.company || '' : '';
-  $('jobRole').value = j ? j.role || '' : '';
-  $('jobUrl').value = j ? j.url || '' : '';
-  $('jobStatus').value = j ? j.status || 'considering' : 'considering';
-  $('jobText').value = j ? j.text || '' : '';
-  $('jobOut').innerHTML = j && j.analysis ? analysisHtml(j.analysis) : '';
-  if (j && j.coverLetter) $('jobOut').innerHTML += coverHtml(j.coverLetter);
-}
-function renderJobList() {
-  const list = state.jobs.items;
-  $('jobList').innerHTML =
-    '<div class="sec-head"><h2>Saved jobs</h2><span class="count">' + list.length + '</span>' +
-    '<span class="tagline" id="jobPickCount"></span></div>' +
-    (!list.length
-      ? '<div class="empty">No jobs yet. Hit New, or use one-click capture.</div>'
-      : list.map((x) =>
-        '<div class="arch"><input type="checkbox" class="fitpick" data-fitjob="' + esc(x.id) + '"' + (state.fitJobs.has(x.id) ? ' checked' : '') + ' title="Compare in Fit Score" />' +
-        '<div class="m"><b>' + esc((x.company || 'Untitled') + ' \u2014 ' + (x.role || '?')) + '</b>' +
-        '<p>' + esc([x.status || 'considering', (x.text || '').trim() ? '' : 'no description pasted', x.analysis ? 'analysed' : ''].filter(Boolean).join(' \u00b7 ')) + '</p></div>' +
-        '<button class="btn" data-openjob="' + esc(x.id) + '">Open</button>' +
-        '<button class="btn danger ghost" data-deljob="' + esc(x.id) + '">Delete</button></div>').join(''));
-
-  document.querySelectorAll('[data-deljob]').forEach((el) => el.addEventListener('click', async () => {
-    const x = state.jobs.items.find((y) => y.id === el.dataset.deljob);
-    if (!confirm('Delete "' + ((x && x.company) || 'this job') + '" and its analysis?')) return;
-    state.jobs.items = state.jobs.items.filter((y) => y.id !== el.dataset.deljob);
-    state.fitJobs.delete(el.dataset.deljob);
-    if (state.jobId === el.dataset.deljob) state.jobId = null;
-    await saveJobs(); renderJobSelect(); updateFitBadges();
-  }));
-
-  document.querySelectorAll('[data-fitjob]').forEach((el) => el.addEventListener('change', () => {
-    if (el.checked) state.fitJobs.add(el.dataset.fitjob); else state.fitJobs.delete(el.dataset.fitjob);
-    updateFitBadges();
-  }));
-  document.querySelectorAll('[data-openjob]').forEach((el) => el.addEventListener('click', () => {
-    state.jobId = el.dataset.openjob; $('jobSelect').value = state.jobId; loadJobForm();
-    window.scrollTo({ top: 260, behavior: 'smooth' });
-  }));
-  updateFitBadges();
-}
-
-// Keeps the tab label honest about how much is ticked, from either tab.
-function updateFitBadges() {
-  const tab = document.querySelector('[data-tab="fit"]');
-  const n = state.fitResumes.size, m = state.fitJobs.size;
-  if (tab) tab.textContent = (n || m) ? 'Fit Score (' + n + '\u00d7' + m + ')' : 'Fit Score';
-  const pc = $('jobPickCount');
-  if (pc) pc.textContent = m ? m + ' ticked for Fit Score' : '';
-  if (state.tab === 'fit') renderFit();
-}
-
-$('jobSelect').addEventListener('change', () => { state.jobId = $('jobSelect').value; loadJobForm(); });
-$('jobNew').addEventListener('click', () => {
-  const j = { id: uid('job'), company:'', role:'', url:'', status:'considering', text:'', createdAt:new Date().toISOString() };
-  state.jobs.items.unshift(j); state.jobId = j.id;
-  saveJobs(); renderJobSelect(); toast('New job');
-});
-$('jobDelete').addEventListener('click', () => {
-  const j = currentJob(); if (!j) return;
-  if (!confirm('Delete this job and its analysis?')) return;
-  state.jobs.items = state.jobs.items.filter((x) => x.id !== j.id);
-  state.jobId = null; saveJobs(); renderJobSelect();
-});
-function collectJob() {
-  let j = currentJob();
-  if (!j) { j = { id: uid('job'), createdAt: new Date().toISOString() }; state.jobs.items.unshift(j); state.jobId = j.id; }
-  j.company = $('jobCompany').value; j.role = $('jobRole').value; j.url = $('jobUrl').value;
-  j.status = $('jobStatus').value; j.text = $('jobText').value;
-  return j;
-}
-$('btnJobSave').addEventListener('click', async () => { collectJob(); await saveJobs(); renderJobSelect(); toast('Job saved'); });
-async function saveJobs() {
-  try { adoptVersion(state.jobs, await api('jobs', 'PUT', state.jobs, state.jobs.version)); }
-  catch (err) { toast('Job save failed: ' + err.message, true); }
-}
-
-$('btnAnalyze').addEventListener('click', async () => {
-  const j = collectJob();
-  if (!j.text.trim()) return toast('Paste the job description first.', true);
-  $('jobOut').innerHTML = '<div class="card"><span class="spin"></span> Reading the posting against your career master…</div>';
-  try {
-    const r = await ai({ action:'analyze', master: state.master, posting: j.text });
-    j.analysis = r.result;
-    if (!j.company && r.result.company) { j.company = r.result.company; $('jobCompany').value = r.result.company; }
-    if (!j.role && r.result.roleTitle) { j.role = r.result.roleTitle; $('jobRole').value = r.result.roleTitle; }
-    await saveJobs(); renderJobSelect();
-    $('jobOut').innerHTML = analysisHtml(r.result);
-    wireAnalysis(r.result);
-  } catch (err) {
-    $('jobOut').innerHTML = '<div class="banner err"><b>' + (err.code === 'NO_KEY' ? 'API key not set' : 'Analysis failed') + '</b>' + esc(err.message) + '</div>';
-  }
-});
-function analysisHtml(a) {
-  return '<div class="card"><div class="sec-head"><h2>Fit</h2></div>' +
-    '<div class="score"><span class="n">' + (a.matchScore != null ? a.matchScore : '–') + '</span><div class="bar"><i style="width:' + (a.matchScore || 0) + '%"></i></div></div>' +
-    '<p style="font-size:14px;color:var(--muted)">' + esc(a.matchRationale || '') + '</p>' +
-    (a.keywords && a.keywords.length ? '<div class="chips">' + a.keywords.map((k) => '<span class="chip">' + esc(k) + '</span>').join('') + '</div>' : '') +
-    '<div class="group-label"><span>Gaps</span><span class="line"></span></div>' +
-    ((a.gaps || []).length ? a.gaps.map((g) =>
-      '<div class="gap' + (g.evidence === 'partial' ? ' partial' : '') + '"><b>' + esc(g.requirement) + '</b><p>' + esc(g.note || '') + '</p></div>').join('')
-      : '<div class="empty">No gaps flagged.</div>') +
-    (a.summaryRewrite ? '<div class="group-label"><span>Tailored summary</span><span class="line"></span></div><p style="font-size:13.5px;color:var(--muted)">' + esc(a.summaryRewrite) + '</p>' : '') +
-    '<div style="margin-top:14px"><button class="btn primary" id="btnFromJob">Build a resume from this</button></div></div>';
-}
-function wireAnalysis(a) {
-  const b = $('btnFromJob'); if (!b) return;
-  b.onclick = () => {
-    const j = currentJob();
-    const t = {
-      id: uid('tpl'),
-      name: [j.company, j.role].filter(Boolean).join(' — ') || 'From posting',
-      targetRole: a.roleTitle || j.role || '',
-      summary: a.summaryRewrite || '',
-      itemIds: (a.recommendedItemIds || []).filter((id) => itemById(id)),
-      createdAt: new Date().toISOString(), fromJobId: j.id,
-    };
-    if (!t.itemIds.length) t.itemIds = state.master.sections.flatMap((s) => s.items.map((i) => i.id));
-    state.templates.items.unshift(t); state.tplId = t.id;
-    saveTemplates(); renderTplSelect(); show('builder');
-    toast('Template created from this posting — review before saving to archive');
-  };
-}
-$('btnCover').addEventListener('click', async () => {
-  const j = collectJob();
-  if (!j.text.trim()) return toast('Paste the job description first.', true);
-  const out = document.createElement('div');
-  out.innerHTML = '<div class="card"><span class="spin"></span> Drafting…</div>';
-  $('jobOut').appendChild(out);
-  try {
-    const r = await ai({ action:'cover', master: state.master, posting: j.text });
-    j.coverLetter = r.result; await saveJobs();
-    out.outerHTML = coverHtml(r.result);
-  } catch (err) {
-    out.outerHTML = '<div class="banner err"><b>Cover letter failed</b>' + esc(err.message) + '</div>';
-  }
-});
 /* ── ONE-CLICK CAPTURE ─────────────────────────────────
    The bookmarklet runs on the job page you are already looking at, reads the
    text your browser has already rendered, and hands it over in the URL
@@ -1366,23 +1262,26 @@ async function acceptCapture(d) {
   const guess = splitTitle(d.title);
   const j = {
     id: uid('job'), company: guess.company, role: guess.role,
-    url: d.url || '', status: 'considering', text: (d.text || '').trim(),
+    url: d.url || '', status: 'draft', text: (d.text || '').trim(),
+    deadline: '', appliedOn: '',
     createdAt: new Date().toISOString(), capturedFrom: d.url || '',
+    resume: { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null },
+    coverLetter: { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null },
   };
-  state.jobs.items.unshift(j); state.jobId = j.id;
-  await saveJobs(); renderJobSelect(); show('jobs');
-  toast('Captured — check the company and role, then hit Analyse fit');
+  state.jobs.items.unshift(j); state.jdId = j.id;
+  await saveJobs(); show('archive');
+  toast('Captured — check the company and role, then Generate resume + letter');
 }
 
 const BOOKMARKLET = "javascript:(function(){var d={title:document.title,url:location.href,text:((document.querySelector('main')||document.body).innerText||'').replace(/\\n{3,}/g,'\\n\\n').slice(0,24000)};var b=btoa(unescape(encodeURIComponent(JSON.stringify(d))));window.open('" + location.origin + "/career#capture='+encodeURIComponent(b),'_blank');})();";
 
-$('jobGrabber').addEventListener('click', () => {
+function showGrabber() {
   const card = $('grabberCard');
   if (card.style.display === 'block') { card.style.display = 'none'; return; }
   card.style.display = 'block';
   card.innerHTML =
     '<div class="sec-head"><h2>One-click capture</h2></div>' +
-    '<p style="font-size:14px;color:var(--muted);margin-bottom:12px">Drag this button to your bookmarks bar. Then on any job posting — LinkedIn, Indeed, a company careers page — click it and the description lands here as a new job.</p>' +
+    '<p style="font-size:14px;color:var(--muted);margin-bottom:12px">Drag this button to your bookmarks bar. Then on any job posting — LinkedIn, Indeed, a company careers page — click it and the description lands here as a new application.</p>' +
     '<p><a class="btn primary" style="text-decoration:none" id="bmLink">Grab this job</a>' +
     ' <button class="btn" id="bmCopy">Copy the code instead</button></p>' +
     '<div class="banner info" style="margin-top:12px"><b>How it works</b>It reads the page your browser has already loaded and passes the text in the URL fragment — which never reaches any server. Nothing is scraped, and it works on sites that block automated fetching.</div>' +
@@ -1394,120 +1293,104 @@ $('jobGrabber').addEventListener('click', () => {
     try { await navigator.clipboard.writeText(BOOKMARKLET); toast('Bookmarklet code copied — paste it as a new bookmark’s URL'); }
     catch { toast('Clipboard blocked — drag the button instead', true); }
   });
-});
-
-function coverHtml(c) {
-  const body = (c.body || []).map((p) => '<p style="margin-bottom:11px">' + esc(p) + '</p>').join('');
-  return '<div class="card"><div class="sec-head"><h2>Cover letter draft</h2>' +
-    '<button class="btn" onclick="navigator.clipboard.writeText(this.closest(\'.card\').querySelector(\'.cl\').innerText);">Copy</button></div>' +
-    ((c.flags || []).length ? '<div class="banner warn"><b>Claude could not support these from your career data</b>' + c.flags.map(esc).join(' · ') + '</div>' : '') +
-    '<div class="cl" style="font-size:14px;color:var(--muted)"><p style="margin-bottom:11px">' + esc(c.greeting || '') + '</p>' + body +
-    '<p>' + esc(c.closing || '') + '</p></div></div>';
 }
 
-/* ── FIT SCORE TAB ─────────────────────────────────────
-   Compares ticked resumes against ticked postings. Separating "omitted" from
-   "missing" is the point: one is a one-click fix, the other is a reason to
-   reconsider applying. */
-const MAX_PAIRINGS = 12;
-
-function pickedResumes() { return state.archives.items.filter((a) => state.fitResumes.has(a.id)); }
-function pickedJobs() { return state.jobs.items.filter((j) => state.fitJobs.has(j.id) && (j.text || '').trim()); }
-
+/* ── FIT SCORE ─────────────────────────────────────────
+   One application at a time. Every requirement in the posting scored twice —
+   against the resume and against the cover letter — each with a fix you apply
+   to that application, never silently to your masters. */
 function renderFit() {
-  const rs = pickedResumes(), js = pickedJobs();
-  const skipped = state.jobs.items.filter((j) => state.fitJobs.has(j.id) && !(j.text || '').trim());
-  const pairs = rs.length * js.length;
-
+  const list = jdList().filter((j) => (j.text || '').trim());
   $('fitPicked').innerHTML =
-    '<div class="sec-head"><h2>Selected</h2><span class="count">' + pairs + ' pairing' + (pairs === 1 ? '' : 's') + '</span></div>' +
-    '<div class="split" style="gap:10px">' +
-      '<div><div class="group-label"><span>Resumes — ticked in Archive</span><span class="line"></span></div>' +
-        (rs.length ? rs.map((a) => '<div class="pick"><span><span class="t">' + esc(a.name) + '</span><br><span class="s">' + esc(new Date(a.createdAt).toLocaleDateString()) + ' · master v' + a.masterVersion + '</span></span></div>').join('')
-                   : '<div class="empty">None ticked. Go to Archive and tick the versions you want to compare.</div>') + '</div>' +
-      '<div><div class="group-label"><span>Postings — ticked in Jobs</span><span class="line"></span></div>' +
-        (js.length ? js.map((j) => '<div class="pick"><span><span class="t">' + esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '</span><br><span class="s">' + esc(j.status || 'considering') + '</span></span></div>').join('')
-                   : '<div class="empty">None ticked. Go to Jobs and tick the postings you want to compare.</div>') + '</div>' +
-    '</div>' +
-    (skipped.length ? '<div class="banner warn"><b>Skipped</b>' + skipped.map((j) => esc(j.company || 'Untitled')).join(', ') + ' — ticked, but no job description pasted in.</div>' : '') +
-    (pairs > MAX_PAIRINGS ? '<div class="banner warn"><b>Too many at once</b>' + pairs + ' pairings selected; only the first ' + MAX_PAIRINGS + ' will be scored. Untick some to control what gets used.</div>' : '') +
-    '<div style="margin-top:12px"><button class="btn primary" id="btnScore"' + (pairs ? '' : ' disabled') + '>Score ' + (pairs || '') + ' pairing' + (pairs === 1 ? '' : 's') + '</button></div>';
+    '<div class="sec-head"><h2>Application</h2></div>' +
+    (!list.length
+      ? '<div class="empty">No applications with a job description yet. Add one in Archive.</div>'
+      : '<select class="f" id="fitJd" style="max-width:420px">' +
+        list.map((j) => '<option value="' + esc(j.id) + '"' + (j.id === state.jdId ? ' selected' : '') + '>' +
+          esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '</option>').join('') + '</select>' +
+        '<div style="margin-top:12px"><button class="btn primary" id="btnScore">Score against resume and letter</button></div>');
 
+  const selEl = $('fitJd');
+  if (selEl) selEl.addEventListener('change', () => { state.jdId = selEl.value; });
   const b = $('btnScore');
-  if (b) b.addEventListener('click', runScoring);
+  if (b) b.addEventListener('click', runSectionScoring);
 }
 
-async function runScoring() {
-  const rs = pickedResumes(), js = pickedJobs();
-  const pairs = [];
-  rs.forEach((a) => js.forEach((j) => pairs.push({ a, j })));
-  const run = pairs.slice(0, MAX_PAIRINGS);
+async function runSectionScoring() {
+  const j = state.jobs.items.find((x) => x.id === ($('fitJd') ? $('fitJd').value : state.jdId));
+  if (!j) return;
+  state.jdId = j.id;
+  const resumeText = j.resume.frozenText || resumePlainText({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role });
+  const coverText = coverLetterText(j.coverLetter);
 
   $('btnScore').disabled = true;
-  $('fitOut').innerHTML = '<div class="card"><span class="spin"></span> Scoring ' + run.length + ' pairing' + (run.length === 1 ? '' : 's') + '… this takes a few seconds each.</div>';
-
-  const results = [];
-  for (const p of run) {
-    try {
-      const r = await ai({ action: 'score', master: state.master, resumeText: p.a.text, templateName: p.a.name, posting: p.j.text });
-      results.push({ ...p, result: r.result });
-    } catch (err) {
-      results.push({ ...p, error: err.message, code: err.code });
-      if (err.code === 'NO_KEY') break; // no point hammering a missing key
-    }
-  }
-  renderFitMatrix(rs, js, results);
-
-  // Keep a record of every run, so you can see whether a rewrite actually moved
-  // the number rather than trusting your memory of last week's score.
-  const stamp = new Date().toISOString();
-  results.filter((r) => r.result).forEach((r) => {
+  $('fitOut').innerHTML = '<div class="card"><span class="spin"></span> Scoring every requirement against both documents…</div>';
+  try {
+    const r = await ai({ action: 'scoresections', posting: j.text, resumeText, coverText, master: state.master });
+    j.lastScore = { at: new Date().toISOString(), result: r.result };
     state.fits.items.unshift({
-      id: uid('fit'), at: stamp,
-      resumeId: r.a.id, resumeName: r.a.name,
-      jobId: r.j.id, jobLabel: (r.j.company || 'Untitled') + ' — ' + (r.j.role || '?'),
-      score: r.result.score, verdict: r.result.verdict, result: r.result,
+      id: uid('fit'), at: j.lastScore.at, jobId: j.id,
+      jobLabel: (j.company || 'Untitled') + ' — ' + (j.role || '?'),
+      score: r.result.overallResume, coverScore: r.result.overallCover,
+      verdict: r.result.verdict, result: r.result,
     });
-  });
-  if (results.some((r) => r.result)) { await saveFits(); renderFitHistory(); }
-  $('btnScore').disabled = false;
+    await saveJobs(); await saveFits();
+    renderSectionScores(r.result, j);
+    renderFitHistory();
+  } catch (err) {
+    $('fitOut').innerHTML = '<div class="banner err"><b>' + (err.code === 'NO_KEY' ? 'API key not set' : 'Scoring failed') + '</b>' + esc(err.message) + '</div>';
+  } finally { if ($('btnScore')) $('btnScore').disabled = false; }
 }
 
-function renderFitMatrix(rs, js, results) {
-  const find = (aid, jid) => results.find((r) => r.a.id === aid && r.j.id === jid);
-  const noKey = results.find((r) => r.code === 'NO_KEY');
-  if (noKey) {
-    $('fitOut').innerHTML = '<div class="banner err"><b>API key not set</b>' + esc(noKey.error) + '</div>';
-    return;
-  }
+const toneOf = (n) => (n >= 80 ? 'good' : n >= 60 ? 'ok' : n >= 40 ? 'thin' : 'weak');
 
-  let html = '<div class="card"><div class="sec-head"><h2>Scores</h2></div>' +
-    '<table class="matrix"><tr><td></td>' + js.map((j) => '<th>' + esc(j.company || 'Untitled') + '<br><span class="s">' + esc(j.role || '') + '</span></th>').join('') + '</tr>';
-  rs.forEach((a) => {
-    html += '<tr><th class="rowh">' + esc(a.name) + '</th>';
-    js.forEach((j) => {
-      const r = find(a.id, j.id);
-      if (!r) html += '<td class="cell">—</td>';
-      else if (r.error) html += '<td class="cell err">!</td>';
-      else {
-        const n = r.result.score != null ? r.result.score : 0;
-        const tone = n >= 80 ? 'good' : n >= 60 ? 'ok' : n >= 40 ? 'thin' : 'weak';
-        html += '<td class="cell ' + tone + '"><button class="cellbtn" data-pair="' + esc(a.id) + '|' + esc(j.id) + '">' + n + '</button></td>';
-      }
-    });
-    html += '</tr>';
-  });
-  html += '</table><p class="tagline">Click any score for the detail.</p></div>';
-  $('fitOut').innerHTML = html;
+function renderSectionScores(a, j) {
+  const rows = (a.sections || []).map((sec, i) =>
+    '<div class="secrow">' +
+      '<div class="secreq"><b>' + esc(sec.requirement) + '</b><p>' + esc(sec.detail || '') + '</p></div>' +
+      '<div class="seccol">' +
+        '<div class="pill2 ' + toneOf(sec.resumeScore) + '">' + (sec.resumeScore != null ? sec.resumeScore : '–') + '</div>' +
+        (sec.resumeEvidence ? '<p class="ev">' + esc(sec.resumeEvidence) + '</p>' : '<p class="ev none">no evidence in the resume</p>') +
+        (sec.resumeFix ? '<div class="fix"><p>' + esc(sec.resumeFix) + '</p><button class="btn ghost" data-fixr="' + i + '">Copy fix</button></div>' : '') +
+      '</div>' +
+      '<div class="seccol">' +
+        '<div class="pill2 ' + toneOf(sec.coverScore) + '">' + (sec.coverScore != null ? sec.coverScore : '–') + '</div>' +
+        (sec.coverEvidence ? '<p class="ev">' + esc(sec.coverEvidence) + '</p>' : '<p class="ev none">not addressed in the letter</p>') +
+        (sec.coverFix ? '<div class="fix"><p>' + esc(sec.coverFix) + '</p><button class="btn ghost" data-fixc="' + i + '">Add to letter</button></div>' : '') +
+      '</div>' +
+    '</div>').join('');
 
-  document.querySelectorAll('[data-pair]').forEach((el) => el.addEventListener('click', () => {
-    const [aid, jid] = el.dataset.pair.split('|');
-    const r = find(aid, jid);
-    if (r && r.result) renderFitDetail(r.result, r.a, r.j);
+  $('fitOut').innerHTML =
+    '<div class="card">' +
+      '<div class="sec-head"><h2>' + esc(j.company || 'Untitled') + ' — ' + esc(j.role || '') + '</h2></div>' +
+      '<div class="split" style="gap:12px">' +
+        '<div class="score"><span class="n">' + (a.overallResume != null ? a.overallResume : '–') + '</span>' +
+          '<div class="bar"><i style="width:' + (a.overallResume || 0) + '%"></i></div><span class="chip">resume</span></div>' +
+        '<div class="score"><span class="n">' + (a.overallCover != null ? a.overallCover : '–') + '</span>' +
+          '<div class="bar"><i style="width:' + (a.overallCover || 0) + '%"></i></div><span class="chip">letter</span></div>' +
+      '</div>' +
+      '<p style="font-size:14px;color:var(--muted);margin-bottom:12px">' + esc(a.verdict || '') + '</p>' +
+      '<div class="secrow head"><div class="secreq">Requirement</div><div class="seccol">Resume</div><div class="seccol">Cover letter</div></div>' +
+      (rows || '<div class="empty">No requirements identified in that posting.</div>') +
+    '</div>';
+
+  // A resume fix has no single unambiguous target — it might be a bullet, an
+  // omitted entry, or nothing you can honestly claim. Hand you the text rather
+  // than guess and edit the wrong thing.
+  document.querySelectorAll('[data-fixr]').forEach((b) => b.addEventListener('click', async () => {
+    const sec = a.sections[+b.dataset.fixr];
+    try { await navigator.clipboard.writeText(sec.resumeFix); toast('Copied — apply it in Resume or in this application\'s entry list.'); }
+    catch { toast(sec.resumeFix); }
   }));
-
-  const best = results.filter((r) => r.result).sort((x, y) => (y.result.score || 0) - (x.result.score || 0))[0];
-  if (best) renderFitDetail(best.result, best.a, best.j);
+  document.querySelectorAll('[data-fixc]').forEach((b) => b.addEventListener('click', () => {
+    const sec = a.sections[+b.dataset.fixc];
+    const jj = state.jobs.items.find((x) => x.id === state.jdId);
+    if (!jj) return;
+    const merged = coverLetterText(jj.coverLetter) + '\n\n' + sec.coverFix;
+    jj.coverLetter.paragraphs = [{ id: uid('p'), kind: 'opening', title: 'Letter', text: merged }];
+    queueSaveJobs(); show('archive');
+    toast('Added to the letter as a draft paragraph — edit it into your own words.');
+  }));
 }
 
 async function saveFits() {
@@ -1519,88 +1402,30 @@ function renderFitHistory() {
   const el = $('fitHistory');
   if (!el) return;
   const list = state.fits.items;
-  el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span>' +
-    (list.length ? '<button class="btn ghost danger" id="clearFits">Clear</button>' : '') + '</div>' +
+  el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span></div>' +
     (!list.length
-      ? '<div class="empty">No scores yet. Every run gets recorded here so you can watch a rewrite move the number.</div>'
+      ? '<div class="empty">No scores yet. Every run is recorded here so you can see whether a rewrite moved the number.</div>'
       : list.slice(0, 40).map((f) =>
-        '<div class="arch"><span class="chip" style="font-size:15px;font-weight:700;min-width:44px;text-align:center">' + (f.score != null ? f.score : '–') + '</span>' +
-        '<div class="m"><b>' + esc(f.resumeName) + ' → ' + esc(f.jobLabel) + '</b>' +
-        '<p>' + esc(new Date(f.at).toLocaleString()) + '</p></div>' +
+        '<div class="arch"><span class="chip">' + (f.score != null ? f.score : '–') + ' / ' + (f.coverScore != null ? f.coverScore : '–') + '</span>' +
+        '<div class="m"><b>' + esc(f.jobLabel || '') + '</b><p>' + esc(new Date(f.at).toLocaleString()) + '</p></div>' +
         '<button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
         '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>').join(''));
 
+  document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
+    const f = state.fits.items.find((x) => x.id === b.dataset.fitview);
+    const j = state.jobs.items.find((x) => x.id === f.jobId) || { company: f.jobLabel, role: '' };
+    renderSectionScores(f.result, j);
+  }));
   document.querySelectorAll('[data-delfit]').forEach((b) => b.addEventListener('click', async () => {
     state.fits.items = state.fits.items.filter((x) => x.id !== b.dataset.delfit);
     await saveFits(); renderFitHistory();
   }));
-
-  document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
-    const f = state.fits.items.find((x) => x.id === b.dataset.fitview);
-    const arc = state.archives.items.find((a) => a.id === f.resumeId) || { name: f.resumeName, templateId: null };
-    const job = state.jobs.items.find((j) => j.id === f.jobId) || { company: f.jobLabel };
-    renderFitDetail(f.result, arc, job);
-    $('fitDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-  const c = $('clearFits');
-  if (c) c.addEventListener('click', async () => {
-    if (!confirm('Delete the whole score history? The archived resumes and jobs are not affected.')) return;
-    state.fits.items = []; await saveFits(); renderFitHistory();
-  });
-}
-
-function renderFitDetail(a, arc, job) {
-  const label = (n) => (n >= 80 ? 'Strong' : n >= 60 ? 'Reasonable' : n >= 40 ? 'Thin' : 'Weak');
-  const omitted = (a.omitted || []).filter((o) => itemById(o.itemId));
-  const nameOf = (id) => { const f = itemById(id); return f ? (f.item.org || f.item.role) : id; };
-  const tpl = state.templates.items.find((t) => t.id === arc.templateId);
-
-  $('fitDetail').innerHTML =
-    '<div class="card">' +
-      '<div class="sec-head"><h2>' + esc(arc.name) + ' → ' + esc(job.company || 'posting') + '</h2></div>' +
-      '<div class="score"><span class="n">' + (a.score != null ? a.score : '–') + '</span>' +
-        '<div class="bar"><i style="width:' + (a.score || 0) + '%"></i></div>' +
-        '<span class="chip">' + label(a.score || 0) + '</span></div>' +
-      '<p style="font-size:14px;color:var(--muted)">' + esc(a.verdict || '') + '</p>' +
-
-      '<div class="group-label done"><span>Covered by this resume</span><span class="line"></span><span>' + (a.covered || []).length + '</span></div>' +
-      ((a.covered || []).length
-        ? a.covered.map((c) => '<div class="gap" style="border-left-color:var(--accent-2)"><b>' + esc(c.requirement) + '</b><p>' + esc(c.evidence || '') + '</p></div>').join('')
-        : '<div class="empty">Nothing matched.</div>') +
-
-      '<div class="group-label wip"><span>You have it — this version left it out</span><span class="line"></span><span>' + omitted.length + '</span></div>' +
-      (omitted.length
-        ? omitted.map((o) => '<div class="gap partial"><b>' + esc(o.requirement) + '</b><p>' + esc(nameOf(o.itemId)) + ' — ' + esc(o.why || '') + '</p></div>').join('') +
-          (tpl ? '<button class="btn primary" id="btnAddOmitted">Add these ' + omitted.length + ' to “' + esc(tpl.name || 'Untitled') + '”</button>'
-               : '<div class="tagline">The template this was built from no longer exists, so there is nothing to add them to. Add them by hand in the Builder.</div>')
-        : '<div class="empty">Nothing relevant was left out.</div>') +
-
-      '<div class="group-label"><span>Not in your career data at all</span><span class="line"></span><span>' + (a.missing || []).length + '</span></div>' +
-      ((a.missing || []).length
-        ? a.missing.map((m) => '<div class="gap"><b>' + esc(m.requirement) + '</b><p>' + esc(m.note || '') + '</p></div>').join('')
-        : '<div class="empty">Nothing the posting asks for is absent from your record.</div>') +
-
-      ((a.keywordsAbsent || []).length
-        ? '<div class="group-label"><span>Wording this resume never uses</span><span class="line"></span></div><div class="chips">' +
-          a.keywordsAbsent.map((k) => '<span class="chip">' + esc(k) + '</span>').join('') + '</div>'
-        : '') +
-    '</div>';
-
-  const add = $('btnAddOmitted');
-  if (add) add.addEventListener('click', () => {
-    tpl.itemIds = tpl.itemIds || [];
-    let n = 0;
-    omitted.forEach((o) => { if (!tpl.itemIds.includes(o.itemId)) { tpl.itemIds.push(o.itemId); n++; } });
-    saveTemplates();
-    toast(n + ' added to “' + (tpl.name || 'Untitled') + '”. Rebuild and re-archive, then score again.');
-    add.disabled = true; add.textContent = 'Added — rebuild and re-archive to compare';
-  });
 }
 
 /* ── USER GUIDE PANE ───────────────────────────────────
    Opens on whichever section matches the tab you are looking at, so the
    answer you need is the first thing on screen. */
-const TAB_TO_GUIDE = { career: 'g-career', builder: 'g-builder', archive: 'g-archive', jobs: 'g-jobs', fit: 'g-fit' };
+const TAB_TO_GUIDE = { career: 'g-career', cover: 'g-cover', archive: 'g-archive', fit: 'g-fit' };
 
 function openGuide(sectionId) {
   const g = $('guide'), s = $('scrim');

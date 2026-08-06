@@ -172,6 +172,7 @@
      its own column rather than being run together in one line of prose. */
   .planrow > div{overflow:visible;display:flex;align-items:center;gap:6px}
   .planrow .f{width:100%;padding:5px 8px;font-size:13px;min-width:0}
+  .planrow input[readonly]{cursor:pointer;text-overflow:ellipsis}
   .planrow.head > div[data-plansort]{cursor:pointer;user-select:none}
   .planrow.head > div[data-plansort]:hover{color:var(--text)}
   @media(max-width:900px){.planrow{grid-template-columns:1fr !important}}
@@ -563,7 +564,7 @@
     <h3 id="g-other">Other</h3>
     <p>Four plans &mdash; <strong>Education</strong>, <strong>Experience</strong>, <strong>Events</strong> and <strong>Project</strong>. They are what you intend to do, kept deliberately apart from the career master, which is the record of what you have done.</p>
     <p><strong>Nothing here can reach a resume.</strong> No agent reads these, and no version is built from them. When something on a plan actually happens, you add it to your master by hand &mdash; and that is the moment it becomes a fact rather than an intention.</p>
-    <p>Each is a flat list with the same seven columns: <strong>Type</strong>, <strong>Company</strong>, <strong>Item</strong>, <strong>Enrolled</strong>, <strong>Duration</strong>, <strong>Link</strong> and <strong>Priority</strong>. <strong>+ add</strong> puts a row on the list and the bin removes one &mdash; it asks first if you have typed a name into it. A link you fill in gets an <em>open</em> beside it.</p>
+    <p>Each is a flat list with the same eight columns: <strong>Type</strong>, <strong>Company</strong>, <strong>Item</strong>, <strong>Enrolled</strong>, <strong>Duration</strong>, <strong>Link</strong>, <strong>Notes</strong> and <strong>Priority</strong>. <strong>Notes</strong> shows a one-line preview &mdash; click it and the same full, scrollable box the postings table uses opens. <strong>+ add</strong> puts a row on the list and the bin removes one &mdash; it asks first if you have typed a name into it. A link you fill in gets an <em>open</em> beside it.</p>
     <p>Click any column heading to sort by it, again to reverse it. <strong>Sorting only changes what you see</strong>: the stored order stays the order you added things in, so a sort never quietly rewrites your list. Blanks sort last either way, and Priority sorts high, medium, low rather than alphabetically.</p>
     <p>The count on each heading is how many rows it holds, and how many of those are high priority. All four start collapsed, like everything else.</p>
     </div>
@@ -1096,35 +1097,43 @@ function removePickedApps(rows) {
 /* Notes hold the story of an application — emails, interviews, follow-ups —
    and a one-line cell cannot. This is the real editor: big, scrollable, saves
    as you type. */
-function openNotesEditor(id) {
-  const j = state.jobs.items.find((x) => x.id === id);
-  if (!j) return;
+/* The full-size note editor, shared. Anything with a one-line preview in a row
+   can open the same box: it says what it belongs to, saves as you type, and
+   refreshes the previews on the way out — when nothing has focus to lose. */
+function openNotesPopup({ title, placeholder, value, onInput, onClose }) {
   const old = document.querySelector('.notespop');
   if (old) old.remove();
   const wrap = document.createElement('div');
   wrap.className = 'notespop';
   wrap.innerHTML =
     '<div class="card npbox">' +
-      '<div class="sec-head"><h2>Notes &mdash; ' + esc(j.company || 'no company') + (j.role ? ' &middot; ' + esc(j.role) : '') + '</h2>' +
+      '<div class="sec-head"><h2>' + title + '</h2>' +
         '<button class="btn" id="notesDone">Done</button></div>' +
-      '<textarea class="f" id="notesText" placeholder="Emails, interviews, follow-ups… as much as you need."></textarea>' +
+      '<textarea class="f" id="notesText" placeholder="' + esc(placeholder || '') + '"></textarea>' +
       '<p class="tagline" style="margin-top:6px">Saves as you type. Done, Esc, or clicking outside closes.</p>' +
     '</div>';
   document.body.appendChild(wrap);
   const ta = wrap.querySelector('#notesText');
-  ta.value = j.notes || '';
-  const close = () => {
-    wrap.remove();
-    // Refresh the previews this note appears in — safe now, nothing has focus.
-    renderDocLists();
-    renderJdListOnly();
-  };
-  ta.addEventListener('input', () => { j.notes = ta.value; queueSaveJobs(); });
+  ta.value = value || '';
+  const close = () => { wrap.remove(); if (onClose) onClose(); };
+  ta.addEventListener('input', () => onInput(ta.value));
   ta.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) close(); });
   wrap.querySelector('#notesDone').addEventListener('click', close);
   ta.focus();
   ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function openNotesEditor(id) {
+  const j = state.jobs.items.find((x) => x.id === id);
+  if (!j) return;
+  openNotesPopup({
+    title: 'Notes &mdash; ' + esc(j.company || 'no company') + (j.role ? ' &middot; ' + esc(j.role) : ''),
+    placeholder: 'Emails, interviews, follow-ups… as much as you need.',
+    value: j.notes,
+    onInput: (v) => { j.notes = v; queueSaveJobs(); },
+    onClose: () => { renderDocLists(); renderJdListOnly(); },
+  });
 }
 
 function renderDocLists() {
@@ -3523,13 +3532,14 @@ const PLANS = [
    the same whatever you are planning: what is it, what kind, have you started,
    how long does it take, where is it, and how much do you care. */
 const PLAN_COLS = [
-  { key: 'type', label: 'Type', kind: 'text', ph: 'course, cert, talk…', w: 'minmax(0,0.85fr)' },
-  { key: 'company', label: 'Company', kind: 'text', ph: 'who runs it', w: 'minmax(0,1fr)' },
-  { key: 'title', label: 'Item', kind: 'text', ph: 'what it is', w: 'minmax(0,1.3fr)' },
-  { key: 'enrolled', label: 'Enrolled', kind: 'date', ph: '', w: '128px' },
-  { key: 'duration', label: 'Duration', kind: 'text', ph: '12 weeks', w: '100px' },
-  { key: 'link', label: 'Link', kind: 'url', ph: 'https://', w: 'minmax(0,1fr)' },
-  { key: 'priority', label: 'Priority', kind: 'select', opts: ['high', 'medium', 'low'], w: '104px' },
+  { key: 'type', label: 'Type', kind: 'text', ph: 'course, cert, talk…', w: 'minmax(0,0.8fr)' },
+  { key: 'company', label: 'Company', kind: 'text', ph: 'who runs it', w: 'minmax(0,0.9fr)' },
+  { key: 'title', label: 'Item', kind: 'text', ph: 'what it is', w: 'minmax(0,1.1fr)' },
+  { key: 'enrolled', label: 'Enrolled', kind: 'date', ph: '', w: '124px' },
+  { key: 'duration', label: 'Duration', kind: 'text', ph: '12 weeks', w: '94px' },
+  { key: 'link', label: 'Link', kind: 'url', ph: 'https://', w: 'minmax(0,0.85fr)' },
+  { key: 'notes', label: 'Notes', kind: 'notes', ph: 'why, or what it takes…', w: 'minmax(0,1.1fr)' },
+  { key: 'priority', label: 'Priority', kind: 'select', opts: ['high', 'medium', 'low'], w: '102px' },
 ];
 const PLAN_GRID = PLAN_COLS.map((c) => c.w).join(' ') + ' 46px';
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
@@ -3556,6 +3566,13 @@ function planOrder(items, sort) {
 
 function planCell(pl, i, col, it) {
   const at = 'data-planf="' + pl.key + '|' + i + '|' + col.key + '"';
+  // A note outgrows a cell. The cell is a one-line preview; clicking it opens
+  // the same full box the postings table uses.
+  if (col.kind === 'notes') {
+    const flat = (it.notes || '').replace(/\s*\n+\s*/g, ' · ');
+    return '<input class="f" type="text" readonly data-plannotes="' + pl.key + '|' + i + '"' +
+      ' title="Click to open the full note" placeholder="' + esc(col.ph) + '" value="' + esc(flat) + '" />';
+  }
   if (col.kind === 'select') {
     return '<select class="f" ' + at + '>' +
       col.opts.map((o) => '<option value="' + o + '"' + (it[col.key] === o ? ' selected' : '') + '>' + o + '</option>').join('') +
@@ -3602,7 +3619,7 @@ function renderPlan(pl) {
     planOpen[pl.key] = !planOpen[pl.key]; renderPlan(pl);
   });
   el.querySelector('[data-planadd]').addEventListener('click', () => {
-    items.push({ id: uid('pl'), type: '', company: '', title: '', enrolled: '', duration: '', link: '', priority: 'medium' });
+    items.push({ id: uid('pl'), type: '', company: '', title: '', enrolled: '', duration: '', link: '', notes: '', priority: 'medium' });
     planOpen[pl.key] = true; queueSavePlans(); renderPlan(pl);
   });
   el.querySelectorAll('[data-plansort]').forEach((h) => h.addEventListener('click', () => {
@@ -3614,6 +3631,18 @@ function renderPlan(pl) {
   el.querySelectorAll('[data-planf]').forEach((f) => f.addEventListener('input', () => {
     const [, i, field] = f.dataset.planf.split('|');
     if (items[+i]) { items[+i][field] = f.value; queueSavePlans(); }
+  }));
+  el.querySelectorAll('[data-plannotes]').forEach((f) => f.addEventListener('click', () => {
+    const i = +f.dataset.plannotes.split('|')[1];
+    const it = items[i];
+    if (!it) return;
+    openNotesPopup({
+      title: esc(pl.title) + ' &mdash; ' + esc(it.title || it.type || 'untitled'),
+      placeholder: 'Why it matters, what it takes, what you decided… as much as you need.',
+      value: it.notes,
+      onInput: (v) => { it.notes = v; queueSavePlans(); },
+      onClose: () => renderPlan(pl),
+    });
   }));
   el.querySelectorAll('[data-plandel]').forEach((b) => b.addEventListener('click', () => {
     const i = +b.dataset.plandel.split('|')[1];

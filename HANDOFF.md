@@ -36,7 +36,7 @@ every requirement scored twice; the agent's questions; a proposed next version
 you edit and approve; versions; score history.
 
 **Other** — four plans: Education, Experience, Events and Project. Each is a flat
-sortable list — Type, Company, Item, Enrolled, Duration, Link, Priority — of what you
+sortable list — Type, Company, Item, Enrolled, Duration, Link, Notes, Priority — of what you
 intend to do, kept apart from the career master, which is the record of what you
 have done. Sorting is display-only; the stored order is the order you added
 things. Stored in `career/plans.json`. **No agent reads them and no version is

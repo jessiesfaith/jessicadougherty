@@ -22,7 +22,9 @@
   body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;min-height:100vh}
   a{color:var(--accent);text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  /* Three columns of document beside each other, and nine columns of postings
+     table, need more room than a reading column. */
+  .wrap{max-width:1400px;margin:0 auto;padding:0 20px}
   h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:-.02em}
 
   nav{position:sticky;top:0;z-index:60;backdrop-filter:blur(12px);background:rgba(14,21,19,.9);border-bottom:1px solid var(--border)}
@@ -149,6 +151,20 @@
   .arch .m{flex:1;min-width:0}
   .arch .m b{font-size:14.5px}
   .arch .m p{font-size:12.5px;color:var(--faint)}
+  /* Versions and score history: one line per entry, in columns, so a long
+     history stays scannable instead of running down the page as cards. */
+  .lrow{display:grid;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .lrow.head{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);border-bottom-width:2px;padding-bottom:6px}
+  .lrow > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lrow .co{font-weight:600}
+  .lrow .s{color:var(--faint);font-size:12.5px}
+  .lrow .acts{display:flex;gap:7px;justify-content:flex-end;overflow:visible}
+  .lrow.on{background:rgba(255,255,255,.05)}
+  /* A version is a resume and a letter and a score all at once, so each gets
+     its own column rather than being run together in one line of prose. */
+  .vrow{grid-template-columns:50px minmax(0,1fr) 88px 108px 84px 84px minmax(0,1.1fr) 96px}
+  .hrow{grid-template-columns:86px minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 150px}
+  @media(max-width:900px){.vrow,.hrow{grid-template-columns:1fr}.lrow.head{display:none}}
 
   .sug{border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:8px;background:rgba(0,0,0,.16)}
   .sug .o{font-size:12.5px;color:var(--faint);text-decoration:line-through;margin-bottom:5px}
@@ -241,6 +257,19 @@
   .fix{margin-top:7px;border-left:2px solid var(--accent);padding-left:9px}
   .fix p{font-size:12.5px;color:var(--muted);margin-bottom:5px}
   @media(max-width:900px){.secrow{grid-template-columns:1fr}}
+  /* Questions, in the same four-column shape: question, why, evidence, answer. */
+  .qrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1.25fr);
+    gap:12px;padding:12px 0;border-bottom:1px solid var(--border);align-items:start}
+  .qrow.head{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border-bottom-width:2px;padding-bottom:7px}
+  .qrow.skipped{opacity:.5}
+  .qcell b{font-size:14px;display:block}
+  .qcell p{font-size:12.5px;color:var(--faint);margin:0}
+  .qcell p.hint{color:var(--accent)}
+  .qcell p.none{color:var(--faint);font-style:italic}
+  .qacts{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:5px}
+  @media(max-width:1000px){.qrow{grid-template-columns:1fr}
+    .qrow.head{display:none}
+    .qcell p{font-size:13px}}
   .foot{border-top:1px solid var(--border);padding:18px 0 40px;font-size:12.5px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 
   /* ── slide-out user guide ── */
@@ -355,11 +384,11 @@
     </div>
     <div class="card" id="fitPicked"></div>
     <div id="fitProposal"></div>
+    <div class="card" id="fitHistory"></div>
     <div class="card" id="jdQuestions"></div>
     <div class="card" id="jdVersions"></div>
     <div id="fitOut"></div>
     <div id="fitDetail"></div>
-    <div class="card" id="fitHistory"></div>
   </section>
 
   <div class="foot">
@@ -1831,6 +1860,10 @@ function pushVersion(j, payload, note) {
     stillMissing: payload.stillMissing || [],
     resume: { itemIds: (payload.itemIds || []).filter((id) => itemById(id)), summary: payload.summary || '' },
     coverLetter: { paragraphs: (payload.coverLetter || []).map((t, i) => ({ id: uid('p'), kind: i === 0 ? 'opening' : 'proof', title: 'Paragraph ' + (i + 1), text: t })) },
+    // The answers this version was built from, kept with it. A question's
+    // status moves on and its wording can be re-asked; what she actually said,
+    // and which version it went into, should not have to be reconstructed.
+    answers: (payload.answers || []).map((a) => ({ question: a.question, answer: a.answer, requirement: a.requirement })),
     score: null,
   };
   j.versions.push(v);
@@ -1896,12 +1929,40 @@ async function askQuestions(j, quiet) {
 
 /* Step 3 — revise into the next version, using her answers and any scoring
    feedback from the last comparison. */
+/* The two things a revision is built from: facts she has approved, and the
+   fixes the last score asked for. Both passes need them. */
+function reviseInputs(j) {
+  const v = currentVersion(j);
+  return {
+    answers: (j.questions || []).filter((q) => q.status === 'answered' && q.answer.trim())
+      .map((q) => ({ requirement: q.requirement, question: q.question, answer: q.answer })),
+    fixes: v && v.score ? (v.score.sections || []).filter((s) => s.resumeFix || s.coverFix)
+      .map((s) => ({ requirement: s.requirement, resumeFix: s.resumeFix, coverFix: s.coverFix })) : [],
+  };
+}
+
+/* Approving a question is approving a fact, and a fact is not resume wording —
+   that is what the revision pass is for. So approving now starts one, on a
+   short delay so approving three questions in a row costs one pass and not
+   three. An open draft is never overwritten: her edits to it outrank this. */
+let autoReviseTimer = null;
+function scheduleAutoRevise(j) {
+  if (j.proposal) {
+    toast('Approved. Approve or discard the open draft first — the next revision will include this.');
+    return;
+  }
+  if (autoReviseTimer) clearTimeout(autoReviseTimer);
+  toast('Approved — folding it into a new draft…');
+  autoReviseTimer = setTimeout(() => {
+    autoReviseTimer = null;
+    const jj = state.jobs.items.find((x) => x.id === j.id);
+    if (jj && !jj.proposal) reviseJd(jj);
+  }, 1400);
+}
+
 async function reviseJd(j) {
   const v = currentVersion(j);
-  const answers = (j.questions || []).filter((q) => q.status === 'answered' && q.answer.trim())
-    .map((q) => ({ requirement: q.requirement, question: q.question, answer: q.answer }));
-  const fixes = v && v.score ? (v.score.sections || []).filter((s) => s.resumeFix || s.coverFix)
-    .map((s) => ({ requirement: s.requirement, resumeFix: s.resumeFix, coverFix: s.coverFix })) : [];
+  const { answers, fixes } = reviseInputs(j);
 
   if (!answers.length && !fixes.length && !confirm('No answers and no scoring feedback yet. Revise anyway?')) return;
 
@@ -1920,6 +1981,7 @@ async function reviseJd(j) {
       coverLetter: (r.result.coverLetter || []).slice(),
       changelog: r.result.changelog || [],
       stillMissing: r.result.stillMissing || [],
+      answers,
     };
     await saveJobs(); renderFitWork();
     $('fitProposal').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1935,6 +1997,36 @@ async function reviseJd(j) {
    paragraph of the letter — with the resume rebuilding underneath as you
    change it. Approve turns it into v(n); Discard throws it away. Until one of
    those, the current version is untouched. */
+/* Another pass, on what is in the boxes rather than on the version underneath —
+   so an edit she made is the thing being improved, not something the model has
+   to rediscover. It rewrites the draft, which is why it asks first. */
+async function aiHelpProposal(j) {
+  const p = j.proposal;
+  if (!p) return;
+  if (!confirm('Send this draft back for another pass? It rewrites the summary and the letter boxes below — your edits to them are what it works from, but it will replace the wording.')) return;
+  const btn = $('propHelp');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Working…'; }
+  try {
+    const { answers, fixes } = reviseInputs(j);
+    const r = await ai({ action: 'revise', master: state.master, posting: j.text,
+      resumeText: resumePlainText({ itemIds: p.itemIds, summary: p.summary, targetRole: j.role }),
+      coverText: p.coverLetter.filter(Boolean).join('\n\n'), answers, fixes });
+    // Keep what came back, but never let it empty a field she has filled in.
+    p.summary = r.result.summary || p.summary;
+    const ids = (r.result.itemIds || []).filter((id) => itemById(id));
+    if (ids.length) p.itemIds = ids;
+    if ((r.result.coverLetter || []).length) p.coverLetter = r.result.coverLetter.slice();
+    p.changelog = r.result.changelog || [];
+    p.stillMissing = r.result.stillMissing || [];
+    p.note = 'another pass over your edits';
+    await saveJobs(); renderProposal(j);
+    toast('Redrafted. Still nothing until you approve it.');
+  } catch (err) {
+    toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
+    if ($('propHelp')) { $('propHelp').disabled = false; $('propHelp').innerHTML = '&#10022; AI help'; }
+  }
+}
+
 let propPickerOpen = false;
 function renderProposal(j) {
   const el = $('fitProposal');
@@ -1942,11 +2034,13 @@ function renderProposal(j) {
   const p = j && j.proposal;
   if (!p) { el.innerHTML = ''; return; }
   const nextV = (j.versions || []).length + 1;
+  const coverFixes = reviseInputs(j).fixes.filter((f) => (f.coverFix || '').trim());
 
   el.innerHTML =
     '<div class="card">' +
       '<div class="sec-head"><h2>Proposed v' + nextV + '</h2>' +
         '<span class="tagline">' + esc(p.note || '') + '</span>' +
+        '<button class="btn" id="propHelp">&#10022; AI help</button>' +
         '<button class="btn primary" id="propApprove">Approve as v' + nextV + '</button>' +
         '<button class="btn danger ghost" id="propDiscard">Discard</button></div>' +
       '<p class="tagline" style="margin-bottom:10px">Nothing has changed yet &mdash; v' +
@@ -1971,6 +2065,18 @@ function renderProposal(j) {
               '<button class="icon" data-propdel="' + i + '" title="Remove this paragraph">🗑</button>' +
             '</div>').join('')
             : '<div class="empty">No letter proposed.</div>') +
+          // What the last score asked the letter to do, next to the letter it
+          // is asking about — each one a paragraph away from being in the draft.
+          (coverFixes.length
+            ? '<div class="group-label"><span>The score asked the letter for</span><span class="line"></span>' +
+                '<span>' + coverFixes.length + '</span></div>' +
+              coverFixes.map((f, i) =>
+                '<div class="fix" style="margin-bottom:8px">' +
+                  '<p style="font-size:12.5px;color:var(--muted);margin:0 0 5px">' +
+                    '<b style="color:var(--text)">' + esc(f.requirement) + '</b><br />' + esc(f.coverFix) + '</p>' +
+                  '<button class="btn ghost" data-propfix="' + i + '">Add as a paragraph</button>' +
+                '</div>').join('')
+            : '') +
         '</div>' +
       '</div>' +
       '<div class="group-label"><span>What goes in</span><span class="line"></span><span id="propCount">' + p.itemIds.length + '</span>' +
@@ -2004,6 +2110,12 @@ function renderProposal(j) {
     p.coverLetter.push(''); queueSaveJobs(); renderProposal(j);
   });
   $('propPickToggle').addEventListener('click', () => { propPickerOpen = !propPickerOpen; renderProposal(j); });
+  el.querySelectorAll('[data-propfix]').forEach((b) => b.addEventListener('click', () => {
+    p.coverLetter.push(coverFixes[+b.dataset.propfix].coverFix);
+    queueSaveJobs(); renderProposal(j);
+    toast('Added to the draft letter — edit it into your own words before approving.');
+  }));
+  $('propHelp').addEventListener('click', () => aiHelpProposal(j));
   // The picker only redraws the preview — redrawing the card would close the
   // box you just ticked and lose your place in a long list.
   el.querySelectorAll('[data-proppick]').forEach((c) => c.addEventListener('change', () => {
@@ -2019,6 +2131,7 @@ function renderProposal(j) {
     const nv = pushVersion(j, {
       summary: p.summary, itemIds: p.itemIds, coverLetter: paras,
       changelog: p.changelog, stillMissing: p.stillMissing,
+      answers: p.answers || reviseInputs(j).answers,
     }, p.note);
     // Only now are the answers spent: a discarded proposal must not consume them.
     (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
@@ -2034,6 +2147,7 @@ function renderProposal(j) {
   });
 }
 
+let questionsOpen = false;
 function renderQuestions(j) {
   const el = $('jdQuestions');
   if (!el) return;
@@ -2044,29 +2158,45 @@ function renderQuestions(j) {
   el.innerHTML =
     '<div class="sec-head"><h2>Questions from the agent</h2>' +
       '<span class="count">' + open.length + ' open</span>' +
+      '<button class="btn ghost" id="qToggle">' + (questionsOpen ? 'Hide' : 'Show') + '</button>' +
       '<button class="btn" id="btnAsk">Ask again</button>' +
       '<button class="btn primary" id="btnRevise">Revise into v' + nextV + '</button></div>' +
-    (!qs.length
+    // Closed by default: seven questions, four columns each, is most of a
+    // screen, and the count in the header already says whether to open it.
+    (!questionsOpen && qs.length ? '' :
+    !qs.length
       ? '<div class="empty">Nothing outstanding. Generate a draft, or hit Ask again after editing the posting.</div>'
       : '<p class="tagline" style="margin-bottom:9px">These are things the posting wants that your documents do not answer. Your answer is the only way one of them can be claimed &mdash; nothing here is filled in for you.</p>' +
+        // Four columns, the same shape the score table uses: what is being
+        // asked, why the posting wants it, what your record already hints at,
+        // and the answer — with approve and skip beside the box you type into,
+        // because that is where the decision is made.
+        '<div class="qrow head"><div>Question</div><div>Posting asks for</div>' +
+          '<div>From your record</div><div>Your answer</div></div>' +
         qs.map((q) =>
-          '<div class="item ' + (q.status === 'applied' || q.status === 'answered' ? 'done' : 'wip') + '" style="margin-bottom:9px' + (q.status === 'skipped' ? ';opacity:.5' : '') + '"><div class="item-top"><div class="item-main">' +
-            '<b style="font-size:14px">' + esc(q.question) + '</b>' +
-            '<p class="tagline">Posting asks for: ' + esc(q.requirement) + (q.why ? ' &middot; ' + esc(q.why) : '') + '</p>' +
-            (q.guess ? '<p class="tagline" style="color:var(--accent)">Possible hint from your record: ' + esc(q.guess) + '</p>' : '') +
-            '<textarea class="f" data-qa="' + esc(q.id) + '" style="min-height:62px;margin-top:6px" placeholder="Your answer — or say plainly that you have not done this.">' + esc(q.answer || '') + '</textarea>' +
-            '<label class="pick" style="padding:4px 0"><input type="checkbox" data-qm="' + esc(q.id) + '"' + (q.toMaster ? ' checked' : '') + ' /> <span class="s">also add this to my master resume</span></label>' +
-          '</div><div class="item-actions" style="flex-direction:column;gap:4px">' +
-            (q.status === 'skipped'
-              ? '<span class="chip">skipped</span><button class="icon" data-qundo="' + esc(q.id) + '" title="Bring it back">undo</button>'
-              : q.status === 'applied'
-              ? '<span class="chip st-complete">used</span>'
-              : q.status === 'answered'
-                ? '<span class="chip st-complete">approved</span><button class="icon" data-qundo="' + esc(q.id) + '" title="Take it back">undo</button>'
-                : '<button class="btn" data-qok="' + esc(q.id) + '">Approve</button>' +
-                  '<button class="btn ghost" data-qskip="' + esc(q.id) + '">Skip</button>') +
-          '</div></div></div>').join(''));
+          '<div class="qrow' + (q.status === 'skipped' ? ' skipped' : '') + '">' +
+            '<div class="qcell"><b>' + esc(q.question) + '</b></div>' +
+            '<div class="qcell"><p>' + esc(q.requirement) + (q.why ? ' &middot; ' + esc(q.why) : '') + '</p></div>' +
+            '<div class="qcell">' + (q.guess
+              ? '<p class="hint">' + esc(q.guess) + '</p>'
+              : '<p class="none">nothing in your record speaks to this</p>') + '</div>' +
+            '<div class="qcell">' +
+              '<textarea class="f" data-qa="' + esc(q.id) + '" style="min-height:74px" placeholder="Your answer — or say plainly that you have not done this.">' + esc(q.answer || '') + '</textarea>' +
+              '<label class="pick" style="padding:4px 0"><input type="checkbox" data-qm="' + esc(q.id) + '"' + (q.toMaster ? ' checked' : '') + ' /> <span class="s">also add this to my master resume</span></label>' +
+              '<div class="qacts">' +
+                (q.status === 'skipped'
+                  ? '<span class="chip">skipped</span><button class="btn ghost" data-qundo="' + esc(q.id) + '">Undo</button>'
+                  : q.status === 'applied'
+                  ? '<span class="chip st-complete">used</span>'
+                  : q.status === 'answered'
+                    ? '<span class="chip st-complete">approved</span><button class="btn ghost" data-qundo="' + esc(q.id) + '">Undo</button>'
+                    : '<button class="btn" data-qok="' + esc(q.id) + '">Approve</button>' +
+                      '<button class="btn ghost" data-qskip="' + esc(q.id) + '">Skip</button>') +
+              '</div>' +
+            '</div>' +
+          '</div>').join(''));
 
+  $('qToggle').addEventListener('click', () => { questionsOpen = !questionsOpen; renderQuestions(j); });
   el.querySelectorAll('[data-qa]').forEach((t) => t.addEventListener('input', () => {
     const q = j.questions.find((x) => x.id === t.dataset.qa);
     if (q) { q.answer = t.value; queueSaveJobs(); }
@@ -2082,7 +2212,7 @@ function renderQuestions(j) {
     q.status = 'answered';
     if (q.toMaster) addAnswerToMaster(q);
     queueSaveJobs(); renderFitWork();
-    toast('Approved. It will be used on the next revision.');
+    scheduleAutoRevise(j);
   }));
   el.querySelectorAll('[data-qundo]').forEach((b) => b.addEventListener('click', () => {
     const q = j.questions.find((x) => x.id === b.dataset.qundo);
@@ -2115,25 +2245,56 @@ function addAnswerToMaster(q) {
   toast('Added to your master resume as in-progress — tidy it up and Save.');
 }
 
+let openVersion = null;
 function renderVersions(j) {
   const el = $('jdVersions');
   if (!el) return;
   const vs = (j.versions || []).slice().reverse();
   el.innerHTML =
-    '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span></div>' +
+    '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span>' +
+      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' &middot; ')) + '</span></div>' +
     (!vs.length ? '<div class="empty">No versions yet. Generate a draft to create v1.</div>'
-      : vs.map((v) =>
-        '<div class="arch' + (v.v === j.currentVersion ? ' on' : '') + '">' +
-          '<span class="chip' + (v.v === j.currentVersion ? ' st-complete' : '') + '">v' + v.v + '</span>' +
-          '<div class="m"><b>' + esc(v.note || 'version ' + v.v) + '</b>' +
-            '<p>' + esc(new Date(v.createdAt).toLocaleString()) +
-            (v.score ? ' · scored ' + v.score.overallResume + ' / ' + v.score.overallCover : ' · not scored') + '</p>' +
-            (v.changelog && v.changelog.length ? '<p class="s">' + v.changelog.map(esc).join(' · ') + '</p>' : '') +
-            (v.stillMissing && v.stillMissing.length ? '<p class="s" style="color:var(--warn)">still missing: ' + v.stillMissing.map(esc).join(', ') + '</p>' : '') +
+      : '<div class="lrow head vrow"><div>Ver</div><div>Company</div><div>Resume</div><div>Cover letter</div>' +
+          '<div>Answers</div><div>Score</div><div>Created</div><div></div></div>' +
+        vs.map((v) => {
+          const q = (v.answers || []).length;
+          const extra = [v.note, (v.changelog || []).join(' · '),
+            (v.stillMissing || []).length ? 'still missing: ' + v.stillMissing.join(', ') : ''].filter(Boolean).join('\n');
+          return '<div class="lrow vrow' + (v.v === j.currentVersion ? ' on' : '') + '" data-vrow="' + v.v + '"' +
+              ' title="' + esc(extra || 'version ' + v.v) + '" style="cursor:pointer">' +
+            '<div><span class="chip' + (v.v === j.currentVersion ? ' st-complete' : '') + '">v' + v.v + '</span></div>' +
+            '<div class="co">' + esc(j.company || '— no company') + '</div>' +
+            '<div class="s">' + (v.resume.itemIds || []).length + ' entries</div>' +
+            '<div class="s">' + (v.coverLetter.paragraphs || []).length + ' paragraphs</div>' +
+            '<div class="s">' + (q ? q + (q === 1 ? ' answer' : ' answers') : '—') + '</div>' +
+            '<div class="s">' + (v.score ? v.score.overallResume + ' / ' + v.score.overallCover : '<span class="s">not scored</span>') + '</div>' +
+            '<div class="s">' + esc(new Date(v.createdAt).toLocaleString()) + '</div>' +
+            '<div class="acts">' + (v.v === j.currentVersion
+              ? '<span class="chip">current</span>'
+              : '<button class="btn" data-usev="' + v.v + '">Use this</button>') + '</div>' +
           '</div>' +
-          (v.v === j.currentVersion ? '<span class="chip">current</span>' : '<button class="btn" data-usev="' + v.v + '">Use this</button>') +
-        '</div>').join(''));
+          // One line each until you want the rest; the note, the changelog, what
+          // is still unanswered and the answers it was built from live here.
+          (openVersion !== v.v ? '' :
+            '<div style="padding:9px 0 12px;border-bottom:1px solid var(--border)">' +
+              (v.note ? '<p class="tagline"><b>' + esc(v.note) + '</b></p>' : '') +
+              ((v.changelog || []).length ? '<p class="tagline">' + v.changelog.map(esc).join(' &middot; ') + '</p>' : '') +
+              ((v.stillMissing || []).length ? '<p class="tagline" style="color:var(--warn)">still missing: ' + v.stillMissing.map(esc).join(', ') + '</p>' : '') +
+              ((v.answers || []).length
+                ? '<div class="group-label"><span>Answers this version was built from</span><span class="line"></span></div>' +
+                  v.answers.map((a) => '<div class="fix" style="margin-bottom:7px">' +
+                    '<p class="tagline" style="margin:0"><b style="color:var(--text)">' + esc(a.question) + '</b></p>' +
+                    '<p class="tagline" style="margin:0;color:var(--muted)">' + esc(a.answer) + '</p></div>').join('')
+                : '<p class="tagline">No answers went into this one.</p>') +
+            '</div>');
+        }).join(''));
 
+  el.querySelectorAll('[data-vrow]').forEach((row) => row.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const n = +row.dataset.vrow;
+    openVersion = openVersion === n ? null : n;
+    renderVersions(j);
+  }));
   el.querySelectorAll('[data-usev]').forEach((b) => b.addEventListener('click', () => {
     const v = (j.versions || []).find((x) => x.v === +b.dataset.usev);
     if (!v) return;
@@ -2476,10 +2637,17 @@ function renderSectionScores(a, j) {
     const sec = a.sections[+b.dataset.fixc];
     const jj = state.jobs.items.find((x) => x.id === state.jdId);
     if (!jj) return;
-    const merged = coverLetterText(jj.coverLetter) + '\n\n' + sec.coverFix;
-    jj.coverLetter.paragraphs = [{ id: uid('p'), kind: 'opening', title: 'Letter', text: merged }];
-    queueSaveJobs(); show('archive');
-    toast('Added to the letter as a draft paragraph — edit it into your own words.');
+    // Append a paragraph; never round-trip through coverLetterText. That
+    // function exists to *render* the letter with a greeting and a sign-off
+    // wrapped round it — storing its output put the sign-off inside the body
+    // and had a fresh one added after it on every pass, and flattened four
+    // paragraphs into one block you could no longer edit separately.
+    jj.coverLetter.paragraphs = (jj.coverLetter.paragraphs || []).concat({
+      id: uid('p'), kind: 'proof', title: 'From the score', text: sec.coverFix,
+    });
+    queueSaveJobs();
+    renderFitDocs();
+    toast('Added to the letter as its own paragraph — edit it into your own words.');
   }));
 }
 
@@ -2495,11 +2663,24 @@ function renderFitHistory() {
   el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span></div>' +
     (!list.length
       ? '<div class="empty">No scores yet. Every run is recorded here so you can see whether a rewrite moved the number.</div>'
-      : list.slice(0, 40).map((f) =>
-        '<div class="arch"><span class="chip">' + (f.score != null ? f.score : '–') + ' / ' + (f.coverScore != null ? f.coverScore : '–') + '</span>' +
-        '<div class="m"><b>' + esc(f.jobLabel || '') + '</b><p>' + esc(new Date(f.at).toLocaleString()) + '</p></div>' +
-        '<button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
-        '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>').join(''));
+      : '<div class="lrow head hrow"><div>Resume / letter</div><div>Company</div><div>Job title</div>' +
+          '<div>Run</div><div></div></div>' +
+        list.slice(0, 40).map((f) => {
+          // jobLabel is "Company — Role"; prefer the live application, which
+          // stays right if either was renamed after the run.
+          const j2 = state.jobs.items.find((x) => x.id === f.jobId);
+          const bits = String(f.jobLabel || '').split(' — ');
+          const co = (j2 && j2.company) || bits[0] || 'Untitled';
+          const role = (j2 && j2.role) || bits.slice(1).join(' — ') || '—';
+          return '<div class="lrow hrow">' +
+            '<div><span class="chip">' + (f.score != null ? f.score : '–') + ' / ' + (f.coverScore != null ? f.coverScore : '–') + '</span></div>' +
+            '<div class="co" title="' + esc(co) + '">' + esc(co) + '</div>' +
+            '<div class="s" title="' + esc(role) + '">' + esc(role) + '</div>' +
+            '<div class="s">' + esc(new Date(f.at).toLocaleString()) + '</div>' +
+            '<div class="acts"><button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
+            '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>' +
+          '</div>';
+        }).join(''));
 
   document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
     const f = state.fits.items.find((x) => x.id === b.dataset.fitview);

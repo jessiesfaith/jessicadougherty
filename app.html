@@ -519,11 +519,21 @@
     <p>All three are <strong>read-only</strong>. The posting is what you are being measured against while you work; <strong>Edit in Job Postings</strong> takes you to where it is kept, with the same application already selected.</p>
     <p>Every requirement in the posting is scored <strong>twice</strong> &mdash; once against the resume, once against the cover letter &mdash; because they fail in different ways. A resume can cover something the letter never mentions.</p>
     <ul>
-      <li><strong>Copy fix</strong> on the resume side hands you the suggestion. There is no single unambiguous place to apply it, so it does not guess.</li>
+      <li><strong>Add to resume</strong> sends that one fix to the agent, which rewrites the summary and the entry selection to satisfy it. The result goes into the draft, not into a version.</li>
       <li><strong>Add to letter</strong> appends the suggestion to this application's letter as a draft paragraph for you to rewrite.</li>
     </ul>
     <h4>Revising, and approving</h4>
-    <p><strong>Copy fix</strong> hands you the resume suggestion on the clipboard and changes nothing &mdash; there is no single unambiguous place to apply it. <strong>Add to letter</strong> appends the letter suggestion to <em>this application's</em> letter, never to your master.</p>
+    <p><strong>Add to resume</strong> takes that one fix and has the agent apply it &mdash; there is no single field to paste a resume fix into, so it goes to the model as the only instruction and comes back in the draft. <strong>Add to letter</strong> appends the letter suggestion as its own paragraph. Neither touches your master, and neither creates a version.</p>
+    <h4>The process, end to end</h4>
+    <ol>
+      <li>Generate a draft, then <strong>Score against resume and letter</strong>.</li>
+      <li>Work the fixes: <strong>Add to resume</strong> on the resume side, <strong>Add to letter</strong> on the other. Each lands in the draft.</li>
+      <li>Answer the agent's questions &mdash; <strong>&#10022; Run all AI help</strong> drafts them all &mdash; and Approve the ones you want.</li>
+      <li><strong>Save resume and cover letter</strong> at the top. That turns the draft into the next version.</li>
+      <li><strong>See it in Job Postings &rarr;</strong> opens that row, where the <strong>Resume</strong> and <strong>Cover letter</strong> links now open what you just saved.</li>
+      <li>Score again to see whether the number moved.</li>
+    </ol>
+    <p>The line beside the Save button says which of those you are in: a draft waiting, or the version the Job Postings links already point at.</p>
     <p>For a full pass, don't use those: <strong>Approve</strong> the agent's questions, then <strong>Revise</strong>. Revise folds in every approved answer and every fix at once, and comes back with a <strong>proposed version you can edit</strong> &mdash; the summary, each letter paragraph, and which entries go in, with the resume rebuilding underneath as you change it.</p>
     <p><strong>Nothing is a version until you press Approve.</strong> Until then the current version is untouched, and Discard throws the draft away without spending your approved answers. Once approved it becomes the current version, and the Resume and Cover letter links in both Postings tables follow it.</p>
     <p>Then score again: the Versions list shows each version's own score, so you can see whether the rewrite actually moved the number.</p>
@@ -2417,25 +2427,77 @@ function renderProposal(j) {
 
 }
 
+/* A resume fix asks for something specific — surface a line into the summary,
+   put one role above another. There is no single field to paste that into, so
+   it goes to the model as the only instruction, against the draft if one is
+   open and the current version otherwise. The resume side of what comes back
+   lands in the draft; the letter is left exactly as it is, because this button
+   is on the resume column and should not quietly rewrite the other one. */
+async function applyResumeFix(j, sec, btn) {
+  if (!sec || !(sec.resumeFix || '').trim()) return;
+  const label = btn && btn.innerHTML;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Applying…'; }
+  try {
+    const v = currentVersion(j);
+    const p = j.proposal;
+    const resumeText = p
+      ? resumePlainText({ itemIds: p.itemIds, summary: p.summary, targetRole: j.role })
+      : versionResumeText(j, v);
+    const coverText = p ? p.coverLetter.filter(Boolean).join('\n\n') : versionCoverText(v);
+    const r = await ai({ action: 'revise', master: state.master, posting: j.text,
+      resumeText, coverText, answers: reviseInputs(j).answers,
+      fixes: [{ requirement: sec.requirement, resumeFix: sec.resumeFix, coverFix: '' }] });
+    const res = r.result || {};
+    const ids = (res.itemIds || []).filter((id) => itemById(id));
+
+    const d = j.proposal || (j.proposal = {
+      at: new Date().toISOString(), note: 'built from scoring fixes', ranAt: {},
+      summary: '', itemIds: [], coverLetter: (p ? p.coverLetter : (v ? (v.coverLetter.paragraphs || []).map((x) => x.text) : [])),
+      changelog: [], stillMissing: [], answers: reviseInputs(j).answers,
+    });
+    if (res.summary) d.summary = res.summary;
+    if (ids.length) d.itemIds = ids;
+    // Only the letter it already had — this button does not touch that column.
+    if (!d.coverLetter || !d.coverLetter.length) {
+      d.coverLetter = v ? (v.coverLetter.paragraphs || []).map((x) => x.text) : [];
+    }
+    d.changelog = (d.changelog || []).concat(res.changelog || []).concat(['fix applied: ' + sec.requirement]);
+    d.stillMissing = res.stillMissing || d.stillMissing || [];
+    d.note = 'built from scoring fixes';
+    await saveJobs();
+    renderFitWork();
+    toast('Added to the draft resume. Read it, then Save resume and cover letter.');
+  } catch (err) {
+    toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
+  } finally { if (btn) { btn.disabled = false; btn.innerHTML = label || 'Add to resume'; } }
+}
+
 /* The three things that act on the whole draft. They live on the heading, so
    they are wired whether or not the card is open. */
+/* Turning the draft into the version. Two buttons reach this — Approve on the
+   draft itself, and Save resume and cover letter at the top of the page — so it
+   is a function rather than a handler buried in one of them. */
+async function approveProposal(j) {
+  const p = j.proposal;
+  if (!p) return;
+  const paras = p.coverLetter.map((t) => String(t || '').trim()).filter(Boolean);
+  if (!p.itemIds.length && !paras.length) return toast('Nothing selected and no letter — nothing to save.', true);
+  const nv = pushVersion(j, {
+    summary: p.summary, itemIds: p.itemIds, coverLetter: paras,
+    changelog: p.changelog, stillMissing: p.stillMissing,
+    answers: p.answers || reviseInputs(j).answers,
+  }, p.note);
+  // Only now are the answers spent: a discarded proposal must not consume them.
+  (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
+  delete j.proposal;
+  await saveJobs();
+  renderFitDocs(); renderFitWork(); renderFitSaveState();
+  toast('Saved as v' + nv.v + '. The links on that row in Job Postings open it.');
+}
+
 function wireProposalActions(j, p) {
   $('propHelp').addEventListener('click', () => aiHelpProposal(j));
-  $('propApprove').addEventListener('click', async () => {
-    const paras = p.coverLetter.map((t) => String(t || '').trim()).filter(Boolean);
-    if (!p.itemIds.length && !paras.length) return toast('Nothing selected and no letter — nothing to approve.', true);
-    const nv = pushVersion(j, {
-      summary: p.summary, itemIds: p.itemIds, coverLetter: paras,
-      changelog: p.changelog, stillMissing: p.stillMissing,
-      answers: p.answers || reviseInputs(j).answers,
-    }, p.note);
-    // Only now are the answers spent: a discarded proposal must not consume them.
-    (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
-    delete j.proposal;
-    await saveJobs();
-    renderFitDocs(); renderFitWork();
-    toast('v' + nv.v + ' created and current. Score it to see whether the numbers moved.');
-  });
+  $('propApprove').addEventListener('click', () => approveProposal(j));
   $('propDiscard').addEventListener('click', async () => {
     if (!confirm('Discard this draft? Your approved answers stay approved, so you can revise again.')) return;
     delete j.proposal;
@@ -2823,15 +2885,51 @@ function renderFit() {
   // held here rather than read back off a <select> that may not be drawn yet.
   if (list.length && !list.some((j) => j.id === state.jdId)) state.jdId = list[0].id;
   $('fitPicked').innerHTML =
-    '<div class="sec-head"><h2>Application</h2></div>' +
+    '<div class="sec-head"><h2>Application</h2>' +
+      '<span class="tagline" id="fitSaveState"></span>' +
+      '<button class="btn primary" id="fitSaveDocs">Save resume and cover letter</button>' +
+      '<button class="guidelink" id="fitSeeInPostings">See it in Job Postings &rarr;</button></div>' +
     (!list.length
       ? '<div class="empty">No applications with a job description yet. Add one in Archive.</div>'
       : '<div id="fitDocs"></div>' +
         '<div style="margin-top:12px"><button class="btn primary" id="btnScore">Score against resume and letter</button></div>');
 
-  renderFitDocs(); renderFitWork(); renderLastScore();
+  renderFitDocs(); renderFitWork(); renderLastScore(); renderFitSaveState();
   const b = $('btnScore');
   if (b) b.addEventListener('click', runSectionScoring);
+  const sv = $('fitSaveDocs');
+  if (sv) sv.addEventListener('click', () => saveFitDocs());
+  const sp = $('fitSeeInPostings');
+  if (sp) sp.addEventListener('click', () => {
+    const j = fitJob();
+    if (j) { state.jdId = j.id; jdTableOpen = true; show('archive'); }
+  });
+}
+
+/* Where the pair stands: a draft waiting, or the version the Job Postings links
+   already point at. */
+function renderFitSaveState() {
+  const el = $('fitSaveState');
+  const j = fitJob();
+  if (!el || !j) return;
+  const v = currentVersion(j);
+  el.innerHTML = j.proposal
+    ? 'A draft is waiting &mdash; saving makes it v' + ((j.versions || []).length + 1) + '.'
+    : v ? 'v' + v.v + ' saved. The links in Job Postings open this one.'
+        : 'Nothing built yet.';
+}
+
+/* One button for the end of the process: whatever the pair currently is becomes
+   a saved version, and the Resume and Cover letter links on that row in Job
+   Postings open it. A draft is approved; with no draft there is nothing to
+   save that is not already saved. */
+async function saveFitDocs() {
+  const j = fitJob();
+  if (!j) return;
+  if (j.proposal) return approveProposal(j);
+  const v = currentVersion(j);
+  if (!v) return toast('Nothing built for this one yet — generate a draft first.', true);
+  toast('v' + v.v + ' is already saved. The links in Job Postings open it.');
 }
 
 // The documents being scored, with their PDFs, right where you are comparing
@@ -2884,6 +2982,7 @@ function renderFitWork() {
   renderProposal(j);
   renderQuestions(j);
   renderVersions(j);
+  renderFitSaveState();   // a draft appearing changes what Save would do
 }
 
 function renderFitDocs() {
@@ -2986,7 +3085,7 @@ function renderSectionScores(a, j, at) {
       '<div class="seccol">' +
         '<div class="pill2 ' + toneOf(sec.resumeScore) + '">' + (sec.resumeScore != null ? sec.resumeScore : '–') + '</div>' +
         (sec.resumeEvidence ? '<p class="ev">' + esc(sec.resumeEvidence) + '</p>' : '<p class="ev none">no evidence in the resume</p>') +
-        (sec.resumeFix ? '<div class="fix"><p>' + esc(sec.resumeFix) + '</p><button class="btn ghost" data-fixr="' + i + '">Copy fix</button></div>' : '') +
+        (sec.resumeFix ? '<div class="fix"><p>' + esc(sec.resumeFix) + '</p><button class="btn ghost" data-fixr="' + i + '">Add to resume</button></div>' : '') +
       '</div>' +
       '<div class="seccol">' +
         '<div class="pill2 ' + toneOf(sec.coverScore) + '">' + (sec.coverScore != null ? sec.coverScore : '–') + '</div>' +
@@ -3032,9 +3131,8 @@ function renderSectionScores(a, j, at) {
   });
 
   document.querySelectorAll('[data-fixr]').forEach((b) => b.addEventListener('click', async () => {
-    const sec = a.sections[+b.dataset.fixr];
-    try { await navigator.clipboard.writeText(sec.resumeFix); toast('Copied — apply it in Resume or in this application\'s entry list.'); }
-    catch { toast(sec.resumeFix); }
+    const jj = state.jobs.items.find((x) => x.id === state.jdId);
+    if (jj) await applyResumeFix(jj, a.sections[+b.dataset.fixr], b);
   }));
   document.querySelectorAll('[data-fixc]').forEach((b) => b.addEventListener('click', () => {
     const sec = a.sections[+b.dataset.fixc];

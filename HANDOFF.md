@@ -31,6 +31,11 @@ they print. A read-only mirror of the postings table sits above them, including 
 fields in the row, tick and Remove. Removing is a soft delete: status becomes
 `deleted` and *show deleted* brings it back.
 
+The process on **Fit Score**: score → **Add to resume** / **Add to letter** work the
+fixes into a draft → answer questions → **Save resume and cover letter** turns the
+draft into a version → **See it in Job Postings** opens the row whose links now
+serve it.
+
 **Fit Score** — the working tab. Posting, resume and cover letter side by side, all read-only;
 every requirement scored twice; the agent's questions; a proposed next version
 you edit and approve; versions; score history.

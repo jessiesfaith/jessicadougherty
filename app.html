@@ -725,9 +725,10 @@ async function boot() {
     const captured = readCapture();
     if (captured) { await acceptCapture(captured); return; }
 
-    const wanted = (location.hash || '').replace('#', '');
-    // #cover still works as a link — the letter lives on the Resume tab now.
-    show(['career','archive','fit'].includes(wanted) ? wanted : 'career');
+    // One list of tabs, used by the hash router and by show(). Adding a tab and
+    // forgetting this list is why /career#prep and /career#other from the
+    // dashboard both landed on the Resume tab instead.
+    showFromHash();
   } catch (err) {
     const b = $('boot');
     b.className = 'banner err';
@@ -735,8 +736,20 @@ async function boot() {
   }
 }
 
+const TABS = ['career', 'archive', 'fit', 'prep', 'other'];
+// #cover still works as a link — the letter lives on the Resume tab now.
+function showFromHash() {
+  const wanted = (location.hash || '').replace(/^#/, '').split('&')[0];
+  show(TABS.includes(wanted) ? wanted : 'career');
+}
+// A link to a tab you are already on used to do nothing at all.
+window.addEventListener('hashchange', showFromHash);
+
 function show(tab) {
   state.tab = tab;
+  if ((location.hash || '').replace(/^#/, '') !== tab) {
+    history.replaceState(null, '', location.pathname + '#' + tab);
+  }
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tab));
   if (tab === 'career') { renderMasterView(); renderCoverView(); renderTagSummary(); renderDocLists(); }

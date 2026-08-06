@@ -2224,6 +2224,8 @@ async function runSectionScoring() {
   $('fitOut').innerHTML = '<div class="card"><span class="spin"></span> Scoring every requirement against both documents…</div>';
   try {
     const r = await ai({ action: 'scoresections', posting: j.text, resumeText, coverText, master: state.master });
+    // Travels with the score, so re-opening it from history still says so.
+    if (r.truncated) r.result.partial = true;
     j.lastScore = { at: new Date().toISOString(), result: r.result };
     const cv = currentVersion(j);
     if (cv) cv.score = r.result;   // so "Revise into v2" can act on this feedback
@@ -2263,6 +2265,9 @@ function renderSectionScores(a, j) {
   $('fitOut').innerHTML =
     '<div class="card">' +
       '<div class="sec-head"><h2>' + esc(j.company || 'Untitled') + ' — ' + esc(j.role || '') + '</h2></div>' +
+      // A salvaged score is a real score, but a partial one: say so rather than
+      // let a short list read as "the posting only asked for this much".
+      (a.partial ? '<div class="banner warn"><b>Cut short</b>The reply ran out of room, so the sections below stop before the end of the posting. The scores shown are sound; there may be requirements underneath them that were never reached.</div>' : '') +
       '<div class="split" style="gap:12px">' +
         '<div class="score"><span class="n">' + (a.overallResume != null ? a.overallResume : '–') + '</span>' +
           '<div class="bar"><i style="width:' + (a.overallResume || 0) + '%"></i></div><span class="chip">resume</span></div>' +

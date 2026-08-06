@@ -39,8 +39,7 @@ HARD RULES:
 - Prefer her own wording where it is already strong. Do not add corporate filler.
 - Output valid JSON only. No markdown fences, no commentary outside the JSON.`;
 
-async function callClaude({ system, user, maxTokens = 4000 }) {
-  const model = await resolveModel();
+async function post(model, system, user, maxTokens) {
   const r = await fetch(API + '/messages', {
     method: 'POST',
     headers: {
@@ -55,10 +54,65 @@ async function callClaude({ system, user, maxTokens = 4000 }) {
       messages: [{ role: 'user', content: user }],
     }),
   });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(body?.error?.message || 'Claude API error (HTTP ' + r.status + ')');
-  const text = (body.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
-  return { text, model };
+  return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
+}
+
+// Models differ in how much they will write in one reply, and the ceiling is
+// not something this app can know in advance. Ask for the room the longest
+// answer needs; if that model will not take it, it says so in the error and we
+// come back with the smaller figure rather than failing the whole request.
+const CEILING_ERR = /max_tokens|output.*(limit|token)/i;
+
+async function callClaude({ system, user, maxTokens = 4000, floorTokens }) {
+  const model = await resolveModel();
+  let r = await post(model, system, user, maxTokens);
+  if (!r.ok && floorTokens && floorTokens < maxTokens && CEILING_ERR.test(r.body?.error?.message || '')) {
+    r = await post(model, system, user, floorTokens);
+  }
+  if (!r.ok) throw new Error(r.body?.error?.message || 'Claude API error (HTTP ' + r.status + ')');
+  const text = (r.body.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+  return { text, model, stopReason: r.body.stop_reason || '' };
+}
+
+/* A reply that ran out of room is still mostly good: the sections already
+   written are complete and correct, and only the last one is half-finished.
+   Closing the structure round them turns a dead request into a shorter score,
+   which is worth far more than an error telling her to try again. */
+function repairTruncatedJson(s) {
+  const stack = [];
+  let inStr = false, esc2 = false, lastSafe = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc2) esc2 = false;
+      else if (c === '\\') esc2 = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{' || c === '[') stack.push(c === '{' ? '}' : ']');
+    else if (c === '}' || c === ']') stack.pop();
+    // A comma at depth 1 or 2 sits between whole elements: everything up to it
+    // parses once the open brackets are closed.
+    else if (c === ',' && stack.length && stack.length <= 2) lastSafe = i;
+  }
+  // Only ever cut back to a comma between whole elements. Closing the brackets
+  // around a half-written section would hand back a requirement with a missing
+  // score or a sentence that stops mid-word, and a wrong score is worse than
+  // no score.
+  if (!stack.length || lastSafe === -1) return null;
+  const head = s.slice(0, lastSafe);
+  const depth = [];
+  let str = false, e = false;
+  for (let i = 0; i < head.length; i++) {
+    const c = head[i];
+    if (str) { if (e) e = false; else if (c === '\\') e = true; else if (c === '"') str = false; continue; }
+    if (c === '"') str = true;
+    else if (c === '{' || c === '[') depth.push(c === '{' ? '}' : ']');
+    else if (c === '}' || c === ']') depth.pop();
+  }
+  if (str) return null;   // the cut landed inside a string: not an element edge
+  try { return JSON.parse(head + depth.reverse().join('')); } catch { return null; }
 }
 
 function parseJson(text) {
@@ -71,6 +125,7 @@ function parseJson(text) {
     if (first !== -1 && last > first) {
       try { return JSON.parse(trimmed.slice(first, last + 1)); } catch { /* fall through */ }
     }
+    if (first !== -1) return repairTruncatedJson(trimmed.slice(first));
     return null;
   }
 }
@@ -268,7 +323,8 @@ Break the job description into its distinct requirement sections, then score EAC
    }
  ]
 }
-Score 0 where there is genuinely no evidence — do not be generous. A fix must be achievable from facts already present in the career data; if the requirement simply is not met, say so in the fix rather than inventing a way to claim it.`,
+Score 0 where there is genuinely no evidence — do not be generous. A fix must be achievable from facts already present in the career data; if the requirement simply is not met, say so in the fix rather than inventing a way to claim it.
+At most 12 sections. Merge requirements that ask for the same thing rather than listing them twice, and keep every evidence and fix to one sentence — a long posting must still return a complete, closed JSON object.`,
 
   coversuggest: (b) => `CAREER DATA:
 ${JSON.stringify(b.master)}
@@ -349,18 +405,27 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'That resume version is empty — nothing to score.' });
     }
 
-    const { text, model } = await callClaude({
+    const long = action === 'scoresections' || action === 'revise';
+    const { text, model, stopReason } = await callClaude({
       system: GUARDRAILS,
       user: PROMPTS[action](body),
-      maxTokens: action === 'cover' ? 2000 : action === 'keywords' ? 800 : (action === 'scoresections' || action === 'revise') ? 8000 : 5000,
+      maxTokens: action === 'cover' ? 2000 : action === 'keywords' ? 800 : long ? 16000 : 5000,
+      floorTokens: long ? 8000 : undefined,
     });
 
-    const parsed = parseJson(text);
+    let parsed = parseJson(text);
+    // A salvage that reached no complete section is a header and nothing else.
+    // Rendering it would read as "the posting asked for nothing".
+    if (parsed && action === 'scoresections' && !(parsed.sections || []).length) parsed = null;
     if (!parsed) {
-      return res.status(502).json({ ok: false, error: 'Claude returned something unparseable. Try again.', raw: text.slice(0, 800) });
+      // Say which failure it was. "Unparseable" sent her back to a button that
+      // was always going to fail the same way on the same posting.
+      return res.status(502).json(stopReason === 'max_tokens'
+        ? { ok: false, error: 'The reply was cut off before it finished — this posting has more in it than fits in one answer. Shorten the job description, or score the resume and letter separately.', raw: text.slice(-800) }
+        : { ok: false, error: 'Claude returned something unparseable. Try again.', raw: text.slice(0, 800) });
     }
 
-    return res.status(200).json({ ok: true, action, model, result: parsed });
+    return res.status(200).json({ ok: true, action, model, result: parsed, truncated: stopReason === 'max_tokens' });
   } catch (err) {
     return res.status(500).json({ ok: false, error: String((err && err.message) || err) });
   }

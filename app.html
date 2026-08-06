@@ -2501,7 +2501,7 @@ function renderFit() {
       : '<div id="fitDocs"></div>' +
         '<div style="margin-top:12px"><button class="btn primary" id="btnScore">Score against resume and letter</button></div>');
 
-  renderFitDocs(); renderFitWork();
+  renderFitDocs(); renderFitWork(); renderLastScore();
   const b = $('btnScore');
   if (b) b.addEventListener('click', runSectionScoring);
 }
@@ -2533,9 +2533,12 @@ function renderFitJd() {
     '<button class="btn" id="fitPdfJd"' + ((j.text || '').trim() ? '' : ' disabled') + '>Posting PDF</button>';
 
   const sel = $('fitJd');
+  // Picking an application moves the whole page to it — the documents, the
+  // questions, its versions, its scores, and the score on screen. Leaving any
+  // of them showing the last application is how you read the wrong numbers.
   if (sel) sel.addEventListener('change', () => {
     state.jdId = sel.value;
-    renderFitDocs(); renderFitWork();
+    renderFitDocs(); renderFitWork(); renderFitHistory(); renderLastScore();
   });
   $('jdToggle').addEventListener('click', () => { fitJdOpen = !fitJdOpen; renderFitJd(); });
   const pj = $('fitPdfJd');
@@ -2717,13 +2720,35 @@ async function saveFits() {
   catch (err) { toast('Could not save the fit-score history: ' + err.message, true); }
 }
 
+/* The score last run for this application, back on screen when you return to
+   it — so switching company never leaves another company's numbers up. */
+function renderLastScore() {
+  const j = fitJob();
+  if (!$('fitOut')) return;
+  if (j && j.lastScore && j.lastScore.result) renderSectionScores(j.lastScore.result, j);
+  else $('fitOut').innerHTML = '';
+}
+
+let historyAll = false;
 function renderFitHistory() {
   const el = $('fitHistory');
   if (!el) return;
-  const list = state.fits.items;
-  el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span></div>' +
+  const j = fitJob();
+  // Every run of every application is one list; what you want while working on
+  // one of them is that one's runs, in order, so you can see whether the last
+  // rewrite moved the number.
+  const all = state.fits.items;
+  const list = (historyAll || !j) ? all : all.filter((f) => f.jobId === j.id);
+  const mine = j ? all.filter((f) => f.jobId === j.id).length : 0;
+  el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span>' +
+      (j ? '<span class="tagline">' + (historyAll ? 'every application' : esc(j.company || 'this application')) + '</span>' : '') +
+      (j && all.length > mine
+        ? '<button class="btn ghost" id="histScope">' + (historyAll ? 'Just ' + esc(j.company || 'this one') : 'Show all ' + all.length) + '</button>'
+        : '') + '</div>' +
     (!list.length
-      ? '<div class="empty">No scores yet. Every run is recorded here so you can see whether a rewrite moved the number.</div>'
+      ? '<div class="empty">' + (historyAll || !j || !all.length
+          ? 'No scores yet. Every run is recorded here so you can see whether a rewrite moved the number.'
+          : 'No scores for ' + esc(j.company || 'this application') + ' yet. Score it, then revise, and the pair shows whether the rewrite worked.') + '</div>'
       : '<div class="lrow head hrow"><div>Resume / letter</div><div>Company</div><div>Job title</div>' +
           '<div>Run</div><div></div></div>' +
         list.slice(0, 40).map((f) => {
@@ -2743,6 +2768,8 @@ function renderFitHistory() {
           '</div>';
         }).join(''));
 
+  const scope = $('histScope');
+  if (scope) scope.addEventListener('click', () => { historyAll = !historyAll; renderFitHistory(); });
   document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
     const f = state.fits.items.find((x) => x.id === b.dataset.fitview);
     const j = state.jobs.items.find((x) => x.id === f.jobId) || { company: f.jobLabel, role: '' };

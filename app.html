@@ -2805,6 +2805,10 @@ async function runSectionScoring() {
     j.lastScore = { at: new Date().toISOString(), result: r.result };
     const cv = currentVersion(j);
     if (cv) cv.score = r.result;   // so "Revise into v2" can act on this feedback
+    // Each run keeps its whole result, and the file it lives in has a 1 MB
+    // ceiling. Two hundred runs is far more history than is useful and well
+    // inside it; past that the oldest goes.
+    if (state.fits.items.length >= 200) state.fits.items = state.fits.items.slice(0, 199);
     state.fits.items.unshift({
       id: uid('fit'), at: j.lastScore.at, jobId: j.id,
       jobLabel: (j.company || 'Untitled') + ' — ' + (j.role || '?'),
@@ -3296,6 +3300,10 @@ function archivePrep(j, note) {
   const n = j.prepVersions.length ? Math.max(...j.prepVersions.map((x) => x.v)) + 1 : 1;
   const v = { v: n, at: new Date().toISOString(), note: note || '', snapshot: JSON.parse(JSON.stringify(j.prep)) };
   j.prepVersions.push(v);
+  // A snapshot per redraft, per position, in a file with a 1 MB ceiling. Twenty
+  // is more history than anyone works through; the oldest drops off, and the
+  // count on the heading is the only place it shows.
+  if (j.prepVersions.length > 20) j.prepVersions = j.prepVersions.slice(-20);
   return v;
 }
 

@@ -22,7 +22,9 @@
   body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;min-height:100vh}
   a{color:var(--accent);text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  /* Three columns of document beside each other, and nine columns of postings
+     table, need more room than a reading column. */
+  .wrap{max-width:1400px;margin:0 auto;padding:0 20px}
   h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:-.02em}
 
   nav{position:sticky;top:0;z-index:60;backdrop-filter:blur(12px);background:rgba(14,21,19,.9);border-bottom:1px solid var(--border)}
@@ -368,11 +370,11 @@
     </div>
     <div class="card" id="fitPicked"></div>
     <div id="fitProposal"></div>
+    <div class="card" id="fitHistory"></div>
     <div class="card" id="jdQuestions"></div>
     <div class="card" id="jdVersions"></div>
     <div id="fitOut"></div>
     <div id="fitDetail"></div>
-    <div class="card" id="fitHistory"></div>
   </section>
 
   <div class="foot">
@@ -1909,12 +1911,40 @@ async function askQuestions(j, quiet) {
 
 /* Step 3 — revise into the next version, using her answers and any scoring
    feedback from the last comparison. */
+/* The two things a revision is built from: facts she has approved, and the
+   fixes the last score asked for. Both passes need them. */
+function reviseInputs(j) {
+  const v = currentVersion(j);
+  return {
+    answers: (j.questions || []).filter((q) => q.status === 'answered' && q.answer.trim())
+      .map((q) => ({ requirement: q.requirement, question: q.question, answer: q.answer })),
+    fixes: v && v.score ? (v.score.sections || []).filter((s) => s.resumeFix || s.coverFix)
+      .map((s) => ({ requirement: s.requirement, resumeFix: s.resumeFix, coverFix: s.coverFix })) : [],
+  };
+}
+
+/* Approving a question is approving a fact, and a fact is not resume wording —
+   that is what the revision pass is for. So approving now starts one, on a
+   short delay so approving three questions in a row costs one pass and not
+   three. An open draft is never overwritten: her edits to it outrank this. */
+let autoReviseTimer = null;
+function scheduleAutoRevise(j) {
+  if (j.proposal) {
+    toast('Approved. Approve or discard the open draft first — the next revision will include this.');
+    return;
+  }
+  if (autoReviseTimer) clearTimeout(autoReviseTimer);
+  toast('Approved — folding it into a new draft…');
+  autoReviseTimer = setTimeout(() => {
+    autoReviseTimer = null;
+    const jj = state.jobs.items.find((x) => x.id === j.id);
+    if (jj && !jj.proposal) reviseJd(jj);
+  }, 1400);
+}
+
 async function reviseJd(j) {
   const v = currentVersion(j);
-  const answers = (j.questions || []).filter((q) => q.status === 'answered' && q.answer.trim())
-    .map((q) => ({ requirement: q.requirement, question: q.question, answer: q.answer }));
-  const fixes = v && v.score ? (v.score.sections || []).filter((s) => s.resumeFix || s.coverFix)
-    .map((s) => ({ requirement: s.requirement, resumeFix: s.resumeFix, coverFix: s.coverFix })) : [];
+  const { answers, fixes } = reviseInputs(j);
 
   if (!answers.length && !fixes.length && !confirm('No answers and no scoring feedback yet. Revise anyway?')) return;
 
@@ -1948,6 +1978,36 @@ async function reviseJd(j) {
    paragraph of the letter — with the resume rebuilding underneath as you
    change it. Approve turns it into v(n); Discard throws it away. Until one of
    those, the current version is untouched. */
+/* Another pass, on what is in the boxes rather than on the version underneath —
+   so an edit she made is the thing being improved, not something the model has
+   to rediscover. It rewrites the draft, which is why it asks first. */
+async function aiHelpProposal(j) {
+  const p = j.proposal;
+  if (!p) return;
+  if (!confirm('Send this draft back for another pass? It rewrites the summary and the letter boxes below — your edits to them are what it works from, but it will replace the wording.')) return;
+  const btn = $('propHelp');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Working…'; }
+  try {
+    const { answers, fixes } = reviseInputs(j);
+    const r = await ai({ action: 'revise', master: state.master, posting: j.text,
+      resumeText: resumePlainText({ itemIds: p.itemIds, summary: p.summary, targetRole: j.role }),
+      coverText: p.coverLetter.filter(Boolean).join('\n\n'), answers, fixes });
+    // Keep what came back, but never let it empty a field she has filled in.
+    p.summary = r.result.summary || p.summary;
+    const ids = (r.result.itemIds || []).filter((id) => itemById(id));
+    if (ids.length) p.itemIds = ids;
+    if ((r.result.coverLetter || []).length) p.coverLetter = r.result.coverLetter.slice();
+    p.changelog = r.result.changelog || [];
+    p.stillMissing = r.result.stillMissing || [];
+    p.note = 'another pass over your edits';
+    await saveJobs(); renderProposal(j);
+    toast('Redrafted. Still nothing until you approve it.');
+  } catch (err) {
+    toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
+    if ($('propHelp')) { $('propHelp').disabled = false; $('propHelp').innerHTML = '&#10022; AI help'; }
+  }
+}
+
 let propPickerOpen = false;
 function renderProposal(j) {
   const el = $('fitProposal');
@@ -1955,11 +2015,13 @@ function renderProposal(j) {
   const p = j && j.proposal;
   if (!p) { el.innerHTML = ''; return; }
   const nextV = (j.versions || []).length + 1;
+  const coverFixes = reviseInputs(j).fixes.filter((f) => (f.coverFix || '').trim());
 
   el.innerHTML =
     '<div class="card">' +
       '<div class="sec-head"><h2>Proposed v' + nextV + '</h2>' +
         '<span class="tagline">' + esc(p.note || '') + '</span>' +
+        '<button class="btn" id="propHelp">&#10022; AI help</button>' +
         '<button class="btn primary" id="propApprove">Approve as v' + nextV + '</button>' +
         '<button class="btn danger ghost" id="propDiscard">Discard</button></div>' +
       '<p class="tagline" style="margin-bottom:10px">Nothing has changed yet &mdash; v' +
@@ -1984,6 +2046,18 @@ function renderProposal(j) {
               '<button class="icon" data-propdel="' + i + '" title="Remove this paragraph">🗑</button>' +
             '</div>').join('')
             : '<div class="empty">No letter proposed.</div>') +
+          // What the last score asked the letter to do, next to the letter it
+          // is asking about — each one a paragraph away from being in the draft.
+          (coverFixes.length
+            ? '<div class="group-label"><span>The score asked the letter for</span><span class="line"></span>' +
+                '<span>' + coverFixes.length + '</span></div>' +
+              coverFixes.map((f, i) =>
+                '<div class="fix" style="margin-bottom:8px">' +
+                  '<p style="font-size:12.5px;color:var(--muted);margin:0 0 5px">' +
+                    '<b style="color:var(--text)">' + esc(f.requirement) + '</b><br />' + esc(f.coverFix) + '</p>' +
+                  '<button class="btn ghost" data-propfix="' + i + '">Add as a paragraph</button>' +
+                '</div>').join('')
+            : '') +
         '</div>' +
       '</div>' +
       '<div class="group-label"><span>What goes in</span><span class="line"></span><span id="propCount">' + p.itemIds.length + '</span>' +
@@ -2017,6 +2091,12 @@ function renderProposal(j) {
     p.coverLetter.push(''); queueSaveJobs(); renderProposal(j);
   });
   $('propPickToggle').addEventListener('click', () => { propPickerOpen = !propPickerOpen; renderProposal(j); });
+  el.querySelectorAll('[data-propfix]').forEach((b) => b.addEventListener('click', () => {
+    p.coverLetter.push(coverFixes[+b.dataset.propfix].coverFix);
+    queueSaveJobs(); renderProposal(j);
+    toast('Added to the draft letter — edit it into your own words before approving.');
+  }));
+  $('propHelp').addEventListener('click', () => aiHelpProposal(j));
   // The picker only redraws the preview — redrawing the card would close the
   // box you just ticked and lose your place in a long list.
   el.querySelectorAll('[data-proppick]').forEach((c) => c.addEventListener('change', () => {
@@ -2106,7 +2186,7 @@ function renderQuestions(j) {
     q.status = 'answered';
     if (q.toMaster) addAnswerToMaster(q);
     queueSaveJobs(); renderFitWork();
-    toast('Approved. It will be used on the next revision.');
+    scheduleAutoRevise(j);
   }));
   el.querySelectorAll('[data-qundo]').forEach((b) => b.addEventListener('click', () => {
     const q = j.questions.find((x) => x.id === b.dataset.qundo);

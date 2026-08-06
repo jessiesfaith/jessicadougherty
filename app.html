@@ -990,8 +990,17 @@ $('tplDelete').addEventListener('click', () => {
   state.tplId = null; saveTemplates(); renderTplSelect(); renderBuilder();
 });
 async function saveTemplates() {
-  try { state.templates = await api('templates', 'PUT', state.templates, state.templates.version); renderTplSelect(); }
+  try { adoptVersion(state.templates, await api('templates', 'PUT', state.templates, state.templates.version)); renderTplSelect(); }
   catch (err) { toast('Template save failed: ' + err.message, true); }
+}
+
+// Take the server's version stamp without swapping the objects underneath the
+// UI. Replacing them is what silently detached open handlers.
+function adoptVersion(local, saved) {
+  if (!local || !saved) return local;
+  local.version = saved.version;
+  local.updatedAt = saved.updatedAt;
+  return local;
 }
 
 $('btnPrint').addEventListener('click', () => {
@@ -1012,7 +1021,9 @@ $('btnArchive').addEventListener('click', async () => {
   const btn = $('btnArchive');
   if (btn.disabled) return;
 
-  if (!(t.itemIds || []).length) return toast('Nothing selected — tick some entries first.', true);
+  const ticked = [...document.querySelectorAll('[data-pick]')].filter((c) => c.checked).map((c) => c.dataset.pick);
+  if (ticked.length && !(t.itemIds || []).length) t.itemIds = ticked;  // trust what is on screen
+  if (!(t.itemIds || []).length) return toast('Nothing selected — tick some entries in "What goes in" first.', true);
 
   const text = resumePlainText(t);
 
@@ -1042,7 +1053,7 @@ $('btnArchive').addEventListener('click', async () => {
   state.archives.items.unshift(snap);
 
   try {
-    state.archives = await api('archives', 'PUT', state.archives, state.archives.version);
+    adoptVersion(state.archives, await api('archives', 'PUT', state.archives, state.archives.version));
     btn.textContent = 'Saved ✓';
     toast('“' + label + '” archived — ' + state.archives.items.length + ' snapshot' + (state.archives.items.length === 1 ? '' : 's') + ' now. Open the Archive tab to rename or tick it for Fit Score.');
     renderArchive(); updateFitBadges();
@@ -1162,7 +1173,7 @@ function renderArchive() {
 }
 
 async function saveArchives() {
-  try { state.archives = await api('archives', 'PUT', state.archives, state.archives.version); }
+  try { adoptVersion(state.archives, await api('archives', 'PUT', state.archives, state.archives.version)); }
   catch (err) { toast('Could not save the archive: ' + err.message, true); }
 }
 
@@ -1255,7 +1266,7 @@ function collectJob() {
 }
 $('btnJobSave').addEventListener('click', async () => { collectJob(); await saveJobs(); renderJobSelect(); toast('Job saved'); });
 async function saveJobs() {
-  try { state.jobs = await api('jobs', 'PUT', state.jobs, state.jobs.version); }
+  try { adoptVersion(state.jobs, await api('jobs', 'PUT', state.jobs, state.jobs.version)); }
   catch (err) { toast('Job save failed: ' + err.message, true); }
 }
 
@@ -1500,7 +1511,7 @@ function renderFitMatrix(rs, js, results) {
 }
 
 async function saveFits() {
-  try { state.fits = await api('fits', 'PUT', state.fits, state.fits.version); }
+  try { adoptVersion(state.fits, await api('fits', 'PUT', state.fits, state.fits.version)); }
   catch (err) { toast('Could not save the fit-score history: ' + err.message, true); }
 }
 

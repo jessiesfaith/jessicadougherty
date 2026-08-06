@@ -152,6 +152,39 @@
     padding:11px 18px;border-radius:11px;font-size:13.5px;box-shadow:var(--shadow);z-index:200;max-width:min(560px,92vw)}
   .toast.err{border-color:rgba(224,122,106,.5);color:#f0b6ab}
   .foot{border-top:1px solid var(--border);padding:18px 0 40px;font-size:12.5px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
+
+  /* ── slide-out user guide ── */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;opacity:0;transition:opacity .2s}
+  .scrim.on{opacity:1}
+  .scrim[hidden]{display:none}
+  .guide{position:fixed;top:0;right:0;bottom:0;width:min(480px,94vw);z-index:160;background:#141d18;
+    border-left:1px solid var(--border);box-shadow:-20px 0 60px rgba(0,0,0,.5);display:flex;flex-direction:column;
+    transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1)}
+  .guide.on{transform:translateX(0)}
+  .guide[hidden]{display:none}
+  .guide-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);flex:none}
+  .guide-head h2{font-size:18px;flex:1}
+  .guide-nav{display:flex;gap:5px;padding:10px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex:none}
+  .guide-nav button{background:var(--card-2);border:1px solid var(--border);color:var(--muted);font:inherit;font-size:12px;
+    font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer}
+  .guide-nav button:hover{color:var(--text);border-color:var(--accent)}
+  /* position:relative so headings measure their offset against this scroller,
+     not against the fixed panel — otherwise opening overshoots by the header height */
+  .guide-body{overflow-y:auto;padding:4px 20px 60px;flex:1;scroll-behavior:smooth;position:relative}
+  .guide-body h3{font-size:17px;margin:24px 0 8px;color:var(--accent);scroll-margin-top:12px}
+  .guide-body h3:first-child{margin-top:14px}
+  .guide-body h4{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;margin:14px 0 5px;color:var(--text)}
+  .guide-body p{font-size:14px;color:var(--muted);margin-bottom:9px}
+  .guide-body ol,.guide-body ul{margin:0 0 10px 18px;font-size:14px;color:var(--muted)}
+  .guide-body li{margin-bottom:5px}
+  .guide-body strong{color:var(--text);font-weight:600}
+  .guide-body code{background:rgba(0,0,0,.4);border:1px solid var(--border);padding:1px 5px;border-radius:5px;font-size:12.5px;color:var(--accent-2)}
+  .guide-body .kbd{display:inline-block;background:var(--card-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12px;color:var(--text)}
+  .guide-body .tip{border-left:3px solid var(--accent-2);background:rgba(159,199,166,.08);padding:9px 12px;border-radius:0 8px 8px 0;margin-bottom:10px;font-size:13.5px}
+  .guide-body .warn{border-left:3px solid var(--warn);background:rgba(232,176,106,.08);padding:9px 12px;border-radius:0 8px 8px 0;margin-bottom:10px;font-size:13.5px}
+  .guide-body table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+  .guide-body td{border-bottom:1px solid var(--border);padding:6px 4px;vertical-align:top;color:var(--muted)}
+  .guide-body td:first-child{color:var(--text);white-space:nowrap;padding-right:10px}
 </style>
 </head>
 <body>
@@ -170,6 +203,7 @@
     <div class="nav-right">
       <span class="saveState" id="saveState"></span>
       <button class="btn primary" id="saveBtn" disabled>Save</button>
+      <button class="btn ghost" id="guideBtn" title="Open the user guide">Guide</button>
       <a class="btn ghost" href="/dashboard" style="text-decoration:none">Dashboard</a>
     </div>
   </div>
@@ -287,8 +321,110 @@
   <div class="foot">
     <span>Private workspace</span>
     <span id="storeInfo"></span>
+    <a href="#" id="guideLink">User guide</a>
   </div>
 </main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="guide" id="guide" hidden aria-label="User guide">
+  <div class="guide-head">
+    <h2>User guide</h2>
+    <button class="btn ghost" id="guideClose" title="Close (Esc)">✕</button>
+  </div>
+  <div class="guide-nav">
+    <button data-goto="g-career">Career</button>
+    <button data-goto="g-builder">Builder</button>
+    <button data-goto="g-archive">Archive</button>
+    <button data-goto="g-jobs">Jobs</button>
+    <button data-goto="g-capture">Capture</button>
+    <button data-goto="g-data">Your data</button>
+    <button data-goto="g-trouble">Problems</button>
+  </div>
+  <div class="guide-body" id="guideBody">
+
+    <h3 id="g-career">Career master</h3>
+    <p>This is the only place your career facts live. Everything else — templates, archived resumes, job matching — reads from here. Fix a typo once and every resume inherits it.</p>
+    <h4>Editing</h4>
+    <p>Type directly into any field. The top right shows <strong>Unsaved changes</strong> and the <strong>Save</strong> button lights up. Nothing is stored until you press Save.</p>
+    <div class="warn">If you try to leave with unsaved edits, your browser will warn you. That warning is the only thing standing between you and losing work — don't click through it out of habit.</div>
+    <h4>Completed vs In progress</h4>
+    <p>Every entry has a status dropdown. Completed entries group at the top of a section, in-progress below. Your CPA sits in progress until results land — flip the dropdown then, no retyping.</p>
+    <h4>Reordering</h4>
+    <ul>
+      <li><span class="kbd">⤒</span> to the top of its group, <span class="kbd">⤓</span> to the bottom</li>
+      <li><span class="kbd">▲</span> <span class="kbd">▼</span> one position at a time</li>
+      <li><span class="kbd">⠿</span> grab and drag; an orange line shows where it will land</li>
+    </ul>
+    <p>Reordering stays inside a group. Moving something within Completed never disturbs In progress. To move an entry between groups, use the status dropdown — dragging across the divider is ignored on purpose, so you can't change a status by slipping.</p>
+    <h4>Adding and removing</h4>
+    <p><strong>+ Add</strong> at the top of a section creates a blank entry, marked in progress. <strong>+ line</strong> adds a bullet. The bin deletes an entry — templates that referenced it just skip it, they don't break.</p>
+
+    <h3 id="g-builder">Resume builder</h3>
+    <p>A template is a <em>selection</em>, not a copy. It stores which entries to include and in what order. Your actual words stay in Career master, so a fix there flows into every template automatically.</p>
+    <ol>
+      <li><strong>New</strong> creates a template. Name it for the role — "Controller — public company".</li>
+      <li>Set <strong>Target role</strong>. It replaces your headline at the top of that resume.</li>
+      <li><strong>Summary</strong> is optional. Leave it blank to use the one from Career master.</li>
+      <li>Tick what belongs in this version. The preview updates as you go.</li>
+      <li><strong>Print / PDF</strong> opens a clean print view — use your browser's "Save as PDF".</li>
+    </ol>
+    <div class="tip"><strong>Tailor with AI</strong> proposes bullet rewrites, one at a time, each with Accept or Reject. Nothing touches your master until you accept, and accepting still leaves you to press Save. It may only rephrase facts already in your master — it cannot invent numbers, employers, dates, or upgrade a credential. If a suggestion contains something you never wrote, reject it and tell me.</div>
+
+    <h3 id="g-archive">Archive</h3>
+    <p><strong>Save to archive</strong> freezes the resume exactly as it reads at that moment — the text, not a pointer to it. Edit your master afterwards and the archived copy does not move.</p>
+    <p>That is deliberate. Six months from now, "what exactly did I send them?" needs a real answer.</p>
+    <p>Each snapshot records the career-master version it came from. <strong>View</strong> opens it, <strong>Copy text</strong> gives you plain text for a form field, <strong>Delete</strong> removes it — that last one is the record of what you actually sent, so think before using it.</p>
+
+    <h3 id="g-jobs">Jobs</h3>
+    <ol>
+      <li><strong>New</strong>, then paste the posting into the description box — or use one-click capture.</li>
+      <li><strong>Analyse fit</strong> reads it against your master.</li>
+      <li>You get a score, a short rationale, keywords worth mirroring, and a <strong>gap list</strong>.</li>
+      <li><strong>Build a resume from this</strong> creates a template with the recommended entries and a tailored summary, and drops you in the Builder.</li>
+      <li><strong>Draft cover letter</strong> gives you three or four paragraphs to edit.</li>
+    </ol>
+    <div class="tip">The gap list is the most useful part. "Wants NetSuite, you have nothing on NetSuite" tells you what to add to your master — or that this one isn't worth an application.</div>
+    <p>The <strong>Status</strong> dropdown (considering / applied / interviewing / closed) is your application log. Keep it current and after thirty applications you'll know which framing actually gets replies.</p>
+    <p>Anything the cover letter couldn't support from your master gets listed under <strong>flags</strong>. Read those before sending.</p>
+
+    <h3 id="g-capture">One-click capture</h3>
+    <p>Grabs a job posting from the page you're looking at, with no copy-paste.</p>
+    <ol>
+      <li>Show your bookmarks bar: <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">B</span></li>
+      <li>Jobs tab → <strong>One-click capture</strong></li>
+      <li><strong>Drag</strong> the green "Grab this job" button up onto your bookmarks bar. Don't click it — dragging is the whole point.</li>
+      <li>Open any job posting: LinkedIn, Indeed, a company careers page</li>
+      <li>Click the bookmark. A tab opens here with the posting already loaded as a new job.</li>
+      <li>Check the company and role it guessed, then <strong>Analyse fit</strong>.</li>
+    </ol>
+    <p>It reads the page your browser already loaded and passes the text in the URL fragment, which never reaches any server. Nothing is scraped, which is why it works on sites that block automated fetching.</p>
+    <p>If dragging won't work, use <strong>Copy the code instead</strong>, then create a bookmark by hand and paste that as its URL.</p>
+
+    <h3 id="g-data">Where your data lives</h3>
+    <p>In <code>career-data</code> — your own private GitHub repo — as four plain JSON files under <code>career/</code>. Every save is a commit, so you have the full history.</p>
+    <p>You can <code>git clone</code> that repo and read it in a text editor. Nothing here depends on this website continuing to exist, or on any subscription staying paid.</p>
+    <table>
+      <tr><td>GitHub</td><td>Free</td></tr>
+      <tr><td>Vercel hosting</td><td>Free (Hobby)</td></tr>
+      <tr><td>Anthropic API</td><td>Pay per use — roughly 1–2¢ per analysis</td></tr>
+      <tr><td>Domain</td><td>~$15/year</td></tr>
+    </table>
+    <p>No subscription. Stop paying for everything except the domain and this keeps working — you'd lose only the three AI buttons.</p>
+    <h4>Signing in</h4>
+    <p>Your session ends when you close the browser, and after 2 hours regardless. That's what you asked for: signing in each visit proves the gate still works.</p>
+
+    <h3 id="g-trouble">When something breaks</h3>
+    <table>
+      <tr><td>"Your data repo is not connected"</td><td>Environment variables missing. Vercel → Deployments → ⋯ → Redeploy.</td></tr>
+      <tr><td>"GitHub rejected the token (401)"</td><td>Token expired — they last a year. Make a new one, update <code>GITHUB_DATA_TOKEN</code>, redeploy.</td></tr>
+      <tr><td>"lacks Contents: Read and write"</td><td>Token permission. Edit it → Repository permissions → Contents → Read and write.</td></tr>
+      <tr><td>"Changed somewhere else"</td><td>Two tabs open. Reload the one you care about least, then redo the edit.</td></tr>
+      <tr><td>"No Anthropic API key"</td><td>Only the AI buttons need it. Add <code>ANTHROPIC_API_KEY</code> in Vercel and redeploy.</td></tr>
+      <tr><td>Bounced to login</td><td>Session expired. Normal — sign in again.</td></tr>
+    </table>
+    <p>Anything not on this list, or an error that doesn't name its own fix: send me the exact wording.</p>
+  </div>
+</aside>
 
 <script>
 'use strict';
@@ -1002,6 +1138,37 @@ function coverHtml(c) {
     '<div class="cl" style="font-size:14px;color:var(--muted)"><p style="margin-bottom:11px">' + esc(c.greeting || '') + '</p>' + body +
     '<p>' + esc(c.closing || '') + '</p></div></div>';
 }
+
+/* ── USER GUIDE PANE ───────────────────────────────────
+   Opens on whichever section matches the tab you are looking at, so the
+   answer you need is the first thing on screen. */
+const TAB_TO_GUIDE = { career: 'g-career', builder: 'g-builder', archive: 'g-archive', jobs: 'g-jobs' };
+
+function openGuide(sectionId) {
+  const g = $('guide'), s = $('scrim');
+  g.hidden = false; s.hidden = false;
+  requestAnimationFrame(() => { g.classList.add('on'); s.classList.add('on'); });
+  const target = document.getElementById(sectionId || TAB_TO_GUIDE[state.tab] || 'g-career');
+  // jump without animating, so it opens already in the right place
+  $('guideBody').style.scrollBehavior = 'auto';
+  $('guideBody').scrollTop = target ? target.offsetTop - 10 : 0;
+  $('guideBody').style.scrollBehavior = 'smooth';
+  $('guideClose').focus();
+}
+function closeGuide() {
+  const g = $('guide'), s = $('scrim');
+  g.classList.remove('on'); s.classList.remove('on');
+  setTimeout(() => { g.hidden = true; s.hidden = true; }, 240);
+}
+$('guideBtn').addEventListener('click', () => openGuide());
+$('guideLink').addEventListener('click', (e) => { e.preventDefault(); openGuide(); });
+$('guideClose').addEventListener('click', closeGuide);
+$('scrim').addEventListener('click', closeGuide);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('guide').hidden) closeGuide(); });
+document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => {
+  const t = document.getElementById(b.dataset.goto);
+  if (t) $('guideBody').scrollTop = t.offsetTop - 10;
+}));
 
 boot();
 </script>

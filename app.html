@@ -14,6 +14,9 @@
     --card-2:rgba(255,255,255,.06); --border:rgba(255,255,255,.09);
     --text:#f3eee1; --muted:#bcc6ba; --faint:#8b978b;
     --accent:#e9a97d; --accent-2:#9fc7a6; --warn:#e8b06a; --danger:#e07a6a;
+    /* One blue, used in three places: the top of the page, the footer, and the
+       headings of the documents — so the app and what it prints agree. */
+    --ink:#1f4e79; --ink-soft:#7fb0dd;
     --radius:14px; --shadow:0 16px 42px rgba(0,0,0,.42);
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -29,7 +32,7 @@
 
   nav{position:sticky;top:0;z-index:60;backdrop-filter:blur(12px);background:rgba(14,21,19,.9);border-bottom:1px solid var(--border)}
   .nav-inner{display:flex;align-items:center;gap:14px;height:58px}
-  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14.5px;white-space:nowrap}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14.5px;white-space:nowrap;color:var(--ink-soft)}
   .lock{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:rgba(159,199,166,.14);border:1px solid rgba(159,199,166,.3);color:var(--accent-2)}
   .lock svg{width:14px;height:14px}
   .tabs{display:flex;gap:4px;margin-left:16px;flex:1;overflow-x:auto}
@@ -116,13 +119,14 @@
   .pick .wipdot{color:var(--warn);font-size:11px;font-weight:700}
 
   .preview{background:#fff;color:#1a1a1a;border-radius:10px;padding:34px 32px;font-size:12.6px;line-height:1.5;max-height:74vh;overflow:auto}
-  .preview h1{font-size:23px;color:#111;margin-bottom:3px;letter-spacing:-.5px}
+  .preview h1{font-size:23px;color:var(--ink);margin-bottom:3px;letter-spacing:-.5px}
   .preview .ph{font-size:12.5px;color:#444;margin-bottom:3px}
   .preview .pc{font-size:11.5px;color:#555;margin-bottom:15px}
-  .preview h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#2f5a45;border-bottom:1.5px solid #2f5a45;padding-bottom:3px;margin:16px 0 9px;font-family:'DM Sans',sans-serif;font-weight:700}
+  .preview h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink);border-bottom:1.5px solid var(--ink);padding-bottom:3px;margin:16px 0 9px;font-family:'DM Sans',sans-serif;font-weight:700}
   .preview .e{margin-bottom:11px}
   .preview .e-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
-  .preview .e-org{font-weight:700;font-size:13px}
+  .preview .e-org{font-weight:700;font-size:13px;color:var(--ink)}
+  .preview b.hi,.preview .hi{color:var(--ink)}
   .preview .e-meta{font-size:11px;color:#666;white-space:nowrap}
   .preview .e-role{font-style:italic;font-size:12px;color:#333;margin-bottom:3px}
   .preview ul{margin:0 0 0 16px}
@@ -505,6 +509,21 @@
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* Document text can carry emphasis: **like this** comes out bold, and the
+   markers are the only markup allowed. Everything is escaped first, so the tags
+   this adds are the only ones that can ever reach the page — a resume is not a
+   place to be relaxed about what turns into HTML. Blue is reserved for things a
+   reader should land on: ***this*** is bold and blue. */
+const RICH_HELP = 'Wrap text in **stars** for bold, ***three*** for bold blue.';
+function rich(s) {
+  return esc(s)
+    .replace(/\*\*\*(?!\s)([^*]+?)(?<!\s)\*\*\*/g, '<b class="hi">$1</b>')
+    .replace(/\*\*(?!\s)([^*]+?)(?<!\s)\*\*/g, '<b>$1</b>');
+}
+// The same text with the markers taken out, for anywhere that must stay plain —
+// the frozen copy of what was sent, and everything handed to the agent.
+const plain = (s) => String(s == null ? '' : s).replace(/\*{2,3}(?!\s)([^*]+?)(?<!\s)\*{2,3}/g, '$1');
 const uid = (p) => p + '-' + Math.random().toString(36).slice(2, 9);
 
 const state = { master:null, templates:null, archives:null, jobs:null, fits:null, cover:null, jdId:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
@@ -737,7 +756,7 @@ function renderCoverView() {
     '<div class="preview">' +
     (paras.length
       ? '<p style="margin-bottom:12px">' + esc(L.greeting || '') + '</p>' +
-        paras.map((t) => '<p style="margin-bottom:12px">' + esc(t) + '</p>').join('') +
+        paras.map((t) => '<p style="margin-bottom:12px">' + rich(t) + '</p>').join('') +
         '<p style="white-space:pre-line">' + esc(L.signoff || '') + '</p>'
       : '<p style="color:#666">Nothing here yet. Generate a letter for a posting in <b>Fit Score</b>, get it how you want it, then use <b>Save as master letter</b> there.</p>') +
     '</div>';
@@ -1237,22 +1256,22 @@ function renderResume(tpl) {
     '<div class="ph">' + esc(tpl.targetRole || p.headline) + '</div>' +
     '<div class="pc">' + contact + '</div>';
   const summary = (tpl.summary && tpl.summary.trim()) || p.summary;
-  if (summary) h += '<h2>Professional Summary</h2><div class="inline">' + esc(summary) + '</div>';
+  if (summary) h += '<h2>Professional Summary</h2><div class="inline">' + rich(summary) + '</div>';
 
   for (const sec of state.master.sections) {
     const g = bySec.get(sec.key);
     if (!g || !g.items.length) continue;
     h += '<h2>' + esc(sec.title) + '</h2>';
     if (sec.key === 'skills') {
-      h += '<div class="inline">' + g.items.map((it) => (it.bullets || []).map((b) => esc(b.text)).join(' · ')).join(' · ') + '</div>';
+      h += '<div class="inline">' + g.items.map((it) => (it.bullets || []).map((b) => rich(b.text)).join(' · ')).join(' · ') + '</div>';
       continue;
     }
     for (const it of g.items) {
-      h += '<div class="e"><div class="e-top"><span class="e-org">' + esc(it.org || it.role) + '</span>' +
+      h += '<div class="e"><div class="e-top"><span class="e-org">' + rich(it.org || it.role) + '</span>' +
         '<span class="e-meta">' + esc([it.location, it.dates].filter(Boolean).join('  ·  ')) + '</span></div>';
       if (it.org && it.role) h += '<div class="e-role">' + esc(it.role) + '</div>';
       const bl = (it.bullets || []).filter((b) => b.text && b.text.trim());
-      if (bl.length) h += '<ul>' + bl.map((b) => '<li>' + esc(b.text) + '</li>').join('') + '</ul>';
+      if (bl.length) h += '<ul>' + bl.map((b) => '<li>' + rich(b.text) + '</li>').join('') + '</ul>';
       h += '</div>';
     }
   }
@@ -1380,7 +1399,7 @@ function coverLetterText(cl) {
   if (cl && cl.frozenText) return cl.frozenText;
   const paras = (cl && cl.paragraphs && cl.paragraphs.length) ? cl.paragraphs : state.cover.letter.paragraphs;
   const L = state.cover.letter;
-  const body = paras.map((p) => (p.text || '').trim()).filter(Boolean);
+  const body = paras.map((p) => plain(p.text || '').trim()).filter(Boolean);
   const opensWithGreeting = /^(dear |to whom|hello|hi )/i.test(body[0] || '');
   const endsWithSignoff = /(sincerely|regards|best|thank you)[\s,]*$/i.test((body[body.length - 1] || '').split('\n').pop() || '');
   return [
@@ -1402,6 +1421,9 @@ function currentJd() {
   if (!j) { j = jdList()[0]; state.jdId = j ? j.id : null; }
   return j;
 }
+// Company and role for a heading. Escape each part, then join with the
+// entity — escaping the joined string turns the & of &middot; into &amp;.
+const jobLabel = (j) => [j.company, j.role].filter(Boolean).map(esc).join(' &middot; ') || 'no company';
 const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
 
 // The list alone, leaving whatever you are typing in untouched.
@@ -1693,9 +1715,9 @@ function printResume(j) {
   const w = window.open('', '_blank');
   w.document.write('<html><head><title>' + esc(pdfName(j, 'Resume')) + '</title><style>' +
     'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.5in;font-size:11pt;line-height:1.45}' +
-    'h1{font-size:20pt;margin-bottom:2px}.ph{font-size:11pt;color:#444}.pc{font-size:9.5pt;color:#555;margin-bottom:14px}' +
-    'h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#2f5a45;border-bottom:1.5px solid #2f5a45;padding-bottom:2px;margin:14px 0 8px;font-family:Helvetica,Arial,sans-serif}' +
-    '.e{margin-bottom:10px}.e-top{display:flex;justify-content:space-between}.e-org{font-weight:700}.e-meta{font-size:9.5pt;color:#666}' +
+    'h1{font-size:20pt;margin-bottom:2px;color:#1f4e79}.ph{font-size:11pt;color:#444}.pc{font-size:9.5pt;color:#555;margin-bottom:14px}' +
+    'h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#1f4e79;border-bottom:1.5px solid #1f4e79;padding-bottom:2px;margin:14px 0 8px;font-family:Helvetica,Arial,sans-serif}' +
+    '.e{margin-bottom:10px}.e-top{display:flex;justify-content:space-between}.e-org{font-weight:700;color:#1f4e79}b.hi{color:#1f4e79}.e-meta{font-size:9.5pt;color:#666}' +
     '.e-role{font-style:italic;font-size:10.5pt;margin-bottom:2px}ul{margin:0 0 0 18px}li{margin-bottom:2px}' +
     '@media print{@page{margin:.5in}}</style></head><body>' + html + '</body></html>');
   w.document.close(); setTimeout(() => w.print(), 350);
@@ -1720,7 +1742,7 @@ function printPosting(j) {
   const w = window.open('', '_blank');
   w.document.write('<html><head><title>' + esc(pdfName(j, 'Posting')) + '</title><style>' +
     'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.75in .5in;font-size:11pt;line-height:1.5}' +
-    'h1{font-size:17pt;margin-bottom:2px;letter-spacing:-.3px}' +
+    'h1{font-size:17pt;margin-bottom:2px;letter-spacing:-.3px;color:#1f4e79}b.hi{color:#1f4e79}' +
     '.meta{font-size:9.5pt;color:#555;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:20px}' +
     '.url{font-size:9.5pt;color:#555;margin-bottom:18px;word-break:break-all}' +
     // The posting's own line breaks are its structure — bullets, headings and
@@ -1746,7 +1768,7 @@ function printCoverLetter(j) {
   const w = window.open('', '_blank');
   w.document.write('<html><head><title>' + esc(pdfName(j, 'Cover Letter')) + '</title><style>' +
     'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.75in .5in;font-size:11.5pt;line-height:1.55}' +
-    'h1{font-size:17pt;margin-bottom:2px;letter-spacing:-.3px}' +
+    'h1{font-size:17pt;margin-bottom:2px;letter-spacing:-.3px;color:#1f4e79}b.hi{color:#1f4e79}' +
     '.contact{font-size:9.5pt;color:#555;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:22px}' +
     '.date{margin-bottom:18px;font-size:10.5pt;color:#444}' +
     '.to{margin-bottom:18px;font-size:10.5pt;color:#444}' +
@@ -1756,7 +1778,7 @@ function printCoverLetter(j) {
     '<div class="contact">' + esc(contact) + '</div>' +
     '<div class="date">' + esc(today) + '</div>' +
     (j.company ? '<div class="to">' + esc(j.company) + (j.role ? '<br>Re: ' + esc(j.role) : '') + '</div>' : '') +
-    paras.map((t) => '<p>' + esc(t).replace(/\n/g, '<br>') + '</p>').join('') +
+    paras.map((t) => '<p>' + rich(t).replace(/\n/g, '<br>') + '</p>').join('') +
     '</body></html>');
   w.document.close(); setTimeout(() => w.print(), 350);
 }
@@ -2216,6 +2238,9 @@ function renderQuestions(j) {
   el.innerHTML =
     '<div class="sec-head"><h2>Questions from the agent</h2>' +
       '<span class="count">' + open.length + ' open</span>' +
+      // Which application these belong to, on the heading — the picker that
+      // chose them is a long way up the page by the time you are reading them.
+      '<span class="tagline">' + jobLabel(j) + '</span>' +
       '<button class="btn ghost" id="qToggle">' + (questionsOpen ? 'Hide' : 'Show') + '</button>' +
       '<button class="btn" id="btnAsk">Ask again</button>' +
       '<button class="btn primary" id="btnRevise">Revise into v' + nextV + '</button></div>' +
@@ -2314,7 +2339,7 @@ function renderVersions(j) {
   const vs = (j.versions || []).slice().reverse();
   el.innerHTML =
     '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span>' +
-      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' &middot; ')) + '</span>' +
+      '<span class="tagline">' + jobLabel(j) + '</span>' +
       '<button class="btn ghost" id="vToggle">' + (versionsOpen ? 'Hide' : 'Show') + '</button></div>' +
     // Closed by default. Which version is current is what the rest of the page
     // already acts on; the list is for going back, which is occasional.
@@ -2641,7 +2666,8 @@ async function runSectionScoring() {
       verdict: r.result.verdict, result: r.result,
     });
     await saveJobs(); await saveFits();
-    renderSectionScores(r.result, j);
+    rankingOpen = true;
+    renderSectionScores(r.result, j, j.lastScore.at);
     renderFitDocs();
     renderFitHistory();
   } catch (err) {
@@ -2651,7 +2677,12 @@ async function runSectionScoring() {
 
 const toneOf = (n) => (n >= 80 ? 'good' : n >= 60 ? 'ok' : n >= 40 ? 'thin' : 'weak');
 
-function renderSectionScores(a, j) {
+let rankingOpen = false;
+/* The ranking for one application. Its heading says which — the picker that
+   chose it is far up the page — and whether you are looking at the last run or
+   an older one you opened from the history. Closed by default: it is the
+   longest thing on the page and you come back to it deliberately. */
+function renderSectionScores(a, j, at) {
   const rows = (a.sections || []).map((sec, i) =>
     '<div class="secrow">' +
       '<div class="secreq"><b>' + esc(sec.requirement) + '</b><p>' + esc(sec.detail || '') + '</p></div>' +
@@ -2669,7 +2700,11 @@ function renderSectionScores(a, j) {
 
   $('fitOut').innerHTML =
     '<div class="card">' +
-      '<div class="sec-head"><h2>' + esc(j.company || 'Untitled') + ' — ' + esc(j.role || '') + '</h2></div>' +
+      '<div class="sec-head"><h2>Ranking</h2>' +
+        '<span class="count">' + (a.overallResume != null ? a.overallResume : '–') + ' / ' + (a.overallCover != null ? a.overallCover : '–') + '</span>' +
+        '<span class="tagline">' + jobLabel(j) + (at ? ' &middot; run ' + esc(new Date(at).toLocaleString()) : '') + '</span>' +
+        '<button class="btn ghost" id="rankToggle">' + (rankingOpen ? 'Hide' : 'Show') + '</button></div>' +
+      (!rankingOpen ? '' :
       // A salvaged score is a real score, but a partial one: say so rather than
       // let a short list read as "the posting only asked for this much".
       (a.partial ? '<div class="banner warn"><b>Cut short</b>The reply ran out of room, so the sections below stop before the end of the posting. The scores shown are sound; there may be requirements underneath them that were never reached.</div>' : '') +
@@ -2685,8 +2720,9 @@ function renderSectionScores(a, j) {
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
         '<button class="btn primary" id="btnReviseFromScore">Revise into the next version using this</button>' +
         '<span class="tagline">Takes these fixes and any answers you have approved, and writes a new version.</span>' +
-      '</div>' +
+      '</div>') +
     '</div>';
+  $('rankToggle').addEventListener('click', () => { rankingOpen = !rankingOpen; renderSectionScores(a, j, at); });
 
   // A resume fix has no single unambiguous target — it might be a bullet, an
   // omitted entry, or nothing you can honestly claim. Hand you the text rather
@@ -2731,7 +2767,7 @@ async function saveFits() {
 function renderLastScore() {
   const j = fitJob();
   if (!$('fitOut')) return;
-  if (j && j.lastScore && j.lastScore.result) renderSectionScores(j.lastScore.result, j);
+  if (j && j.lastScore && j.lastScore.result) renderSectionScores(j.lastScore.result, j, j.lastScore.at);
   else $('fitOut').innerHTML = '';
 }
 
@@ -2779,7 +2815,8 @@ function renderFitHistory() {
   document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
     const f = state.fits.items.find((x) => x.id === b.dataset.fitview);
     const j = state.jobs.items.find((x) => x.id === f.jobId) || { company: f.jobLabel, role: '' };
-    renderSectionScores(f.result, j);
+    rankingOpen = true;
+    renderSectionScores(f.result, j, f.at);
     // The results render above the history, so from the bottom of the page it
     // looked like the button did nothing at all.
     $('fitOut').scrollIntoView({ behavior: 'smooth', block: 'start' });

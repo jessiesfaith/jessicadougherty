@@ -170,11 +170,17 @@
   /* One row per application, so the list stays short as it grows. */
   .apptbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
   .apptbl th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:0 8px 6px 0;border-bottom:1px solid var(--border)}
-  .apptbl td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:middle}
+  /* One row is one line. Every cell holds a single line and clips what will not
+     fit — a row that grows to two lines defeats the point of a table you scan
+     down, and the full value is on the cell's title and in the editor below. */
+  .apptbl td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:middle;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .apptbl th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .apptbl td.co{font-weight:600}
   .apptbl td.ro{color:var(--faint)}
-  .apptbl td.co,.apptbl td.ro{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .apptbl .doclinks{gap:10px}
+  /* Inline so the version chip and the two links share the line. */
+  .apptbl .doclinks{display:inline-flex;gap:9px;flex-wrap:nowrap;vertical-align:middle;margin-left:7px}
+  .apptbl .doclinks a,.apptbl .doclinks .none{white-space:nowrap}
   .apptbl input{width:100%;background:transparent;border:1px solid transparent;border-radius:5px;color:inherit;font:inherit;padding:3px 5px}
   .apptbl input:hover{border-color:var(--border)}
   .apptbl input:focus{border-color:var(--accent);background:rgba(0,0,0,.18);outline:none}
@@ -348,6 +354,7 @@
       </div>
     </div>
     <div class="card" id="fitPicked"></div>
+    <div id="fitProposal"></div>
     <div class="card" id="jdQuestions"></div>
     <div class="card" id="jdVersions"></div>
     <div id="fitOut"></div>
@@ -420,6 +427,11 @@
       <li><strong>Copy fix</strong> on the resume side hands you the suggestion. There is no single unambiguous place to apply it, so it does not guess.</li>
       <li><strong>Add to letter</strong> appends the suggestion to this application's letter as a draft paragraph for you to rewrite.</li>
     </ul>
+    <h4>Revising, and approving</h4>
+    <p><strong>Copy fix</strong> hands you the resume suggestion on the clipboard and changes nothing &mdash; there is no single unambiguous place to apply it. <strong>Add to letter</strong> appends the letter suggestion to <em>this application's</em> letter, never to your master.</p>
+    <p>For a full pass, don't use those: <strong>Approve</strong> the agent's questions, then <strong>Revise</strong>. Revise folds in every approved answer and every fix at once, and comes back with a <strong>proposed version you can edit</strong> &mdash; the summary, each letter paragraph, and which entries go in, with the resume rebuilding underneath as you change it.</p>
+    <p><strong>Nothing is a version until you press Approve.</strong> Until then the current version is untouched, and Discard throws the draft away without spending your approved answers. Once approved it becomes the current version, and the Resume and Cover letter links in both Postings tables follow it.</p>
+    <p>Then score again: the Versions list shows each version's own score, so you can see whether the rewrite actually moved the number.</p>
     <div class="tip">A zero with "no evidence" is the honest answer, not a failure of the scorer. If the posting wants something you have never done, no wording fixes that &mdash; and the fix will say so rather than help you claim it.</div>
     <p>Every run is saved to the score history, so you can see whether a rewrite actually moved the number.</p>
 
@@ -822,8 +834,8 @@ function renderCompanyTable() {
     '<p class="tagline" style="margin-bottom:8px">One row per application, read-only. Editing, and removing, happen in <strong>Job Postings</strong>.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
-        '<col style="width:13%"><col style="width:15%"><col style="width:9%"><col style="width:9%">' +
-        '<col style="width:9%"><col style="width:9%"><col style="width:13%"><col style="width:13%"><col style="width:10%">' +
+        '<col style="width:12%"><col style="width:13%"><col style="width:8.5%"><col style="width:10.5%">' +
+        '<col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:11%"><col style="width:20%">' +
       '</colgroup><thead><tr>' +
         '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
         '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
@@ -1372,8 +1384,11 @@ function renderJdListOnly() {
     (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
       : '<p class="tagline" style="margin-bottom:8px">Deadline, sent and contact save as you type; click Notes to open the full box. Tick rows and hit Remove to hide them &mdash; nothing is destroyed, they come back with <em>show deleted</em>.</p>' +
         '<table class="apptbl jdtbl"><colgroup>' +
-          '<col style="width:4%"><col style="width:12%"><col style="width:14%"><col style="width:9%"><col style="width:9%">' +
-          '<col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:12%"><col style="width:10%">' +
+          // Measured against what each column actually needs on one line: Built
+          // wants 210px for a chip and two links, and Job title is the one that
+          // can afford to clip because the row below spells it out in full.
+          '<col style="width:3.5%"><col style="width:10%"><col style="width:11%"><col style="width:8.5%"><col style="width:10.5%">' +
+          '<col style="width:10%"><col style="width:10%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:19.5%">' +
         '</colgroup><thead><tr>' +
           '<th class="pickcell"><input type="checkbox" id="appPickAll" title="Select all"' +
             (picked === list.length ? ' checked' : '') + (picked && picked < list.length ? ' data-some="1"' : '') + ' /></th>' +
@@ -1606,16 +1621,24 @@ function handleFreeze(j, path, before, after) {
   }
 }
 
+/* Every entry in the master, as a checklist — which is a long way to push the
+   posting, the questions and the scores down the page for something you touch
+   once a version. Closed by default; the count tells you what is in without
+   opening it. */
+let pickerOpen = false;
 function renderJdPicker(j) {
   const el = $('jdPicker');
   if (!el) return;
-  el.innerHTML = '<div class="group-label"><span>Adjust what goes in</span><span class="line"></span><span>' + j.resume.itemIds.length + '</span></div>' +
-    state.master.sections.filter((s) => s.items.length).map((s) =>
+  el.innerHTML = '<div class="group-label"><span>Adjust what goes in</span><span class="line"></span>' +
+      '<span>' + j.resume.itemIds.length + '</span>' +
+      '<button class="btn ghost" id="pickerToggle">' + (pickerOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!pickerOpen ? '' : state.master.sections.filter((s) => s.items.length).map((s) =>
       '<div class="tagline" style="margin-top:6px">' + esc(s.title) + '</div>' +
       s.items.map((it) =>
         '<label class="pick"><input type="checkbox" data-jdpick="' + esc(it.id) + '"' + (j.resume.itemIds.includes(it.id) ? ' checked' : '') + ' />' +
         '<span><span class="t">' + esc(it.org || it.role) + '</span> <span class="s">' + esc(it.dates || '') + '</span></span></label>').join('')
-    ).join('');
+    ).join(''));
+  $('pickerToggle').addEventListener('click', () => { pickerOpen = !pickerOpen; renderJdPicker(j); });
   el.querySelectorAll('[data-jdpick]').forEach((c) => c.addEventListener('change', () => {
     const id = c.dataset.jdpick;
     if (c.checked) { if (!j.resume.itemIds.includes(id)) j.resume.itemIds.push(id); }
@@ -1855,13 +1878,128 @@ async function reviseJd(j) {
   try {
     const r = await ai({ action: 'revise', master: state.master, posting: j.text,
       resumeText: versionResumeText(j, v), coverText: versionCoverText(v), answers, fixes });
-    const nv = pushVersion(j, r.result, 'revised from ' + answers.length + ' answer(s)' + (fixes.length ? ' and scoring feedback' : ''));
-    (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
-    await saveJobs(); renderFitDocs(); renderFitWork();
-    toast('v' + nv.v + ' created — ' + (nv.changelog.length || 0) + ' change(s). Review before marking complete.');
+    // A proposal, not a version. It is stored on the application so closing the
+    // tab does not lose it, and it becomes a version only when she approves.
+    j.proposal = {
+      at: new Date().toISOString(),
+      note: 'revised from ' + answers.length + ' answer(s)' + (fixes.length ? ' and scoring feedback' : ''),
+      summary: r.result.summary || '',
+      itemIds: (r.result.itemIds || []).filter((id) => itemById(id)),
+      coverLetter: (r.result.coverLetter || []).slice(),
+      changelog: r.result.changelog || [],
+      stillMissing: r.result.stillMissing || [],
+    };
+    await saveJobs(); renderFitWork();
+    $('fitProposal').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Draft ready — edit it, then Approve to make it v' + ((j.versions || []).length + 1) + '.');
   } catch (err) {
     toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
   } finally { if ($('btnRevise')) { $('btnRevise').disabled = false; $('btnRevise').textContent = 'Revise into v' + ((j.versions || []).length + 1); } }
+}
+
+/* ── THE PROPOSED NEXT VERSION ──────────────────────────
+   Nothing an agent writes becomes a version on its own. What comes back is a
+   draft you can edit in place — the summary, which entries go in, and every
+   paragraph of the letter — with the resume rebuilding underneath as you
+   change it. Approve turns it into v(n); Discard throws it away. Until one of
+   those, the current version is untouched. */
+let propPickerOpen = false;
+function renderProposal(j) {
+  const el = $('fitProposal');
+  if (!el) return;
+  const p = j && j.proposal;
+  if (!p) { el.innerHTML = ''; return; }
+  const nextV = (j.versions || []).length + 1;
+
+  el.innerHTML =
+    '<div class="card">' +
+      '<div class="sec-head"><h2>Proposed v' + nextV + '</h2>' +
+        '<span class="tagline">' + esc(p.note || '') + '</span>' +
+        '<button class="btn primary" id="propApprove">Approve as v' + nextV + '</button>' +
+        '<button class="btn danger ghost" id="propDiscard">Discard</button></div>' +
+      '<p class="tagline" style="margin-bottom:10px">Nothing has changed yet &mdash; v' +
+        (j.currentVersion || 1) + ' is still current. Edit anything below, then approve.</p>' +
+      (p.changelog.length
+        ? '<div class="banner info"><b>What it changed</b>' + p.changelog.map(esc).join(' · ') + '</div>' : '') +
+      (p.stillMissing.length
+        ? '<div class="banner warn"><b>Still not answered by either document</b>' + p.stillMissing.map(esc).join(' · ') + '</div>' : '') +
+      '<div class="split" style="gap:12px">' +
+        '<div>' +
+          '<div class="group-label"><span>Professional summary</span><span class="line"></span></div>' +
+          '<textarea class="f" id="propSummary" style="min-height:96px">' + esc(p.summary) + '</textarea>' +
+          '<div class="group-label"><span>Resume, as it will read</span><span class="line"></span></div>' +
+          '<pre class="frozen" style="max-height:260px" id="propPreview"></pre>' +
+        '</div>' +
+        '<div>' +
+          '<div class="group-label"><span>Cover letter</span><span class="line"></span>' +
+            '<button class="btn ghost" id="propAddPara">+ paragraph</button></div>' +
+          (p.coverLetter.length ? p.coverLetter.map((t, i) =>
+            '<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px">' +
+              '<textarea class="f" data-proppara="' + i + '" style="min-height:78px;margin:0">' + esc(t) + '</textarea>' +
+              '<button class="icon" data-propdel="' + i + '" title="Remove this paragraph">🗑</button>' +
+            '</div>').join('')
+            : '<div class="empty">No letter proposed.</div>') +
+        '</div>' +
+      '</div>' +
+      '<div class="group-label"><span>What goes in</span><span class="line"></span><span id="propCount">' + p.itemIds.length + '</span>' +
+        '<button class="btn ghost" id="propPickToggle">' + (propPickerOpen ? 'Hide' : 'Show') + '</button></div>' +
+      (!propPickerOpen ? '' : state.master.sections.filter((s) => s.items.length).map((s) =>
+        '<div class="tagline" style="margin-top:6px">' + esc(s.title) + '</div>' +
+        s.items.map((it) =>
+          '<label class="pick"><input type="checkbox" data-proppick="' + esc(it.id) + '"' +
+            (p.itemIds.includes(it.id) ? ' checked' : '') + ' />' +
+          '<span><span class="t">' + esc(it.org || it.role) + '</span> <span class="s">' + esc(it.dates || '') + '</span></span></label>').join('')
+      ).join('')) +
+    '</div>';
+
+  const preview = () => {
+    $('propPreview').textContent =
+      resumePlainText({ itemIds: p.itemIds, summary: p.summary, targetRole: j.role }) || 'Nothing selected yet.';
+    $('propCount').textContent = p.itemIds.length;
+  };
+  preview();
+
+  // Edits land on the draft as you make them and save with the application, so
+  // a closed tab does not cost you the rewrite.
+  $('propSummary').addEventListener('input', (e) => { p.summary = e.target.value; queueSaveJobs(); preview(); });
+  el.querySelectorAll('[data-proppara]').forEach((t) => t.addEventListener('input', () => {
+    p.coverLetter[+t.dataset.proppara] = t.value; queueSaveJobs();
+  }));
+  el.querySelectorAll('[data-propdel]').forEach((b) => b.addEventListener('click', () => {
+    p.coverLetter.splice(+b.dataset.propdel, 1); queueSaveJobs(); renderProposal(j);
+  }));
+  $('propAddPara').addEventListener('click', () => {
+    p.coverLetter.push(''); queueSaveJobs(); renderProposal(j);
+  });
+  $('propPickToggle').addEventListener('click', () => { propPickerOpen = !propPickerOpen; renderProposal(j); });
+  // The picker only redraws the preview — redrawing the card would close the
+  // box you just ticked and lose your place in a long list.
+  el.querySelectorAll('[data-proppick]').forEach((c) => c.addEventListener('change', () => {
+    const id = c.dataset.proppick;
+    if (c.checked) { if (!p.itemIds.includes(id)) p.itemIds.push(id); }
+    else p.itemIds = p.itemIds.filter((x) => x !== id);
+    queueSaveJobs(); preview();
+  }));
+
+  $('propApprove').addEventListener('click', async () => {
+    const paras = p.coverLetter.map((t) => String(t || '').trim()).filter(Boolean);
+    if (!p.itemIds.length && !paras.length) return toast('Nothing selected and no letter — nothing to approve.', true);
+    const nv = pushVersion(j, {
+      summary: p.summary, itemIds: p.itemIds, coverLetter: paras,
+      changelog: p.changelog, stillMissing: p.stillMissing,
+    }, p.note);
+    // Only now are the answers spent: a discarded proposal must not consume them.
+    (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
+    delete j.proposal;
+    await saveJobs();
+    renderFitDocs(); renderFitWork();
+    toast('v' + nv.v + ' created and current. Score it to see whether the numbers moved.');
+  });
+  $('propDiscard').addEventListener('click', async () => {
+    if (!confirm('Discard this draft? Your approved answers stay approved, so you can revise again.')) return;
+    delete j.proposal;
+    await saveJobs(); renderFitWork();
+  });
 }
 
 function renderQuestions(j) {
@@ -2157,8 +2295,9 @@ function fitJob() {
 // Generate / questions / versions all live here now.
 function renderFitWork() {
   const j = fitJob();
-  if (!j) { $('jdQuestions').innerHTML = ''; $('jdVersions').innerHTML = ''; return; }
+  if (!j) { $('fitProposal').innerHTML = ''; $('jdQuestions').innerHTML = ''; $('jdVersions').innerHTML = ''; return; }
   state.jdId = j.id;
+  renderProposal(j);
   renderQuestions(j);
   renderVersions(j);
 }

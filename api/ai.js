@@ -149,6 +149,71 @@ The distinction between "omitted" and "missing" is the whole point of this task:
 - missing = she does not have it. Say so plainly rather than stretching something to fit.
 If a requirement is genuinely unclear from the posting, leave it out rather than guessing.`,
 
+  keywords: (b) => `CAREER DATA (for context):
+${JSON.stringify(b.master)}
+
+THE ENTRY TO TAG:
+${JSON.stringify(b.entry)}
+
+Suggest keywords for this one entry so future matching can find it. Return JSON:
+{
+ "titles": ["job titles this entry is genuine evidence for"],
+ "skills": ["capabilities it demonstrates"]
+}
+Titles must be roles she could credibly be considered for ON THE STRENGTH OF THIS ENTRY — not aspirational ones. Skills must be visible in the entry's own text. 4-8 of each at most. No duplicates between the two lists.`,
+
+  scoresections: (b) => `JOB DESCRIPTION:
+"""
+${b.posting}
+"""
+
+THE RESUME:
+"""
+${b.resumeText || '(none attached)'}
+"""
+
+THE COVER LETTER:
+"""
+${b.coverText || '(none attached)'}
+"""
+
+Break the job description into its distinct requirement sections, then score EACH section twice: once against the resume, once against the cover letter. Return JSON:
+{
+ "overallResume": 0-100,
+ "overallCover": 0-100,
+ "verdict": "two plain sentences about the pair together",
+ "sections": [
+   {
+     "requirement": "the section heading or requirement, in the posting's own words",
+     "detail": "what it is actually asking for",
+     "resumeScore": 0-100,
+     "resumeEvidence": "the line in the resume that answers it, or empty if none",
+     "resumeFix": "a specific, concrete suggestion for the resume, or empty if it is already fine",
+     "coverScore": 0-100,
+     "coverEvidence": "the sentence in the cover letter that answers it, or empty",
+     "coverFix": "a specific suggestion for the cover letter, or empty"
+   }
+ ]
+}
+Score 0 where there is genuinely no evidence — do not be generous. A fix must be achievable from facts already present in the career data; if the requirement simply is not met, say so in the fix rather than inventing a way to claim it.`,
+
+  coversuggest: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+EXISTING COVER LETTER BLOCKS she can reuse:
+${JSON.stringify(b.blocks || [])}
+
+JOB DESCRIPTION:
+${b.posting}
+
+Choose which existing blocks fit this posting, and draft any that are missing. Return JSON:
+{
+ "useBlockIds": ["ids from the existing blocks, in the order they should appear"],
+ "newBlocks": [{"kind":"opening|proof|why|closing","title":"short label","text":"the paragraph"}],
+ "note": "one sentence on the angle you took"
+}
+Every new block must be built only from facts in the career data. Kinds: opening (who she is, why this role), proof (a specific accomplishment), why (why this company), closing (the ask). No more than 4 new blocks.`,
+
   cover: (b) => `CAREER DATA:
 ${JSON.stringify(b.master)}
 
@@ -195,11 +260,17 @@ module.exports = async (req, res) => {
     const body = await readBody(req);
     const action = body && body.action;
     if (!PROMPTS[action]) {
-      return res.status(400).json({ ok: false, error: 'Unknown action. Expected analyze, tailor or cover.' });
+      return res.status(400).json({ ok: false, error: 'Unknown action. Expected one of: ' + Object.keys(PROMPTS).join(', ') });
     }
     if (!body.master) return res.status(400).json({ ok: false, error: 'Missing career data.' });
-    if ((action === 'analyze' || action === 'cover' || action === 'score') && !body.posting) {
+    if (['analyze', 'cover', 'score', 'scoresections', 'coversuggest'].includes(action) && !body.posting) {
       return res.status(400).json({ ok: false, error: 'Paste the job posting first.' });
+    }
+    if (action === 'keywords' && !body.entry) {
+      return res.status(400).json({ ok: false, error: 'No entry supplied to tag.' });
+    }
+    if (action === 'scoresections' && !String(body.resumeText || '').trim() && !String(body.coverText || '').trim()) {
+      return res.status(400).json({ ok: false, error: 'Attach a resume or a cover letter before scoring.' });
     }
     if (action === 'score' && !String(body.resumeText || '').trim()) {
       return res.status(400).json({ ok: false, error: 'That resume version is empty — nothing to score.' });
@@ -208,7 +279,7 @@ module.exports = async (req, res) => {
     const { text, model } = await callClaude({
       system: GUARDRAILS,
       user: PROMPTS[action](body),
-      maxTokens: action === 'cover' ? 2000 : 5000,
+      maxTokens: action === 'cover' ? 2000 : action === 'keywords' ? 800 : action === 'scoresections' ? 8000 : 5000,
     });
 
     const parsed = parseJson(text);

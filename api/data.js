@@ -2,7 +2,7 @@ const { isAuthed, noStore } = require('./_auth');
 const { readDoc, writeDoc, configured } = require('./_store');
 const { seed } = require('./_seed');
 
-const LIST_KINDS = ['templates', 'archives', 'jobs', 'fits', 'settings'];
+const LIST_KINDS = ['templates', 'archives', 'jobs', 'fits', 'cover', 'settings'];
 const ALL_KINDS = ['master', ...LIST_KINDS];
 
 function emptyList() {

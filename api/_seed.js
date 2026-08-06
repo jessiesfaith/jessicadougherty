@@ -1,4 +1,9 @@
-// Initial career master, transcribed from resume.html. This is only used the
+// Initial career master, transcribed from resume.html.
+//
+// Each entry carries two keyword lists used for matching against postings:
+//   titles — the job titles this entry is evidence for
+//   skills — the capabilities it demonstrates
+// An agent can fill these in; they are what future matching runs on. This is only used the
 // very first time the app runs — after that the saved copy in Blob storage wins,
 // so editing this file will NOT change data you have already saved.
 

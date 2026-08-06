@@ -22,6 +22,7 @@ const PATHS = {
   archives: 'career/archives.json',
   jobs: 'career/jobs.json',
   fits: 'career/fit-scores.json',
+  cover: 'career/cover-blocks.json',
   settings: 'career/settings.json',
 };
 

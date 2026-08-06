@@ -21,6 +21,7 @@ const PATHS = {
   templates: 'career/templates.json',
   archives: 'career/archives.json',
   jobs: 'career/jobs.json',
+  fits: 'career/fit-scores.json',
   settings: 'career/settings.json',
 };
 

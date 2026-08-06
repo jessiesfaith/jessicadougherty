@@ -123,6 +123,32 @@ Suggest bullet-level edits for the selected items (${JSON.stringify(b.itemIds ||
 }
 Every "suggested" must be supported by "original" or by other facts in CAREER DATA. If a bullet is already right, leave it out.`,
 
+  score: (b) => `FULL CAREER DATA — everything she has:
+${JSON.stringify(b.master)}
+
+THE RESUME BEING SCORED ("${b.templateName || 'untitled'}"), exactly as it reads:
+"""
+${b.resumeText || ''}
+"""
+
+JOB POSTING:
+${b.posting}
+
+Score how well THIS SPECIFIC RESUME answers THIS posting — not how good her career is overall. Return JSON:
+{
+ "score": 0-100,
+ "verdict": "one or two plain sentences. No flattery. Say plainly if it is a weak fit.",
+ "covered": [{"requirement":"what the posting asks for","evidence":"the line or role in the resume that shows it"}],
+ "omitted": [{"requirement":"...","itemId":"an id that EXISTS in the career data but does NOT appear in this resume","why":"what including it would add"}],
+ "missing": [{"requirement":"...","note":"nothing in her career data evidences this at all"}],
+ "keywordsAbsent": ["terms the posting uses that this resume never says, and that would be truthful for her"]
+}
+
+The distinction between "omitted" and "missing" is the whole point of this task:
+- omitted = she has the evidence, this version left it out. The itemId MUST appear in the career data. Never invent one.
+- missing = she does not have it. Say so plainly rather than stretching something to fit.
+If a requirement is genuinely unclear from the posting, leave it out rather than guessing.`,
+
   cover: (b) => `CAREER DATA:
 ${JSON.stringify(b.master)}
 
@@ -172,8 +198,11 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Unknown action. Expected analyze, tailor or cover.' });
     }
     if (!body.master) return res.status(400).json({ ok: false, error: 'Missing career data.' });
-    if ((action === 'analyze' || action === 'cover') && !body.posting) {
+    if ((action === 'analyze' || action === 'cover' || action === 'score') && !body.posting) {
       return res.status(400).json({ ok: false, error: 'Paste the job posting first.' });
+    }
+    if (action === 'score' && !String(body.resumeText || '').trim()) {
+      return res.status(400).json({ ok: false, error: 'That resume version is empty — nothing to score.' });
     }
 
     const { text, model } = await callClaude({

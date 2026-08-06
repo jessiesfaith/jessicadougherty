@@ -389,15 +389,16 @@
 
     <h3 id="g-apps">The postings list</h3>
     <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have. It carries the same columns as Job Postings: company, job title, status, posting, deadline, sent, contact, notes and what has been built.</p>
-    <p><strong>Status</strong> and <strong>Posting</strong> are the same read-only signals you see in Job Postings &mdash; whether the application is a draft or complete, and whether you have the real description or only a teaser. <strong>Built</strong> links open that application's resume or cover letter, ready to print, with a chip for how many versions exist.</p>
-    <p><strong>Deadline</strong>, <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type.</p>
-    <p>Rows for applications you have not marked complete are dimmed.</p>
-    <h4>Removing applications</h4>
-    <p>Each row starts with a checkbox, and the one in the header selects or deselects every row at once. <strong>Remove</strong>, at the top of the box, counts what you have ticked and hides those applications on click.</p>
-    <p>It is the same soft delete as the Delete button in Job Postings: the data stays in your repo. Tick <em>show deleted</em> in Job Postings and they come straight back.</p>
+    <p>It is <strong>read-only</strong>. It is here so you can see where every application stands while you look at your masters; <strong>Job Postings is the one place you change any of it</strong>, so there is never a question of which copy of a row you typed into.</p>
+    <p><strong>Built</strong> links still work &mdash; they open that application's resume or cover letter ready to print, with a chip for how many versions exist. Rows for applications you have not marked complete are dimmed.</p>
 
     <h3 id="g-archive">Job Postings</h3>
     <p>Every posting on one row, every field its own column &mdash; company, job title, status, how much of the description you actually have, deadline, sent date, contact, notes, and what has been built. Click a row to open it in full underneath.</p>
+    <h4>Editing in the row</h4>
+    <p><strong>Deadline</strong>, <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type. Clicking anywhere else on the row opens that posting below.</p>
+    <h4>Removing applications</h4>
+    <p>Each row starts with a checkbox, and the one in the header selects or deselects every row at once. <strong>Remove</strong>, at the top of the box, counts what you have ticked and hides those applications on click.</p>
+    <p>It is the same soft delete as the Delete button on an open posting: the data stays in your repo. Tick <em>show deleted</em> and they come straight back.</p>
     <p><strong>Posting</strong> tells you whether you have the real description or only an alert teaser. Nothing can be generated from a teaser.</p>
     <h4>Adding a posting</h4>
     <p><strong>Add posting</strong> for a blank one, or <strong>One-click capture</strong> to grab it from a job page with a bookmarklet &mdash; see Capture below.</p>
@@ -775,9 +776,9 @@ function builtCell(j) {
   return (vs ? '<span class="chip">v' + vs + '</span>' : '<span class="tagline">—</span>') + docLinks(j);
 }
 
-/* Postings is a table, one row per application: at a glance it stays one line
-   tall however many you have. Deadline, sent, contact and notes are yours to
-   type in — they are tracking, not resume content, so they are editable here. */
+/* The tracking fields, as a row reads them. Deadline, sent, contact and notes
+   are editable in exactly one place — the Job Postings tab — so there is never
+   a question of which copy of a row you are typing into. */
 const appPicked = new Set();
 const APP_FIELDS = [
   ['deadline', 'date', ''],
@@ -785,82 +786,58 @@ const APP_FIELDS = [
   ['contactEmail', 'email', 'name@company.com'],
   ['notes', 'text', 'Emails, interviews, follow-ups…'],
 ];
+const dash = (s) => (s ? esc(s) : '<span class="tagline">—</span>');
 
+function appReadCells(j) {
+  return '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
+    '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
+    '<td class="ro" title="' + esc(j.contactEmail || '') + '">' + dash(j.contactEmail) + '</td>' +
+    '<td class="ro" title="' + esc(j.notes || '') + '">' + dash((j.notes || '').replace(/\s*\n+\s*/g, ' · ')) + '</td>';
+}
+
+function appEditCells(j) {
+  return APP_FIELDS.map(([f, type, ph]) => {
+    // Notes are the one field that outgrows a cell: the cell shows a one-line
+    // preview and clicking it opens the full, scrollable note.
+    if (f === 'notes') {
+      const flat = (j.notes || '').replace(/\s*\n+\s*/g, ' · ');
+      return '<td><input type="text" readonly data-notesopen="' + esc(j.id) + '"' +
+        ' placeholder="' + esc(ph) + '" title="Click to open the full note"' +
+        ' value="' + esc(flat) + '" /></td>';
+    }
+    return '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
+      (ph ? ' placeholder="' + esc(ph) + '"' : '') +
+      ' value="' + esc(j[f] || '') + '" /></td>';
+  }).join('');
+}
+
+/* The Resume tab's copy is a mirror: the same nine columns, none of them
+   editable. It is there to tell you where each application stands while you
+   look at the master documents, not to be a second place to change one. */
 function renderCompanyTable() {
   const rows = jdList().slice().sort((a, b) =>
     (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
-  // A tick that survives a re-render but never outlives the rows it points at.
-  appPicked.forEach((id) => { if (!rows.some((j) => j.id === id)) appPicked.delete(id); });
-  const picked = rows.filter((j) => appPicked.has(j.id)).length;
   $('docsByCompany').innerHTML =
-    '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span>' +
-      '<button class="btn danger ghost" id="appRemove"' + (picked ? '' : ' disabled') + '>' +
-        'Remove' + (picked ? ' (' + picked + ')' : '') + '</button></div>' +
-    '<p class="tagline" style="margin-bottom:8px">One row per application. Deadline, sent and contact save as you type; click Notes to open the full box. Tick rows and hit Remove to hide them &mdash; nothing is destroyed, they come back with <em>show deleted</em> in Job Postings.</p>' +
+    '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span></div>' +
+    '<p class="tagline" style="margin-bottom:8px">One row per application, read-only. Editing, and removing, happen in <strong>Job Postings</strong>.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
-        '<col style="width:4%"><col style="width:12%"><col style="width:14%"><col style="width:9%"><col style="width:9%">' +
-        '<col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:12%"><col style="width:10%">' +
+        '<col style="width:13%"><col style="width:15%"><col style="width:9%"><col style="width:9%">' +
+        '<col style="width:9%"><col style="width:9%"><col style="width:13%"><col style="width:13%"><col style="width:10%">' +
       '</colgroup><thead><tr>' +
-        '<th class="pickcell"><input type="checkbox" id="appPickAll" title="Select all"' +
-          (picked === rows.length ? ' checked' : '') + (picked && picked < rows.length ? ' data-some="1"' : '') + ' /></th>' +
         '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
         '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
       '</tr></thead><tbody>' +
       rows.map((j) =>
         '<tr' + (j.status === 'complete' ? '' : ' class="dim"') + '>' +
-          '<td class="pickcell"><input type="checkbox" data-apppick="' + esc(j.id) + '"' +
-            (appPicked.has(j.id) ? ' checked' : '') + ' title="Select this application" /></td>' +
           '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || '— no company') + '</td>' +
           '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || '— no title') + '</td>' +
           '<td>' + statusCell(j) + '</td>' +
           '<td>' + postingCell(j) + '</td>' +
-          APP_FIELDS.map(([f, type, ph]) => {
-            // Notes are the one field that outgrows a cell: the cell shows a
-            // one-line preview and clicking it opens the full, scrollable note.
-            if (f === 'notes') {
-              const flat = (j.notes || '').replace(/\s*\n+\s*/g, ' · ');
-              return '<td><input type="text" readonly data-notesopen="' + esc(j.id) + '"' +
-                ' placeholder="' + esc(ph) + '" title="Click to open the full note"' +
-                ' value="' + esc(flat) + '" /></td>';
-            }
-            return '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
-              (ph ? ' placeholder="' + esc(ph) + '"' : '') +
-              ' value="' + esc(j[f] || '') + '" /></td>';
-          }).join('') +
+          appReadCells(j) +
           '<td>' + builtCell(j) + '</td>' +
         '</tr>').join('') +
       '</tbody></table>');
-
-  // Never re-render on input — that is what stole focus mid-word last time.
-  $('docsByCompany').querySelectorAll('[data-appf]').forEach((el) => el.addEventListener('input', () => {
-    const [id, field] = el.dataset.appf.split('|');
-    const j = state.jobs.items.find((x) => x.id === id);
-    if (!j) return;
-    j[field] = el.value;
-    queueSaveJobs();
-  }));
-  $('docsByCompany').querySelectorAll('[data-notesopen]').forEach((el) =>
-    el.addEventListener('click', () => openNotesEditor(el.dataset.notesopen)));
-
-  // Ticking a row only redraws the header — re-rendering the table here would
-  // take the focus off the box you just clicked.
-  $('docsByCompany').querySelectorAll('[data-apppick]').forEach((el) => el.addEventListener('change', () => {
-    if (el.checked) appPicked.add(el.dataset.apppick); else appPicked.delete(el.dataset.apppick);
-    refreshAppRemove(rows);
-  }));
-  const all = $('appPickAll');
-  if (all) {
-    // Some but not all ticked is its own state: neither box says "select all".
-    all.indeterminate = all.dataset.some === '1';
-    all.addEventListener('change', () => {
-      rows.forEach((j) => { if (all.checked) appPicked.add(j.id); else appPicked.delete(j.id); });
-      $('docsByCompany').querySelectorAll('[data-apppick]').forEach((el) => { el.checked = all.checked; });
-      refreshAppRemove(rows);
-    });
-  }
-  const rm = $('appRemove');
-  if (rm) rm.addEventListener('click', () => removePickedApps(rows));
 }
 
 /* The Remove button's label is the only thing a tick changes until you press
@@ -887,11 +864,11 @@ function removePickedApps(rows) {
   const what = hit.length === 1
     ? '"' + (hit[0].company || 'this application') + '"'
     : hit.length + ' applications';
-  if (!confirm('Remove ' + what + '? They are hidden, not destroyed — tick "show deleted" in Job Postings to bring them back.')) return;
+  if (!confirm('Remove ' + what + '? They are hidden, not destroyed — tick "show deleted" to bring them back.')) return;
   hit.forEach((j) => { j.status = 'deleted'; appPicked.delete(j.id); });
   queueSaveJobs();
+  renderArchive();
   renderDocLists();
-  renderJdListOnly();
 }
 
 /* Notes hold the story of an application — emails, interviews, follow-ups —
@@ -1385,33 +1362,41 @@ const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
    scan down. Clicking a row opens it in full underneath. */
 function renderJdListOnly() {
   const list = jdList();
+  // A tick that survives a re-render but never outlives the rows it points at.
+  appPicked.forEach((id) => { if (!list.some((j) => j.id === id)) appPicked.delete(id); });
+  const picked = list.filter((j) => appPicked.has(j.id)).length;
   $('jdList').innerHTML =
-    '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span></div>' +
+    '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span>' +
+      '<button class="btn danger ghost" id="appRemove"' + (picked ? '' : ' disabled') + '>' +
+        'Remove' + (picked ? ' (' + picked + ')' : '') + '</button></div>' +
     (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
-      : '<table class="apptbl jdtbl"><colgroup>' +
-          '<col style="width:13%"><col style="width:16%"><col style="width:11%"><col style="width:9%">' +
-          '<col style="width:8%"><col style="width:8%"><col style="width:13%"><col style="width:12%"><col style="width:10%">' +
+      : '<p class="tagline" style="margin-bottom:8px">Deadline, sent and contact save as you type; click Notes to open the full box. Tick rows and hit Remove to hide them &mdash; nothing is destroyed, they come back with <em>show deleted</em>.</p>' +
+        '<table class="apptbl jdtbl"><colgroup>' +
+          '<col style="width:4%"><col style="width:12%"><col style="width:14%"><col style="width:9%"><col style="width:9%">' +
+          '<col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:12%"><col style="width:10%">' +
         '</colgroup><thead><tr>' +
+          '<th class="pickcell"><input type="checkbox" id="appPickAll" title="Select all"' +
+            (picked === list.length ? ' checked' : '') + (picked && picked < list.length ? ' data-some="1"' : '') + ' /></th>' +
           '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
           '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
         '</tr></thead><tbody>' +
         list.map((j) =>
           '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
+            '<td class="pickcell"><input type="checkbox" data-apppick="' + esc(j.id) + '"' +
+              (appPicked.has(j.id) ? ' checked' : '') + ' title="Select this application" /></td>' +
             '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || 'Untitled') + '</td>' +
             '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || 'no role yet') + '</td>' +
             '<td>' + statusCell(j) + '</td>' +
             '<td>' + postingCell(j) + '</td>' +
-            '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
-            '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
-            '<td class="ro" title="' + esc(j.contactEmail || '') + '">' + (j.contactEmail ? esc(j.contactEmail) : '<span class="tagline">—</span>') + '</td>' +
-            '<td class="ro" title="' + esc(j.notes || '') + '">' + (j.notes ? esc(j.notes) : '<span class="tagline">—</span>') + '</td>' +
+            appEditCells(j) +
             '<td>' + builtCell(j) + '</td>' +
           '</tr>').join('') +
         '</tbody></table>');
 
-  // Anchors inside a row do their own thing; the row click is for selecting.
+  // Anchors and the fields in a row do their own thing; the row click, meaning
+  // anywhere else on it, is for opening that posting underneath.
   $('jdList').querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', (e) => {
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a, input, select, textarea, button, label')) return;
     state.jdId = el.dataset.jd; renderArchive();
   }));
   $('jdList').querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
@@ -1421,6 +1406,37 @@ function renderJdListOnly() {
     if (!j) return;
     if (what === 'r') printResume(j); else printCoverLetter(j);
   }));
+
+  // Never re-render on input — that is what stole focus mid-word last time. The
+  // Resume tab's mirror catches up when you next open it.
+  $('jdList').querySelectorAll('[data-appf]').forEach((el) => el.addEventListener('input', () => {
+    const [id, field] = el.dataset.appf.split('|');
+    const j = state.jobs.items.find((x) => x.id === id);
+    if (!j) return;
+    j[field] = el.value;
+    queueSaveJobs();
+  }));
+  $('jdList').querySelectorAll('[data-notesopen]').forEach((el) =>
+    el.addEventListener('click', () => openNotesEditor(el.dataset.notesopen)));
+
+  // Ticking a row only redraws the header — re-rendering the table here would
+  // take the focus off the box you just clicked.
+  $('jdList').querySelectorAll('[data-apppick]').forEach((el) => el.addEventListener('change', () => {
+    if (el.checked) appPicked.add(el.dataset.apppick); else appPicked.delete(el.dataset.apppick);
+    refreshAppRemove(list);
+  }));
+  const all = $('appPickAll');
+  if (all) {
+    // Some but not all ticked is its own state: neither box says "select all".
+    all.indeterminate = all.dataset.some === '1';
+    all.addEventListener('change', () => {
+      list.forEach((j) => { if (all.checked) appPicked.add(j.id); else appPicked.delete(j.id); });
+      $('jdList').querySelectorAll('[data-apppick]').forEach((el) => { el.checked = all.checked; });
+      refreshAppRemove(list);
+    });
+  }
+  const rm = $('appRemove');
+  if (rm) rm.addEventListener('click', () => removePickedApps(list));
 }
 
 /* The bookmarklet is the fast path, but a site can refuse to run one: Chrome

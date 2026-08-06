@@ -163,6 +163,25 @@
   .doclinks{display:flex;gap:8px;flex:none}
   .doclinks a{font-size:12.5px;color:var(--accent)}
   .doclinks .none{font-size:12px;color:var(--faint);font-style:italic}
+  /* One row per application, so the list stays short as it grows. */
+  .apptbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  .apptbl th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:0 8px 6px 0;border-bottom:1px solid var(--border)}
+  .apptbl td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:middle}
+  .apptbl td.co{font-weight:600}
+  .apptbl td.ro{color:var(--faint)}
+  .apptbl td.co,.apptbl td.ro{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .apptbl .doclinks{gap:10px}
+  .apptbl input{width:100%;background:transparent;border:1px solid transparent;border-radius:5px;color:inherit;font:inherit;padding:3px 5px}
+  .apptbl input:hover{border-color:var(--border)}
+  .apptbl input:focus{border-color:var(--accent);background:rgba(0,0,0,.18);outline:none}
+  .apptbl input::placeholder{color:var(--faint);opacity:.6}
+  .apptbl tr.dim td.co,.apptbl tr.dim td.ro{opacity:.55}
+  .jdtbl tbody tr{cursor:pointer}
+  .jdtbl tbody tr:hover td{background:rgba(255,255,255,.03)}
+  .jdtbl tbody tr.on td{background:rgba(255,255,255,.06)}
+  .jdtbl tbody tr.on td.co{box-shadow:inset 3px 0 0 var(--accent)}
+  .jdtbl td .tagline{font-size:12px}
+  .jdtbl td a{color:var(--accent);font-size:12.5px}
   .grabme{cursor:grab}
   .grabme:active{cursor:grabbing}
   .fitpick{accent-color:var(--accent-2);width:16px;height:16px;flex:none;cursor:pointer}
@@ -248,7 +267,6 @@
     </span>
     <div class="tabs">
       <button class="tab active" data-tab="career">Resume</button>
-      <button class="tab" data-tab="cover">Cover Letter</button>
       <button class="tab" data-tab="archive">Archive</button>
       <button class="tab" data-tab="fit">Fit Score</button>
     </div>
@@ -268,20 +286,22 @@
   <section class="panel" id="panel-career">
     <div class="head">
       <div>
-        <h1>Master resume</h1>
-        <p>Read-only, shown exactly as it prints. It changes in one direction only &mdash; you promote a version up from Fit Score. Editing happens there, against a real posting.</p>
+        <h1>Master documents</h1>
+        <p>Your resume and cover letter, read-only and shown exactly as they print. They change in one direction only &mdash; you promote a version up from Fit Score. Editing happens there, against a real posting.</p>
       </div>
       <div class="spacer"></div>
       <button class="btn" id="masterPdf">Resume PDF</button>
+      <button class="btn" id="coverPdf">Cover letter PDF</button>
       <button class="btn ghost" id="tagAll" title="Fill in job titles and skills — keywords only, never your wording">✦ Tag keywords</button>
     </div>
+    <div class="card" id="docsByCompany"></div>
     <div class="split" style="grid-template-columns:minmax(0,330px) minmax(0,1fr)">
       <div>
-        <div class="card" id="docsByCompany"></div>
         <div class="card" id="docsByTitle"></div>
       </div>
       <div>
         <div class="card" id="masterView"></div>
+        <div class="card" id="coverView"></div>
         <div class="card" id="tagOut"></div>
       </div>
     </div>
@@ -289,19 +309,6 @@
       <div class="card" id="profileCard"></div>
       <div id="sections"></div>
     </div>
-  </section>
-
-  <!-- COVER LETTER -->
-  <section class="panel" id="panel-cover">
-    <div class="head">
-      <div>
-        <h1>Master cover letter</h1>
-        <p>Read-only, shown exactly as it prints. Write and edit against a real posting in Fit Score, then use <b>Save as master letter</b> there to bring it up here.</p>
-      </div>
-      <div class="spacer"></div>
-      <button class="btn" id="coverPdf">Cover letter PDF</button>
-    </div>
-    <div class="card" id="coverView"></div>
     <div class="split" id="coverEdit" hidden>
       <div class="card" id="coverLetter"></div>
       <div class="card" id="coverLibrary"></div>
@@ -321,10 +328,9 @@
       <label class="pick" style="padding:0"><input type="checkbox" id="showDeleted" /> <span class="s">show deleted</span></label>
     </div>
     <div class="card" id="grabberCard" style="display:none"></div>
-    <div class="split" style="grid-template-columns:minmax(0,330px) minmax(0,1fr)">
-      <div class="card" id="jdList"></div>
-      <div id="jdDetail"></div>
-    </div>
+    <div class="card" id="pasteCard"></div>
+    <div class="card" id="jdList"></div>
+    <div id="jdDetail"></div>
   </section>
 
   <!-- ═══ FIT SCORE ═══ -->
@@ -358,8 +364,8 @@
     <button class="btn ghost" id="guideClose" title="Close (Esc)">✕</button>
   </div>
   <div class="guide-nav">
-    <button data-goto="g-career">Career</button>
-    <button data-goto="g-cover">Cover letter</button>
+    <button data-goto="g-career">Resume</button>
+    <button data-goto="g-apps">Applications</button>
     <button data-goto="g-archive">Archive</button>
     
     <button data-goto="g-fit">Fit score</button>
@@ -369,22 +375,21 @@
   </div>
   <div class="guide-body" id="guideBody">
 
-    <h3 id="g-career">Master resume</h3>
-    <p>Your source of truth. Every application draws from here. <strong>Nothing an agent writes is saved back into this</strong> unless you deliberately promote it &mdash; thirty applications should not slowly erode what you actually wrote.</p>
+    <h3 id="g-career">Your master documents</h3>
+    <p>The Resume tab holds both masters &mdash; the resume, and the cover letter underneath it. Both are <strong>read-only and shown exactly as they print</strong>. Each has its own PDF button.</p>
+    <p>They change in one direction only: you write against a real posting in <strong>Fit Score</strong>, then promote a version up. <strong>Nothing an agent writes lands here on its own</strong> &mdash; thirty applications should not slowly erode what you actually wrote.</p>
     <h4>Keywords</h4>
-    <p>Every entry carries two lists: the <strong>job titles</strong> it is evidence for, and the <strong>skills</strong> it demonstrates. These are what the agent matches a posting against. An untagged entry is invisible to it.</p>
-    <p><strong>&#10022; Tag</strong> fills both with AI. Read what it suggests &mdash; the first pass is a review, after that it is maintenance. Nothing saves until you press Save.</p>
-    <h4>Editing and ordering</h4>
-    <p>Type into any field; the top right shows <strong>Unsaved changes</strong>. Completed entries group above in-progress ones. Reorder with <span class="kbd">&#10514;</span> <span class="kbd">&#9650;</span> <span class="kbd">&#9660;</span> <span class="kbd">&#10515;</span> or the <span class="kbd">&#10303;</span> grip &mdash; always within a group. Use the status dropdown to move between groups.</p>
-    <p>The <strong>&#10022;</strong> button on an entry suggests tighter wording for its lines, one Accept or Reject at a time.</p>
+    <p>Every resume entry carries two lists: the <strong>job titles</strong> it is evidence for, and the <strong>skills</strong> it demonstrates. These are what the agent matches a posting against. An untagged entry is invisible to it.</p>
+    <p><strong>&#10022; Tag keywords</strong> fills both with AI. It only touches entries that have none, so running it again is safe. It saves for you when it finishes.</p>
 
-    <h3 id="g-cover">Master cover letter</h3>
-    <p>A real letter, written in your voice, with labelled paragraphs. The agent <em>rewrites</em> it against a posting rather than reassembling blocks &mdash; assembled letters read exactly like assembled letters.</p>
-    <p><strong>Proof paragraphs</strong> are the pool it can draw a stronger example from when a posting calls for one. Tag them so it can tell them apart. Two or three you actually reuse is plenty.</p>
-    <p>This tab has its own Save button, separate from the resume.</p>
+    <h3 id="g-apps">The applications list</h3>
+    <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have.</p>
+    <p><strong>Documents</strong> links open that application's resume or cover letter, ready to print. <strong>Sent</strong>, <strong>Contact email</strong> and <strong>Notes</strong> are yours to type into: they are tracking, not document content, so they are editable right here and save as you type.</p>
+    <p>Rows for applications you have not marked complete are dimmed. Below the table, the same documents again grouped <strong>by job title</strong>, for when you remember the role but not the company.</p>
 
     <h3 id="g-archive">Archive</h3>
-    <p>One group per application: the posting, the resume, the cover letter. Everything about one job lives in one place.</p>
+    <p>Every posting on one row, every field its own column &mdash; company, job title, status, how much of the description you actually have, deadline, sent date, contact, notes, and what has been built. Click a row to open it in full underneath.</p>
+    <p><strong>Posting</strong> tells you whether you have the real description or only an alert teaser. Nothing can be generated from a teaser.</p>
     <h4>Adding a posting</h4>
     <p><strong>Add posting</strong> for a blank one, or <strong>One-click capture</strong> to grab it from a job page with a bookmarklet &mdash; see Capture below.</p>
     <h4>Generating</h4>
@@ -472,6 +477,9 @@ function migrate() {
     if (typeof j.appliedOn !== 'string') j.appliedOn = '';
     if (typeof j.deadline !== 'string') j.deadline = '';
     if (typeof j.teaser !== 'string') j.teaser = '';
+    // Tracking fields: who you are talking to, and what has happened since.
+    if (typeof j.contactEmail !== 'string') j.contactEmail = '';
+    if (typeof j.notes !== 'string') j.notes = '';
     if (!Array.isArray(j.versions)) j.versions = [];
     if (!Array.isArray(j.questions)) j.questions = [];
     if (typeof j.currentVersion !== 'number') j.currentVersion = 0;
@@ -551,7 +559,8 @@ async function boot() {
     if (captured) { await acceptCapture(captured); return; }
 
     const wanted = (location.hash || '').replace('#', '');
-    show(['career','cover','archive','fit'].includes(wanted) ? wanted : 'career');
+    // #cover still works as a link — the letter lives on the Resume tab now.
+    show(['career','archive','fit'].includes(wanted) ? wanted : 'career');
   } catch (err) {
     const b = $('boot');
     b.className = 'banner err';
@@ -563,8 +572,7 @@ function show(tab) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tab));
-  if (tab === 'career') { renderMasterView(); renderTagSummary(); renderDocLists(); }
-  if (tab === 'cover') renderCoverView();
+  if (tab === 'career') { renderMasterView(); renderCoverView(); renderTagSummary(); renderDocLists(); }
   if (tab === 'archive') renderArchive();
   if (tab === 'fit') { renderFit(); renderFitHistory(); }
 }
@@ -662,12 +670,17 @@ function allMasterIds() {
 }
 function renderMasterView() {
   $('masterView').innerHTML =
+    '<div class="sec-head"><h2>Resume</h2></div>' +
     '<div class="preview">' + renderResume({ itemIds: allMasterIds(), summary: '', targetRole: '' }) + '</div>';
 }
 function renderCoverView() {
   const L = state.cover.letter;
   const paras = L.paragraphs.map((p) => p.text).filter((t) => t && t.trim());
-  $('coverView').innerHTML = '<div class="preview">' +
+  $('coverView').innerHTML =
+    '<div class="sec-head"><h2>Cover letter</h2>' +
+      (paras.length ? '<span class="count">' + paras.length + ' paragraph' + (paras.length === 1 ? '' : 's') + '</span>' : '') +
+    '</div>' +
+    '<div class="preview">' +
     (paras.length
       ? '<p style="margin-bottom:12px">' + esc(L.greeting || '') + '</p>' +
         paras.map((t) => '<p style="margin-bottom:12px">' + esc(t) + '</p>').join('') +
@@ -744,22 +757,66 @@ function groupedDocs(keyFn, emptyLabel) {
   return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
-function renderDocLists() {
-  const build = (elId, heading, keyFn, emptyLabel, hint) => {
-    const groups = groupedDocs(keyFn, emptyLabel);
-    $(elId).innerHTML =
-      '<div class="sec-head"><h2>' + heading + '</h2><span class="count">' + groups.length + '</span></div>' +
-      '<p class="tagline" style="margin-bottom:8px">' + hint + '</p>' +
-      (!groups.length ? '<div class="empty">Nothing generated yet.</div>'
-        : groups.map(([key, js]) =>
-          '<div class="docgroup"><b>' + esc(key) + '</b>' +
-            js.map((j) => '<div class="docrow"><span class="sub">' + esc(keyFn === companyOf ? (j.role || 'no role') : (j.company || 'no company')) + '</span>' + docLinks(j) + '</div>').join('') +
-          '</div>').join(''));
-  };
-  build('docsByCompany', 'By company', companyOf, 'No company', 'Who you sent it to.');
-  build('docsByTitle', 'By job title', titleOf, 'No title', 'What the role was.');
+/* By company is a table, one row per application: at a glance it stays one line
+   tall however many you have. Sent, contact and notes are yours to type in —
+   they are tracking, not resume content, so they are editable here. */
+const APP_FIELDS = [
+  ['appliedOn', 'date', ''],
+  ['contactEmail', 'email', 'name@company.com'],
+  ['notes', 'text', 'Emails, interviews, follow-ups…'],
+];
 
-  document.querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
+function renderCompanyTable() {
+  const rows = jdList().slice().sort((a, b) =>
+    (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
+  $('docsByCompany').innerHTML =
+    '<div class="sec-head"><h2>By company</h2><span class="count">' + rows.length + '</span></div>' +
+    '<p class="tagline" style="margin-bottom:8px">One row per application. Sent, contact and notes save as you type.</p>' +
+    (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
+      '<table class="apptbl"><colgroup>' +
+        '<col style="width:15%"><col style="width:19%"><col style="width:14%">' +
+        '<col style="width:10%"><col style="width:17%"><col style="width:25%">' +
+      '</colgroup><thead><tr>' +
+        '<th>Company</th><th>Job title</th><th>Documents</th>' +
+        '<th>Sent</th><th>Contact email</th><th>Notes</th>' +
+      '</tr></thead><tbody>' +
+      rows.map((j) =>
+        '<tr' + (j.status === 'complete' ? '' : ' class="dim"') + '>' +
+          '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || '— no company') + '</td>' +
+          '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || '— no title') + '</td>' +
+          '<td>' + docLinks(j) + '</td>' +
+          APP_FIELDS.map(([f, type, ph]) =>
+            '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
+              (ph ? ' placeholder="' + esc(ph) + '"' : '') +
+              ' value="' + esc(j[f] || '') + '" /></td>').join('') +
+        '</tr>').join('') +
+      '</tbody></table>');
+
+  // Never re-render on input — that is what stole focus mid-word last time.
+  $('docsByCompany').querySelectorAll('[data-appf]').forEach((el) => el.addEventListener('input', () => {
+    const [id, field] = el.dataset.appf.split('|');
+    const j = state.jobs.items.find((x) => x.id === id);
+    if (!j) return;
+    j[field] = el.value;
+    queueSaveJobs();
+  }));
+}
+
+function renderDocLists() {
+  renderCompanyTable();
+  const groups = groupedDocs(titleOf, 'No title');
+  $('docsByTitle').innerHTML =
+    '<div class="sec-head"><h2>By job title</h2><span class="count">' + groups.length + '</span></div>' +
+    '<p class="tagline" style="margin-bottom:8px">What the role was.</p>' +
+    (!groups.length ? '<div class="empty">Nothing generated yet.</div>'
+      : groups.map(([key, js]) =>
+        '<div class="docgroup"><b>' + esc(key) + '</b>' +
+          js.map((j) => '<div class="docrow"><span class="sub">' + esc(j.company || 'no company') + '</span>' + docLinks(j) + '</div>').join('') +
+        '</div>').join(''));
+
+  // Scoped: the Archive table also carries [data-doc] links and wires its own.
+  // A global query here would bind a second handler and open two print windows.
+  $('panel-career').querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
     e.preventDefault();
     const [what, id] = a.dataset.doc.split('|');
     const j = state.jobs.items.find((x) => x.id === id);
@@ -1081,7 +1138,13 @@ function adoptVersion(local, saved) {
 }
 async function saveJobs() {
   try { adoptVersion(state.jobs, await api('jobs', 'PUT', state.jobs, state.jobs.version)); }
-  catch (err) { toast('Could not save: ' + err.message, true); }
+  catch (err) {
+    // Do not guess a merge here: two tabs may have edited different applications
+    // and picking a winner would quietly lose one of them. Say what happened.
+    if (err.code === 'VERSION_CONFLICT') {
+      toast('Not saved — this page has an older copy than the server. You have another tab of this app open. Close the other tab, then reload this one.', true);
+    } else toast('Could not save: ' + err.message, true);
+  }
 }
 
 /* ── COVER LETTER TAB ───────────────────────────────────
@@ -1204,26 +1267,129 @@ function currentJd() {
 const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
 
 // The list alone, leaving whatever you are typing in untouched.
+/* Every posting on one row, every field its own column — a flat dataset you can
+   scan down. Clicking a row opens it in full underneath. */
 function renderJdListOnly() {
   const list = jdList();
+  const words = (s) => (String(s || '').trim().match(/\S+/g) || []).length;
   $('jdList').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span></div>' +
     (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
-      : list.map((j) =>
-        '<div class="jdrow' + (j.id === state.jdId ? ' on' : '') + '" data-jd="' + esc(j.id) + '">' +
-          '<div class="m"><b>' + esc(j.company || 'Untitled') + '</b><p>' + esc(j.role || 'no role yet') + '</p>' +
-          '<p class="s">' + statusChip(j.status) +
-            (needsJd(j) ? ' <span class="chip st-draft">needs posting</span>' : '') +
-            ((j.versions || []).length ? ' <span class="chip">v' + j.versions.length + '</span>' : '') +
-            (j.source ? ' <span class="chip">inbox</span>' : '') + '</p></div>' +
-        '</div>').join(''));
+      : '<table class="apptbl jdtbl"><colgroup>' +
+          '<col style="width:13%"><col style="width:16%"><col style="width:11%"><col style="width:9%">' +
+          '<col style="width:8%"><col style="width:8%"><col style="width:13%"><col style="width:12%"><col style="width:10%">' +
+        '</colgroup><thead><tr>' +
+          '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
+          '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
+        '</tr></thead><tbody>' +
+        list.map((j) => {
+          const w = words(j.text);
+          const vs = (j.versions || []).length;
+          return '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
+            '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || 'Untitled') + '</td>' +
+            '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || 'no role yet') + '</td>' +
+            '<td>' + statusChip(j.status) + (j.source ? ' <span class="chip">inbox</span>' : '') + '</td>' +
+            '<td>' + (needsJd(j)
+              ? '<span class="chip st-draft">needs posting</span>'
+              : '<span class="tagline">' + w + ' words</span>') +
+              (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener" title="' + esc(j.url) + '">link</a>' : '') + '</td>' +
+            '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
+            '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
+            '<td class="ro" title="' + esc(j.contactEmail || '') + '">' + (j.contactEmail ? esc(j.contactEmail) : '<span class="tagline">—</span>') + '</td>' +
+            '<td class="ro" title="' + esc(j.notes || '') + '">' + (j.notes ? esc(j.notes) : '<span class="tagline">—</span>') + '</td>' +
+            '<td>' + (vs ? '<span class="chip">v' + vs + '</span>' : '<span class="tagline">—</span>') + docLinks(j) + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>');
 
-  document.querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', () => {
+  // Anchors inside a row do their own thing; the row click is for selecting.
+  $('jdList').querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
     state.jdId = el.dataset.jd; renderArchive();
+  }));
+  $('jdList').querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const [what, id] = a.dataset.doc.split('|');
+    const j = state.jobs.items.find((x) => x.id === id);
+    if (!j) return;
+    if (what === 'r') printResume(j); else printCoverLetter(j);
   }));
 }
 
+/* The bookmarklet is the fast path, but a site can refuse to run one: Chrome
+   will not execute a javascript: bookmark on a page whose Content-Security-
+   Policy forbids inline script, and several large job boards send exactly that.
+   So there is always this route, which needs nothing from the site at all. */
+function renderPasteCard() {
+  if ($('pasteCard').dataset.built === '1') return;
+  $('pasteCard').dataset.built = '1';
+  $('pasteCard').innerHTML =
+    '<div class="sec-head"><h2>Paste a posting</h2>' +
+      '<span class="count" id="pasteCount">0 words</span></div>' +
+    '<p class="tagline" style="margin-bottom:8px">On the job page press <span class="kbd">Ctrl</span>+<span class="kbd">A</span> then <span class="kbd">Ctrl</span>+<span class="kbd">C</span>, come back here and paste. ' +
+      'Works everywhere, including sites that block the bookmark.</p>' +
+    '<textarea class="f" id="pasteText" style="min-height:120px" placeholder="Paste the whole job page here — extra navigation text is fine, it gets ignored."></textarea>' +
+    '<div class="row" style="margin-top:8px">' +
+      '<div><label class="f">Company</label><input class="f" id="pasteCo" placeholder="filled in from the text if it can be" /></div>' +
+      '<div><label class="f">Job title</label><input class="f" id="pasteRole" placeholder="filled in from the text if it can be" /></div>' +
+      '<div><label class="f">Posting URL</label><input class="f" id="pasteUrl" placeholder="optional" /></div>' +
+    '</div>' +
+    '<p style="margin-top:10px"><button class="btn primary" id="pasteGo" disabled>Create posting</button>' +
+      ' <button class="btn ghost" id="pasteClear">Clear</button></p>';
+
+  const txt = $('pasteText'), go = $('pasteGo');
+  const words = () => (txt.value.trim().match(/\S+/g) || []).length;
+  const refresh = () => {
+    const n = words();
+    $('pasteCount').textContent = n + ' word' + (n === 1 ? '' : 's');
+    go.disabled = n < 25;
+    go.title = n < 25 ? 'Paste the posting first — under 25 words is not a description.' : '';
+  };
+  txt.addEventListener('input', () => {
+    refresh();
+    const g = guessFromText(txt.value);
+    if (g.company && !$('pasteCo').value) $('pasteCo').value = g.company;
+    if (g.role && !$('pasteRole').value) $('pasteRole').value = g.role;
+  });
+  $('pasteClear').addEventListener('click', () => {
+    txt.value = ''; $('pasteCo').value = ''; $('pasteRole').value = ''; $('pasteUrl').value = '';
+    refresh();
+  });
+  go.addEventListener('click', async () => {
+    if (go.disabled) return;
+    go.disabled = true; go.textContent = 'Creating…';
+    try {
+      await acceptCapture({
+        title: '',
+        url: $('pasteUrl').value.trim(),
+        text: txt.value,
+        company: $('pasteCo').value.trim(),
+        role: $('pasteRole').value.trim(),
+      });
+      $('pasteClear').click();
+    } finally { go.textContent = 'Create posting'; refresh(); }
+  });
+  refresh();
+}
+
+// The first non-boilerplate lines of a job page are nearly always the title and
+// the company. A guess you can see and correct beats a blank field.
+function guessFromText(text) {
+  const skip = /^(skip to|sign in|join now|apply|save|share|report|home|my network|jobs|messaging|notifications|easy apply|show more|see more|about the job)\b/i;
+  const lines = String(text || '').split('\n').map((l) => l.trim())
+    .filter((l) => l && l.length < 120 && !skip.test(l));
+  const role = lines[0] || '';
+  let company = '';
+  for (const l of lines.slice(1, 6)) {
+    const m = l.match(/^([^·|]+?)\s*[·|]/);
+    const cand = (m ? m[1] : l).trim();
+    if (cand && cand.length > 1 && cand.length < 60 && !/^\d/.test(cand) && cand !== role) { company = cand; break; }
+  }
+  return { company, role };
+}
+
 function renderArchive() {
+  renderPasteCard();
   renderJdListOnly();
   renderJdDetail();
 }
@@ -1245,7 +1411,11 @@ function renderJdDetail() {
       '<div class="row">' +
         '<div><label class="f">Posting URL</label><input class="f" data-jdf="url" value="' + esc(j.url || '') + '" /></div>' +
         '<div><label class="f">Deadline</label><input class="f" type="date" data-jdf="deadline" value="' + esc(j.deadline || '') + '" /></div>' +
-        '<div><label class="f">Applied on</label><input class="f" type="date" data-jdf="appliedOn" value="' + esc(j.appliedOn || '') + '" /></div>' +
+        '<div><label class="f">Sent</label><input class="f" type="date" data-jdf="appliedOn" value="' + esc(j.appliedOn || '') + '" /></div>' +
+      '</div>' +
+      '<div class="row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">' +
+        '<div><label class="f">Contact email</label><input class="f" type="email" data-jdf="contactEmail" placeholder="name@company.com" value="' + esc(j.contactEmail || '') + '" /></div>' +
+        '<div><label class="f">Notes</label><input class="f" data-jdf="notes" placeholder="Emails, interviews, follow-ups…" value="' + esc(j.notes || '') + '" /></div>' +
       '</div>' +
       (needsJd(j)
         ? '<div class="banner warn"><b>Only the alert, not the posting</b>' +
@@ -1274,7 +1444,7 @@ function wireJdDetail(j) {
     queueSaveJobs();
     // Only the list needs refreshing as you type — re-rendering the detail would
     // rip the field out from under the cursor.
-    if (path === 'status' || path === 'company' || path === 'role') renderJdListOnly();
+    if (['status','company','role','deadline','appliedOn','contactEmail','notes','url'].includes(path)) renderJdListOnly();
   }));
   const del = $('jdDel');
   if (del) del.addEventListener('click', () => {
@@ -1394,18 +1564,43 @@ async function promoteLetterToMaster(j) {
   while (paras.length && /^(sincerely|regards|best|thank you)/i.test(paras[paras.length - 1]) && paras[paras.length - 1].length < 60) paras.pop();
   if (!paras.length) return toast('That letter is only a greeting and sign-off — nothing to promote.', true);
 
-  state.cover.letter.paragraphs = paras.map((t, i) => ({
+  const build = () => paras.map((t, i) => ({
     id: uid('p'),
     kind: i === 0 ? 'opening' : (i === paras.length - 1 ? 'closing' : 'proof'),
     title: i === 0 ? 'Opening' : (i === paras.length - 1 ? 'Closing' : 'Proof ' + i),
     text: t,
   }));
+  state.cover.letter.paragraphs = build();
 
   try {
     adoptVersion(state.cover, await api('cover', 'PUT', state.cover, state.cover.version));
-    renderCoverView();
-    toast('Saved as your master letter. Open Cover Letter and take out anything specific to ' + (j.company || 'this company') + '.');
-  } catch (err) { toast('Could not save: ' + err.message, true); }
+  } catch (err) {
+    if (err.code !== 'VERSION_CONFLICT') return toast('Could not save: ' + err.message, true);
+    // Another tab moved the master between this page loading it and you clicking
+    // promote. Promotion is a whole replacement, so re-applying it to the newer
+    // copy is safe — but not silently: if that copy holds writing you were never
+    // warned about, ask again before it goes.
+    let fresh;
+    try { fresh = await api('cover'); }
+    catch (e2) { return toast('Could not save: ' + e2.message, true); }
+    const freshParas = (fresh && fresh.letter && fresh.letter.paragraphs) || [];
+    const freshCount = freshParas.filter((p) => (p.text || '').trim()).length;
+    if (freshCount && freshCount !== existing &&
+        !confirm('Your master letter changed in another tab — it now has ' + freshCount + ' written paragraph(s), not ' + existing + '.\n\nReplace that newer copy with this letter?')) {
+      state.cover.letter.paragraphs = freshParas;
+      state.cover.version = fresh.version; state.cover.updatedAt = fresh.updatedAt;
+      renderCoverView();
+      return toast('Left alone. Your master letter is the newer copy.', true);
+    }
+    // Merge in place — swapping state.cover would detach every open handler.
+    if (fresh && Array.isArray(fresh.items)) state.cover.items = fresh.items;
+    state.cover.version = fresh.version;
+    state.cover.letter.paragraphs = build();
+    try { adoptVersion(state.cover, await api('cover', 'PUT', state.cover, state.cover.version)); }
+    catch (e3) { return toast('Could not save: ' + e3.message, true); }
+  }
+  renderCoverView();
+  toast('Saved as your master letter — it is on the Resume tab, under the resume. Take out anything specific to ' + (j.company || 'this company') + '.');
 }
 
 function printMasterResume() {
@@ -1420,7 +1615,7 @@ function queueSaveJobs() { clearTimeout(jobsTimer); jobsTimer = setTimeout(saveJ
 
 $('jdNew').addEventListener('click', () => {
   const j = { id: uid('job'), company: '', role: '', url: '', text: '', status: 'draft',
-    deadline: '', appliedOn: '', createdAt: new Date().toISOString(),
+    deadline: '', appliedOn: '', contactEmail: '', notes: '', createdAt: new Date().toISOString(),
     resume: { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null },
     coverLetter: { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null } };
   state.jobs.items.unshift(j); state.jdId = j.id;
@@ -1675,8 +1870,12 @@ function readCapture() {
 // "Acme Corp hiring Senior Controller in Palo Alto | LinkedIn" -> company + role
 function splitTitle(title) {
   const t = String(title || '').replace(/\s*\|\s*LinkedIn\s*$/i, '').trim();
+  if (!t) return { company: '', role: '' };
   let m = t.match(/^(.+?)\s+hiring\s+(.+?)(?:\s+in\s+.+)?$/i);
   if (m) return { company: m[1].trim(), role: m[2].trim() };
+  // "Senior Manager, Accounting | Acme Corp" — LinkedIn's newer tab title.
+  m = t.match(/^(.+?)\s*\|\s*(.+)$/);
+  if (m) return { role: m[1].trim(), company: m[2].trim() };
   m = t.match(/^(.+?)\s+[-–—]\s+(.+)$/);
   if (m) return { role: m[1].trim(), company: m[2].trim() };
   return { company: '', role: t };
@@ -1692,10 +1891,17 @@ window.addEventListener('hashchange', async () => {
 
 async function acceptCapture(d) {
   const guess = splitTitle(d.title);
+  if (d.company) guess.company = d.company;
+  if (d.role) guess.role = d.role;
+  if (!guess.company || !guess.role) {
+    const g2 = guessFromText(d.text);
+    guess.company = guess.company || g2.company;
+    guess.role = guess.role || g2.role;
+  }
   const j = {
     id: uid('job'), company: guess.company, role: guess.role,
     url: d.url || '', status: 'draft', text: (d.text || '').trim(),
-    deadline: '', appliedOn: '',
+    deadline: '', appliedOn: '', contactEmail: '', notes: '',
     createdAt: new Date().toISOString(), capturedFrom: d.url || '',
     resume: { status: 'draft', itemIds: [], summary: '', frozenText: '', frozenHtml: '', generatedAt: null },
     coverLetter: { status: 'draft', paragraphs: [], frozenText: '', generatedAt: null },
@@ -1740,6 +1946,12 @@ function showGrabber() {
     '<div class="banner info"><b>What you end up with</b>' +
       'A new posting in the list on the left, with the job description filled in, and the company and role guessed from the page title. ' +
       'Check those two are right, then open it in Fit Score to generate a resume and letter against it.</div>' +
+
+    '<div class="banner warn"><b>If clicking the bookmark does nothing</b>' +
+      'Some sites — LinkedIn among them — send a security policy that stops Chrome running a bookmark like this on their pages. ' +
+      'Nothing is wrong with your setup and there is no way around it from here. Use <b>Paste a posting</b> below instead: ' +
+      '<span class="kbd">Ctrl</span>+<span class="kbd">A</span>, <span class="kbd">Ctrl</span>+<span class="kbd">C</span> on the job page, then paste. ' +
+      'The bookmark still works on company careers pages and most job boards.</div>' +
 
     '<div class="banner warn"><b>If dragging will not work</b>' +
       'Use "Copy the code instead", then right-click your bookmarks bar &rarr; Add page, give it any name, and paste what you copied as the URL.</div>' +

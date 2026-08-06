@@ -24,6 +24,9 @@ const PATHS = {
   fits: 'career/fit-scores.json',
   cover: 'career/cover-blocks.json',
   settings: 'career/settings.json',
+  // The one document that is served to the public, by api/resume.js. It only
+  // ever holds what she pressed Publish on — never the working version.
+  published: 'career/published-resume.json',
 };
 
 function cfg() {

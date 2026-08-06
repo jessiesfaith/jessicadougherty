@@ -182,6 +182,11 @@
   .jdtbl tbody tr.on td.co{box-shadow:inset 3px 0 0 var(--accent)}
   .jdtbl td .tagline{font-size:12px}
   .jdtbl td a{color:var(--accent);font-size:12.5px}
+  /* Notes get long. The cell is a preview; clicking it opens the real editor. */
+  .apptbl input[readonly]{cursor:pointer;text-overflow:ellipsis}
+  .notespop{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px}
+  .notespop .npbox{width:min(680px,100%);margin:0}
+  .notespop textarea{width:100%;min-height:240px;max-height:55vh;overflow-y:auto;resize:vertical}
   .grabme{cursor:grab}
   .grabme:active{cursor:grabbing}
   .fitpick{accent-color:var(--accent-2);width:16px;height:16px;flex:none;cursor:pointer}
@@ -377,7 +382,7 @@
 
     <h3 id="g-apps">The postings list</h3>
     <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have.</p>
-    <p><strong>Documents</strong> links open that application's resume or cover letter, ready to print. <strong>Sent</strong>, <strong>Contact email</strong> and <strong>Notes</strong> are yours to type into: they are tracking, not document content, so they are editable right here and save as you type.</p>
+    <p><strong>Documents</strong> links open that application's resume or cover letter, ready to print. <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type.</p>
     <p>Rows for applications you have not marked complete are dimmed.</p>
 
     <h3 id="g-archive">Job Postings</h3>
@@ -754,7 +759,7 @@ function renderCompanyTable() {
     (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
   $('docsByCompany').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span></div>' +
-    '<p class="tagline" style="margin-bottom:8px">One row per application. Sent, contact and notes save as you type.</p>' +
+    '<p class="tagline" style="margin-bottom:8px">One row per application. Sent and contact save as you type; click Notes to open the full box.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
         '<col style="width:15%"><col style="width:19%"><col style="width:14%">' +
@@ -768,10 +773,19 @@ function renderCompanyTable() {
           '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || '— no company') + '</td>' +
           '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || '— no title') + '</td>' +
           '<td>' + docLinks(j) + '</td>' +
-          APP_FIELDS.map(([f, type, ph]) =>
-            '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
+          APP_FIELDS.map(([f, type, ph]) => {
+            // Notes are the one field that outgrows a cell: the cell shows a
+            // one-line preview and clicking it opens the full, scrollable note.
+            if (f === 'notes') {
+              const flat = (j.notes || '').replace(/\s*\n+\s*/g, ' · ');
+              return '<td><input type="text" readonly data-notesopen="' + esc(j.id) + '"' +
+                ' placeholder="' + esc(ph) + '" title="Click to open the full note"' +
+                ' value="' + esc(flat) + '" /></td>';
+            }
+            return '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
               (ph ? ' placeholder="' + esc(ph) + '"' : '') +
-              ' value="' + esc(j[f] || '') + '" /></td>').join('') +
+              ' value="' + esc(j[f] || '') + '" /></td>';
+          }).join('') +
         '</tr>').join('') +
       '</tbody></table>');
 
@@ -783,6 +797,42 @@ function renderCompanyTable() {
     j[field] = el.value;
     queueSaveJobs();
   }));
+  $('docsByCompany').querySelectorAll('[data-notesopen]').forEach((el) =>
+    el.addEventListener('click', () => openNotesEditor(el.dataset.notesopen)));
+}
+
+/* Notes hold the story of an application — emails, interviews, follow-ups —
+   and a one-line cell cannot. This is the real editor: big, scrollable, saves
+   as you type. */
+function openNotesEditor(id) {
+  const j = state.jobs.items.find((x) => x.id === id);
+  if (!j) return;
+  const old = document.querySelector('.notespop');
+  if (old) old.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'notespop';
+  wrap.innerHTML =
+    '<div class="card npbox">' +
+      '<div class="sec-head"><h2>Notes &mdash; ' + esc(j.company || 'no company') + (j.role ? ' &middot; ' + esc(j.role) : '') + '</h2>' +
+        '<button class="btn" id="notesDone">Done</button></div>' +
+      '<textarea class="f" id="notesText" placeholder="Emails, interviews, follow-ups… as much as you need."></textarea>' +
+      '<p class="tagline" style="margin-top:6px">Saves as you type. Done, Esc, or clicking outside closes.</p>' +
+    '</div>';
+  document.body.appendChild(wrap);
+  const ta = wrap.querySelector('#notesText');
+  ta.value = j.notes || '';
+  const close = () => {
+    wrap.remove();
+    // Refresh the previews this note appears in — safe now, nothing has focus.
+    renderDocLists();
+    renderJdListOnly();
+  };
+  ta.addEventListener('input', () => { j.notes = ta.value; queueSaveJobs(); });
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) close(); });
+  wrap.querySelector('#notesDone').addEventListener('click', close);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
 }
 
 function renderDocLists() {
@@ -1386,7 +1436,7 @@ function renderJdDetail() {
       '</div>' +
       '<div class="row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">' +
         '<div><label class="f">Contact email</label><input class="f" type="email" data-jdf="contactEmail" placeholder="name@company.com" value="' + esc(j.contactEmail || '') + '" /></div>' +
-        '<div><label class="f">Notes</label><input class="f" data-jdf="notes" placeholder="Emails, interviews, follow-ups…" value="' + esc(j.notes || '') + '" /></div>' +
+        '<div><label class="f">Notes</label><textarea class="f" data-jdf="notes" style="min-height:72px;max-height:240px;overflow-y:auto" placeholder="Emails, interviews, follow-ups…">' + esc(j.notes || '') + '</textarea></div>' +
       '</div>' +
       (needsJd(j)
         ? '<div class="banner warn"><b>Only the alert, not the posting</b>' +

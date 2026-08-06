@@ -27,6 +27,8 @@ const PATHS = {
   // The one document that is served to the public, by api/resume.js. It only
   // ever holds what she pressed Publish on — never the working version.
   published: 'career/published-resume.json',
+  // What she intends to do, as opposed to what she has done.
+  plans: 'career/plans.json',
 };
 
 function cfg() {

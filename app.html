@@ -170,6 +170,11 @@
   .lrow.on{background:rgba(255,255,255,.05)}
   /* A version is a resume and a letter and a score all at once, so each gets
      its own column rather than being run together in one line of prose. */
+  .planrow > div{overflow:visible;display:flex;align-items:center;gap:6px}
+  .planrow .f{width:100%;padding:5px 8px;font-size:13px;min-width:0}
+  .planrow.head > div[data-plansort]{cursor:pointer;user-select:none}
+  .planrow.head > div[data-plansort]:hover{color:var(--text)}
+  @media(max-width:900px){.planrow{grid-template-columns:1fr !important}}
   .vrow{grid-template-columns:50px minmax(0,1fr) 88px 108px 84px 84px minmax(0,1.1fr) 96px}
   .hrow{grid-template-columns:86px minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 150px}
   @media(max-width:900px){.vrow,.hrow{grid-template-columns:1fr}.lrow.head{display:none}}
@@ -331,6 +336,7 @@
       <button class="tab" data-tab="archive">Job Postings</button>
       <button class="tab" data-tab="fit">Fit Score</button>
       <button class="tab" data-tab="prep">Interview Prep</button>
+      <button class="tab" data-tab="other">Other</button>
     </div>
     <div class="nav-right">
       <span class="saveState" id="saveState"></span>
@@ -421,6 +427,18 @@
     <div class="card" id="prepSuggest"></div>
   </section>
 
+  <!-- ═══ OTHER ═══ -->
+  <section class="panel" id="panel-other">
+    <div class="head">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Other</h1><button class="guidelink" data-guide="other" title="The guide for this tab">Guide</button></div>
+      <p>Four plans: what you intend to do, kept apart from the record of what you have done. Nothing here reaches a resume until it happens and you add it to your master.</p>
+    </div>
+    <div class="card" id="planEducation"></div>
+    <div class="card" id="planExperience"></div>
+    <div class="card" id="planEvents"></div>
+    <div class="card" id="planProject"></div>
+  </section>
+
   <div class="foot">
     <span>Private workspace</span>
     <span id="storeInfo"></span>
@@ -439,6 +457,7 @@
     <button data-g="archive">Job Postings</button>
     <button data-g="fit">Fit Score</button>
     <button data-g="prep">Interview Prep</button>
+    <button data-g="other">Other</button>
     <button data-g="data">Your data &amp; problems</button>
   </div>
   <div class="guide-body" id="guideBody">
@@ -540,6 +559,15 @@
     <p>Same as on the agent's questions: it drafts into a review box with its sources, nothing lands in your answer until you press <strong>Use this</strong>, and anything it could not source from your record is listed as something to confirm rather than a sentence to sign.</p>
     <p>All of it is stored against that position, so coming back a week later brings back what you wrote.
     </div>
+    <div class="gsec" data-g="other">
+    <h3 id="g-other">Other</h3>
+    <p>Four plans &mdash; <strong>Education</strong>, <strong>Experience</strong>, <strong>Events</strong> and <strong>Project</strong>. They are what you intend to do, kept deliberately apart from the career master, which is the record of what you have done.</p>
+    <p><strong>Nothing here can reach a resume.</strong> No agent reads these, and no version is built from them. When something on a plan actually happens, you add it to your master by hand &mdash; and that is the moment it becomes a fact rather than an intention.</p>
+    <p>Each is a flat list with the same six columns: <strong>Item</strong>, <strong>Type</strong>, <strong>Enrolled</strong>, <strong>Duration</strong>, <strong>Link</strong> and <strong>Priority</strong>. <strong>+ add</strong> puts a row on the list and the bin removes one &mdash; it asks first if you have typed a name into it. A link you fill in gets an <em>open</em> beside it.</p>
+    <p>Click any column heading to sort by it, again to reverse it. <strong>Sorting only changes what you see</strong>: the stored order stays the order you added things in, so a sort never quietly rewrites your list. Blanks sort last either way, and Priority sorts high, medium, low rather than alphabetically.</p>
+    <p>The count on each heading is how many rows it holds, and how many of those are high priority. All four start collapsed, like everything else.</p>
+    </div>
+
     <div class="gsec" data-g="data">
     <h3 id="g-data">Where your data lives</h3>
     <p>In <code>career-data</code> — your own private GitHub repo — as four plain JSON files under <code>career/</code>. Every save is a commit, so you have the full history.</p>
@@ -591,7 +619,7 @@ function rich(s) {
 const plain = (s) => String(s == null ? '' : s).replace(/\*{2,3}(?!\s)([^*]+?)(?<!\s)\*{2,3}/g, '$1');
 const uid = (p) => p + '-' + Math.random().toString(36).slice(2, 9);
 
-const state = { master:null, templates:null, archives:null, jobs:null, fits:null, cover:null, published:null, jdId:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
+const state = { master:null, templates:null, archives:null, jobs:null, fits:null, cover:null, published:null, plans:null, jdId:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
   // ticked in the Jobs and Archive tabs, consumed by Fit Score
   fitJobs:new Set(), fitResumes:new Set() };
 
@@ -680,10 +708,11 @@ function markClean() { state.dirty = false; $('saveBtn').disabled = true; $('sav
 /* ── boot ──────────────────────────────────────────────── */
 async function boot() {
   try {
-    const [master, templates, archives, jobs, fits, cover, published] =
-      await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits'), api('cover'), api('published')]);
+    const [master, templates, archives, jobs, fits, cover, published, plans] =
+      await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits'), api('cover'), api('published'), api('plans')]);
     state.master = master; state.templates = templates; state.archives = archives;
-    state.jobs = jobs; state.fits = fits; state.cover = cover; state.published = published;
+    state.jobs = jobs; state.fits = fits; state.cover = cover; state.published = published; state.plans = plans;
+    PLANS.forEach((pl) => { if (!Array.isArray(state.plans[pl.key])) state.plans[pl.key] = []; });
     migrate();
     $('boot').remove();
     $('storeInfo').textContent = 'Career master v' + master.version + (master.updatedAt ? ' · updated ' + new Date(master.updatedAt).toLocaleString() : '');
@@ -714,6 +743,7 @@ function show(tab) {
   if (tab === 'archive') renderArchive();
   if (tab === 'fit') { renderFit(); renderFitHistory(); }
   if (tab === 'prep') renderPrep();
+  if (tab === 'other') renderPlans();
 }
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
   if (state.dirty && !confirm('You have unsaved changes to your career master. Leave anyway?')) return;
@@ -1161,7 +1191,8 @@ async function publishJobResume(j) {
       at: new Date().toISOString(),
     };
     const saved = await api('published', 'PUT', doc, state.published.version);
-    state.published = saved || doc;
+    Object.assign(state.published, doc);       // keep the object others hold
+    adoptVersion(state.published, saved);
     renderJdListOnly(); renderDocLists();
     toast('Live at jessicadougherty.com/resume.');
   } catch (err) {
@@ -3459,13 +3490,146 @@ function wireRerun(el, j, key) {
   if (b) b.addEventListener('click', () => draftPrep(j, key));
 }
 
+/* ── OTHER: THE PLANS ──────────────────────────────────
+   Four lists of things she intends to do. Deliberately not part of the career
+   master: a plan is not evidence, and nothing here can be picked up by an agent
+   writing a resume. When something on a plan actually happens, it gets added to
+   the master by hand — which is the moment it becomes a fact. */
+const PLANS = [
+  { key: 'education', el: 'planEducation', title: 'Education Plan',
+    blurb: 'Courses, exams and credentials you intend to take.', what: 'course or credential' },
+  { key: 'experience', el: 'planExperience', title: 'Experience Plan',
+    blurb: 'Work you want to be doing — the roles, scope and responsibilities you are aiming at.', what: 'role or responsibility' },
+  { key: 'events', el: 'planEvents', title: 'Events Plan',
+    blurb: 'Conferences, meetups, hackathons and talks worth being at.', what: 'event' },
+  { key: 'projects', el: 'planProject', title: 'Project Plan',
+    blurb: 'Things you intend to build or ship, for the practice or the proof.', what: 'project' },
+];
+
+/* One flat list per plan, the same five columns each, because the questions are
+   the same whatever you are planning: what is it, what kind, have you started,
+   how long does it take, where is it, and how much do you care. */
+const PLAN_COLS = [
+  { key: 'title', label: 'Item', kind: 'text', ph: 'what it is', w: 'minmax(0,1.5fr)' },
+  { key: 'type', label: 'Type', kind: 'text', ph: 'course, cert, talk…', w: 'minmax(0,0.9fr)' },
+  { key: 'enrolled', label: 'Enrolled', kind: 'date', ph: '', w: '128px' },
+  { key: 'duration', label: 'Duration', kind: 'text', ph: '12 weeks', w: '104px' },
+  { key: 'link', label: 'Link', kind: 'url', ph: 'https://', w: 'minmax(0,1.1fr)' },
+  { key: 'priority', label: 'Priority', kind: 'select', opts: ['high', 'medium', 'low'], w: '104px' },
+];
+const PLAN_GRID = PLAN_COLS.map((c) => c.w).join(' ') + ' 46px';
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+const planOpen = {};
+const planSort = {};
+
+function renderPlans() { PLANS.forEach(renderPlan); }
+
+// Sorted for display only — the stored order is the order she added things, so
+// sorting a column never quietly rewrites her list.
+function planOrder(items, sort) {
+  if (!sort || !sort.key) return items.map((it, i) => ({ it, i }));
+  const val = (it) => sort.key === 'priority'
+    ? (PRIORITY_ORDER[it.priority] != null ? PRIORITY_ORDER[it.priority] : 9)
+    : String(it[sort.key] || '').toLowerCase();
+  return items.map((it, i) => ({ it, i })).sort((a, b) => {
+    const x = val(a.it), y = val(b.it);
+    const blank = (v) => v === '' || v == null;
+    if (blank(x) !== blank(y)) return blank(x) ? 1 : -1;      // empties last, always
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * sort.dir;
+    return String(x).localeCompare(String(y)) * sort.dir;
+  });
+}
+
+function planCell(pl, i, col, it) {
+  const at = 'data-planf="' + pl.key + '|' + i + '|' + col.key + '"';
+  if (col.kind === 'select') {
+    return '<select class="f" ' + at + '>' +
+      col.opts.map((o) => '<option value="' + o + '"' + (it[col.key] === o ? ' selected' : '') + '>' + o + '</option>').join('') +
+      '</select>';
+  }
+  if (col.key === 'link' && (it.link || '').trim()) {
+    return '<input class="f" type="url" ' + at + ' value="' + esc(it.link) + '" placeholder="' + esc(col.ph) + '" />' +
+      '<a class="pubopen" href="' + esc(it.link) + '" target="_blank" rel="noopener" title="Open">open</a>';
+  }
+  return '<input class="f" type="' + col.kind + '" ' + at + ' value="' + esc(it[col.key] || '') + '"' +
+    (col.ph ? ' placeholder="' + esc(col.ph) + '"' : '') + ' />';
+}
+
+function renderPlan(pl) {
+  const el = $(pl.el);
+  if (!el || !state.plans) return;
+  const items = state.plans[pl.key] || (state.plans[pl.key] = []);
+  const sort = planSort[pl.key] || (planSort[pl.key] = { key: null, dir: 1 });
+  const open = planOpen[pl.key];
+  const high = items.filter((x) => x.priority === 'high').length;
+
+  el.innerHTML =
+    '<div class="sec-head"><h2>' + esc(pl.title) + '</h2>' +
+      '<span class="count">' + items.length + (high ? ' &middot; ' + high + ' high' : '') + '</span>' +
+      '<span class="tagline">' + esc(pl.blurb) + '</span>' +
+      '<button class="btn ghost" data-planadd="' + pl.key + '">+ add</button>' +
+      '<button class="btn ghost" data-plantoggle="' + pl.key + '">' + (open ? 'Hide' : 'Show') + '</button></div>' +
+    (!open ? '' :
+      (!items.length
+        ? '<div class="empty">Nothing on this list yet. <b>+ add</b> puts a ' + esc(pl.what) + ' on it.</div>'
+        : '<div class="lrow head planrow" style="grid-template-columns:' + PLAN_GRID + '">' +
+            PLAN_COLS.map((c) => {
+              const on = sort.key === c.key;
+              return '<div data-plansort="' + pl.key + '|' + c.key + '" title="Sort by ' + esc(c.label.toLowerCase()) + '">' +
+                esc(c.label) + (on ? '<span class="sortarrow">' + (sort.dir > 0 ? '▲' : '▼') + '</span>' : '') + '</div>';
+            }).join('') + '<div></div></div>' +
+          planOrder(items, sort).map(({ it, i }) =>
+            '<div class="lrow planrow" style="grid-template-columns:' + PLAN_GRID + '">' +
+              PLAN_COLS.map((c) => '<div>' + planCell(pl, i, c, it) + '</div>').join('') +
+              '<div class="acts"><button class="icon" data-plandel="' + pl.key + '|' + i + '" title="Remove">&#128465;</button></div>' +
+            '</div>').join('')));
+
+  el.querySelector('[data-plantoggle]').addEventListener('click', () => {
+    planOpen[pl.key] = !planOpen[pl.key]; renderPlan(pl);
+  });
+  el.querySelector('[data-planadd]').addEventListener('click', () => {
+    items.push({ id: uid('pl'), title: '', type: '', enrolled: '', duration: '', link: '', priority: 'medium' });
+    planOpen[pl.key] = true; queueSavePlans(); renderPlan(pl);
+  });
+  el.querySelectorAll('[data-plansort]').forEach((h) => h.addEventListener('click', () => {
+    const key = h.dataset.plansort.split('|')[1];
+    if (sort.key === key) sort.dir = -sort.dir; else { sort.key = key; sort.dir = 1; }
+    renderPlan(pl);
+  }));
+  // Never re-render on input — the same rule the postings tables follow.
+  el.querySelectorAll('[data-planf]').forEach((f) => f.addEventListener('input', () => {
+    const [, i, field] = f.dataset.planf.split('|');
+    if (items[+i]) { items[+i][field] = f.value; queueSavePlans(); }
+  }));
+  el.querySelectorAll('[data-plandel]').forEach((b) => b.addEventListener('click', () => {
+    const i = +b.dataset.plandel.split('|')[1];
+    const it = items[i];
+    if (!it) return;
+    if ((it.title || '').trim() && !confirm('Remove "' + it.title + '" from the ' + pl.title + '?')) return;
+    items.splice(i, 1); queueSavePlans(); renderPlan(pl);
+  }));
+}
+
+let planTimer = null;
+function queueSavePlans() {
+  clearTimeout(planTimer);
+  planTimer = setTimeout(savePlans, 900);
+}
+async function savePlans() {
+  // adoptVersion, not assignment: replacing state.plans swaps the arrays out
+  // from under every handler already bound to a row, and the next thing you
+  // typed would go into a list nothing renders.
+  try { adoptVersion(state.plans, await api('plans', 'PUT', state.plans, state.plans.version)); }
+  catch (err) { toast('Could not save the plans: ' + err.message, true); }
+}
+
 /* ── USER GUIDE PANE ───────────────────────────────────
    Opens on whichever section matches the tab you are looking at, so the
    answer you need is the first thing on screen. */
 /* The guide is per tab. Opening it from the Fit Score tab should not land you
    in one long document that also covers capture, storage and tokens — it should
    show you Fit Score, with the other tabs a click away. */
-const GUIDE_TABS = ['career', 'archive', 'fit', 'prep', 'data'];
+const GUIDE_TABS = ['career', 'archive', 'fit', 'prep', 'other', 'data'];
 function showGuideTab(which) {
   const g = GUIDE_TABS.includes(which) ? which : 'career';
   document.querySelectorAll('#guideBody .gsec').forEach((el) => {

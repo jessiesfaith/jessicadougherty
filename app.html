@@ -515,7 +515,8 @@
     </div>
     <div class="gsec" data-g="fit">
     <h3 id="g-fit">Fit score</h3>
-    <p>The Application box holds three columns: the <strong>posting</strong> on the left, then the <strong>resume</strong> and the <strong>cover letter</strong> written against it, so you can read a requirement and its answer without scrolling between them. The posting's heading is the picker &mdash; changing it switches every column to that application. <strong>Show</strong> opens the description for editing; edits save to that application.</p>
+    <p>The Application box holds three columns: the <strong>posting</strong> on the left, then the <strong>resume</strong> and the <strong>cover letter</strong> written against it, so you can read a requirement and its answer without scrolling between them. The posting's heading is the picker &mdash; changing it switches every column to that application.</p>
+    <p>All three are <strong>read-only</strong>. The posting is what you are being measured against while you work; <strong>Edit in Job Postings</strong> takes you to where it is kept, with the same application already selected.</p>
     <p>Every requirement in the posting is scored <strong>twice</strong> &mdash; once against the resume, once against the cover letter &mdash; because they fail in different ways. A resume can cover something the letter never mentions.</p>
     <ul>
       <li><strong>Copy fix</strong> on the resume side hands you the suggestion. There is no single unambiguous place to apply it, so it does not guess.</li>
@@ -561,6 +562,7 @@
     <p>The other half of an interview. These are yours to say, so the wording is editable and <strong>+ your own</strong> adds a blank one. What a <em>bad</em> answer sounds like is written next to each &mdash; that is the part you cannot look up.</p>
     <h4>AI help on an answer</h4>
     <p>Same as on the agent's questions: it drafts into a review box with its sources, nothing lands in your answer until you press <strong>Use this</strong>, and anything it could not source from your record is listed as something to confirm rather than a sentence to sign.</p>
+    <p><strong>&#10022; Run all AI help</strong> on the heading does every still-open question in one go, one after another, with a counter on the button. It changes nothing about the guarantee &mdash; each draft lands in its own review box and you still press Use this on the ones you want.</p>
     <p>All of it is stored against that position, so coming back a week later brings back what you wrote.
     </div>
     <div class="gsec" data-g="other">
@@ -2495,6 +2497,26 @@ async function helpAnswer(j, qid, opts) {
   }
 }
 
+/* One button for a page of questions. Sequential on purpose: each is its own
+   call, and firing eight at once buys nothing but a rate limit and a bill you
+   cannot read. The guarantee is unchanged — every draft lands in its own review
+   box, and none of them touches an answer until she presses Use this. */
+async function runHelpForAll(btnId, items, runOne) {
+  if (!items.length) return toast('Nothing open to draft.', true);
+  if (!confirm('Draft an answer for all ' + items.length + ' open question' + (items.length === 1 ? '' : 's') + '?\n\n' +
+      'That is ' + items.length + ' separate calls, one after another. Each draft appears in its own review box — nothing goes into an answer until you press Use this on it.')) return;
+  const set = (html, off) => { const b = $(btnId); if (b) { b.innerHTML = html; b.disabled = !!off; } };
+  set('<span class="spin"></span> 0 / ' + items.length, true);
+  for (let i = 0; i < items.length; i++) {
+    set('<span class="spin"></span> ' + (i + 1) + ' / ' + items.length, true);
+    // helpAnswer paints its own failure into its own box, so one bad answer
+    // does not stop the other seven.
+    await runOne(items[i]);
+  }
+  set('&#10022; Run all AI help', false);
+  toast('All ' + items.length + ' drafted. Read each one before you use it.');
+}
+
 let questionsOpen = false;
 function renderQuestions(j) {
   const el = $('jdQuestions');
@@ -2509,6 +2531,7 @@ function renderQuestions(j) {
       // Which application these belong to, on the heading — the picker that
       // chose them is a long way up the page by the time you are reading them.
       '<span class="tagline">' + jobLabel(j) + '</span>' +
+      (open.length ? '<button class="btn ghost" id="qHelpAll">&#10022; Run all AI help</button>' : '') +
       '<button class="btn ghost" id="qToggle">' + (questionsOpen ? 'Hide' : 'Show') + '</button>' +
       '<button class="btn" id="btnAsk">Ask again</button>' +
       '<button class="btn primary" id="btnRevise">Revise into v' + nextV + '</button></div>' +
@@ -2550,6 +2573,12 @@ function renderQuestions(j) {
           '</div>').join(''));
 
   $('qToggle').addEventListener('click', () => { questionsOpen = !questionsOpen; renderQuestions(j); });
+  const all = $('qHelpAll');
+  if (all) all.addEventListener('click', () => {
+    // The review boxes only exist while the section is open.
+    if (!questionsOpen) { questionsOpen = true; renderQuestions(j); }
+    runHelpForAll('qHelpAll', qs.filter((q) => q.status === 'open'), (q) => helpAnswer(j, q.id));
+  });
   el.querySelectorAll('[data-qhelp]').forEach((b) => b.addEventListener('click', () => helpAnswer(j, b.dataset.qhelp)));
   el.querySelectorAll('[data-qa]').forEach((t) => t.addEventListener('input', () => {
     const q = j.questions.find((x) => x.id === t.dataset.qa);
@@ -2824,11 +2853,10 @@ function renderFitJd() {
       list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === j.id ? ' selected' : '') + '>' +
         esc((x.company || 'Untitled') + ' — ' + (x.role || '?')) + '</option>').join('') + '</select>' +
       statusChip(j.status) +
-      '<button class="btn ghost" id="jdToggle">' + (fitJdOpen ? 'Hide' : 'Show') + '</button></div>' +
-    (fitJdOpen
-      ? '<textarea class="f" id="fitJdText" style="min-height:200px;height:200px">' + esc(j.text || '') + '</textarea>' +
-        '<div class="tagline" style="margin-top:6px">Edits here save to this application.</div>'
-      : '<pre class="frozen" style="max-height:200px">' + esc(j.text || 'No description yet — hit Show and paste it in, or capture it from the posting.') + '</pre>') +
+      '<button class="btn ghost" id="jdEditIn" title="The posting is edited where it is kept">Edit in Job Postings</button></div>' +
+    // Read-only here. The posting is what you are being measured against while
+    // you work; changing it belongs where the posting is kept.
+    '<pre class="frozen" style="max-height:200px">' + esc(j.text || 'No description yet — add it in Job Postings, or capture it from the posting.') + '</pre>' +
     '<button class="btn" id="fitPdfJd"' + ((j.text || '').trim() ? '' : ' disabled') + '>Posting PDF</button>';
 
   const sel = $('fitJd');
@@ -2839,13 +2867,10 @@ function renderFitJd() {
     state.jdId = sel.value;
     renderFitDocs(); renderFitWork(); renderFitHistory(); renderLastScore();
   });
-  $('jdToggle').addEventListener('click', () => { fitJdOpen = !fitJdOpen; renderFitJd(); });
+  $('jdEditIn').addEventListener('click', () => { state.jdId = j.id; show('archive'); });
   const pj = $('fitPdfJd');
   if (pj) pj.addEventListener('click', () => printPosting(j));
-  const t = $('fitJdText');
-  if (t) t.addEventListener('input', () => { j.text = t.value; queueSaveJobs(); });
 }
-let fitJdOpen = false;
 
 function fitJob() {
   return state.jobs.items.find((x) => x.id === state.jdId) || null;
@@ -3112,7 +3137,6 @@ function renderFitHistory() {
    going back to it a week later brings back what she wrote. */
 let prepId = null;
 const prepJob = () => state.jobs.items.find((x) => x.id === prepId) || null;
-let prepJdEditing = false;
 const prepDate = (j) => (j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'no date');
 
 function renderPrep() {
@@ -3141,18 +3165,16 @@ function renderPrep() {
       (p ? '<span class="chip st-complete">prepped ' + esc(new Date(p.at).toLocaleDateString()) + '</span>' : '') +
       '<button class="btn primary" id="prepGo">' + (p ? 'Redraft all' : '&#10022; Draft interview prep') + '</button>' +
       (p ? '<button class="btn danger ghost" id="prepClear">Clear</button>' : '') + '</div>' +
-    '<p class="tagline" style="margin-bottom:10px">Read-only below &mdash; this is the record of what you sent. ' +
+    '<p class="tagline" style="margin-bottom:10px">All three read-only &mdash; this is the record of what you sent, and what you sent it against. ' +
       esc([j.company, j.role].filter(Boolean).join(' · ')) + (j.deadline ? ' · deadline ' + esc(j.deadline) : '') +
       (j.appliedOn ? ' · sent ' + esc(j.appliedOn) : '') + '</p>' +
     '<div class="split split3" style="gap:12px">' +
-      // The posting is editable here — a recruiter sends a fuller description,
-      // or you take a note off the call, and prep is where you are sitting.
+      // All three read-only: by the time you are preparing for the interview,
+      // these are the record of what was sent and what it was sent against.
       '<div><div class="group-label"><span>Job description</span><span class="line"></span>' +
-        '<button class="btn ghost" id="prepJdEdit">' + (prepJdEditing ? 'Done' : 'Edit') + '</button>' +
+        '<button class="btn ghost" id="prepJdEdit">Edit in Job Postings</button>' +
         '<button class="btn ghost" id="prepJdPdf">PDF</button></div>' +
-        (prepJdEditing
-          ? '<textarea class="f" id="prepJdText" style="min-height:230px;height:230px">' + esc(j.text || '') + '</textarea>'
-          : '<pre class="frozen" style="max-height:230px">' + esc(j.text || '') + '</pre>') + '</div>' +
+        '<pre class="frozen" style="max-height:230px">' + esc(j.text || '') + '</pre></div>' +
       // These two are not text with an edit button behind it: a resume is built
       // from the entries and summary of a version, and once a version is marked
       // complete it is frozen as the record of what was sent. Changing either
@@ -3170,9 +3192,7 @@ function renderPrep() {
   $('prepPick').addEventListener('change', (e) => { prepId = e.target.value; renderPrep(); });
   $('prepGo').addEventListener('click', () => draftPrep(j));
   $('prepJdPdf').addEventListener('click', () => printPosting(j));
-  $('prepJdEdit').addEventListener('click', () => { prepJdEditing = !prepJdEditing; renderPrep(); });
-  const jt = $('prepJdText');
-  if (jt) jt.addEventListener('input', () => { j.text = jt.value; queueSaveJobs(); });
+  $('prepJdEdit').addEventListener('click', () => { state.jdId = j.id; show('archive'); });
   // Same application, the tab that can change it, already selected.
   const toFit = () => { state.jdId = j.id; show('fit'); };
   $('prepREdit').addEventListener('click', toFit);
@@ -3229,6 +3249,7 @@ function renderPrepQuestions(j) {
     '<div class="sec-head"><h2>Likely questions</h2>' +
       '<span class="count">' + done + ' / ' + qs.length + ' answered</span>' +
       '<span class="tagline">' + jobLabel(j) + '</span>' +
+      (qs.some((q) => q.status === 'open') ? '<button class="btn ghost" id="pqHelpAll">&#10022; Run all AI help</button>' : '') +
       rerunBtn(j, 'questions') + '<button class="btn ghost" id="pqToggle">' + (prepQOpen ? 'Hide' : 'Show') + '</button></div>' +
     (!prepQOpen ? '' :
     !qs.length ? '<div class="empty">No questions came back.</div>'
@@ -3256,6 +3277,15 @@ function renderPrepQuestions(j) {
 
   $('pqToggle').addEventListener('click', () => { prepQOpen = !prepQOpen; renderPrepQuestions(j); });
   wireRerun(el, j, 'questions');
+  const allBtn = $('pqHelpAll');
+  if (allBtn) allBtn.addEventListener('click', () => {
+    if (!prepQOpen) { prepQOpen = true; renderPrepQuestions(j); }
+    runHelpForAll('pqHelpAll', (p.questions || []).filter((q) => q.status === 'open'), (q) => helpAnswer(j, q.id, {
+      box: 'pqhelp-' + q.id, question: q.question, requirement: q.why || '', why: q.probes || '',
+      guess: q.angle || '', draft: q.answer || '',
+      apply: (text) => { q.answer = text; queueSaveJobs(); renderPrepQuestions(j); },
+    }));
+  });
   const find = (id) => (p.questions || []).find((x) => x.id === id);
   el.querySelectorAll('[data-pqa]').forEach((t) => t.addEventListener('input', () => {
     const q = find(t.dataset.pqa); if (q) { q.answer = t.value; queueSaveJobs(); }

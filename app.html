@@ -321,6 +321,7 @@
       <button class="tab active" data-tab="career">Resume</button>
       <button class="tab" data-tab="archive">Job Postings</button>
       <button class="tab" data-tab="fit">Fit Score</button>
+      <button class="tab" data-tab="prep">Interview Prep</button>
     </div>
     <div class="nav-right">
       <span class="saveState" id="saveState"></span>
@@ -393,6 +394,20 @@
     <div class="card" id="jdVersions"></div>
     <div id="fitOut"></div>
     <div id="fitDetail"></div>
+  </section>
+
+  <!-- ═══ INTERVIEW PREP ═══ -->
+  <section class="panel" id="panel-prep">
+    <div class="head">
+      <div>
+        <h1>Interview prep</h1>
+        <p>Pick the position you are interviewing for. The posting and the documents you sent come over read-only; the answers are yours to write and approve, and they stay with that position.</p>
+      </div>
+    </div>
+    <div class="card" id="prepPicked"></div>
+    <div class="card" id="prepChecks"></div>
+    <div class="card" id="prepQuestions"></div>
+    <div class="card" id="prepSuggest"></div>
   </section>
 
   <div class="foot">
@@ -648,6 +663,7 @@ function show(tab) {
   if (tab === 'career') { renderMasterView(); renderCoverView(); renderTagSummary(); renderDocLists(); }
   if (tab === 'archive') renderArchive();
   if (tab === 'fit') { renderFit(); renderFitHistory(); }
+  if (tab === 'prep') renderPrep();
 }
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
   if (state.dirty && !confirm('You have unsaved changes to your career master. Leave anyway?')) return;
@@ -2181,15 +2197,18 @@ function renderProposal(j) {
    not source from her record is listed separately, as things to confirm rather
    than sentences to sign. It searches for how comparable postings word the
    requirement and for the standard behind it, and shows the links. */
-async function helpAnswer(j, qid) {
-  const q = (j.questions || []).find((x) => x.id === qid);
-  const box = $('qhelp-' + qid);
+async function helpAnswer(j, qid, opts) {
+  // Two callers with the same shape of problem: the agent's questions on Fit
+  // Score, and the interview questions on Prep. The caller says where its box
+  // is, what the question is, and what to do with the text she accepts.
+  const q = opts || (j.questions || []).find((x) => x.id === qid);
+  const box = $((opts && opts.box) || ('qhelp-' + qid));
   if (!q || !box) return;
   box.innerHTML = '<div class="banner info"><span class="spin"></span> Reading the question, your record and the sources behind it…</div>';
   try {
     const r = await ai({ action: 'answerhelp', master: state.master, posting: j.text,
       question: q.question, requirement: q.requirement, why: q.why || '', guess: q.guess || '',
-      draft: q.answer || '' });
+      draft: q.draft != null ? q.draft : (q.answer || '') });
     const a = r.result || {};
     const refs = (a.references || []).concat(
       // Anything the model cited but did not list, so a source is never hidden.
@@ -2215,9 +2234,8 @@ async function helpAnswer(j, qid) {
           : '<p class="r">No sources came back for this one.</p>') +
       '</div>';
     box.querySelector('[data-quse]').addEventListener('click', () => {
-      q.answer = a.draft || '';
-      queueSaveJobs();
-      renderQuestions(j);
+      if (opts && opts.apply) { opts.apply(a.draft || ''); }
+      else { q.answer = a.draft || ''; queueSaveJobs(); renderQuestions(j); }
       toast('Dropped into your answer — read it, make it yours, then Approve.');
     });
     box.querySelector('[data-qdrop]').addEventListener('click', () => { box.innerHTML = ''; });
@@ -2826,6 +2844,220 @@ function renderFitHistory() {
     state.fits.items = state.fits.items.filter((x) => x.id !== b.dataset.delfit);
     await saveFits(); renderFitHistory();
   }));
+}
+
+/* ── INTERVIEW PREP ────────────────────────────────────
+   The one tab where the documents are finished and the question is whether she
+   can stand behind them. The posting and both documents come over read-only —
+   changing them now would be changing the record of what was sent — and the
+   only editable thing is what she would say. Prep is stored on the position, so
+   going back to it a week later brings back what she wrote. */
+let prepId = null;
+const prepJob = () => state.jobs.items.find((x) => x.id === prepId) || null;
+const prepDate = (j) => (j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'no date');
+
+function renderPrep() {
+  const list = jdList().filter((j) => (j.text || '').trim());
+  if (list.length && !list.some((j) => j.id === prepId)) prepId = state.jdId && list.some((x) => x.id === state.jdId) ? state.jdId : list[0].id;
+  if (!list.length) {
+    $('prepPicked').innerHTML = '<div class="sec-head"><h2>Position</h2></div>' +
+      '<div class="empty">No positions with a job description yet. Capture one in Job Postings first.</div>';
+    ['prepChecks', 'prepQuestions', 'prepSuggest'].forEach((id) => { $(id).innerHTML = ''; });
+    return;
+  }
+  const j = prepJob();
+  const v = currentVersion(j);
+  const rTxt = j.resume.frozenText || versionResumeText(j, v);
+  const cTxt = j.coverLetter.frozenText || versionCoverText(v) || coverLetterText(j.coverLetter);
+  const p = j.prep;
+
+  $('prepPicked').innerHTML =
+    '<div class="sec-head"><h2>Position</h2>' +
+      // Company, title and the date it came in — three things, because two
+      // openings at one company a month apart are otherwise the same line.
+      '<select class="f" id="prepPick" style="flex:1 1 auto;min-width:0;max-width:520px">' +
+        list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === j.id ? ' selected' : '') + '>' +
+          esc((x.company || 'Untitled') + ' — ' + (x.role || 'no title') + '  ·  added ' + prepDate(x)) +
+          (x.prep ? '  ✓ prepped' : '') + '</option>').join('') + '</select>' +
+      (p ? '<span class="chip st-complete">prepped ' + esc(new Date(p.at).toLocaleDateString()) + '</span>' : '') +
+      '<button class="btn primary" id="prepGo">' + (p ? 'Redraft' : '&#10022; Draft interview prep') + '</button>' +
+      (p ? '<button class="btn danger ghost" id="prepClear">Clear</button>' : '') + '</div>' +
+    '<p class="tagline" style="margin-bottom:10px">Read-only below &mdash; this is the record of what you sent. ' +
+      esc([j.company, j.role].filter(Boolean).join(' · ')) + (j.deadline ? ' · deadline ' + esc(j.deadline) : '') +
+      (j.appliedOn ? ' · sent ' + esc(j.appliedOn) : '') + '</p>' +
+    '<div class="split split3" style="gap:12px">' +
+      '<div><div class="group-label"><span>Job description</span><span class="line"></span>' +
+        '<button class="btn ghost" id="prepJdPdf">PDF</button></div>' +
+        '<pre class="frozen" style="max-height:230px">' + esc(j.text || '') + '</pre></div>' +
+      '<div><div class="group-label"><span>Resume ' + (v ? 'v' + v.v : '') + '</span><span class="line"></span>' +
+        '<button class="btn ghost" id="prepRPdf"' + (rTxt ? '' : ' disabled') + '>PDF</button></div>' +
+        '<pre class="frozen" style="max-height:230px">' + esc(rTxt || 'Nothing built for this one yet.') + '</pre></div>' +
+      '<div><div class="group-label"><span>Cover letter</span><span class="line"></span>' +
+        '<button class="btn ghost" id="prepCPdf"' + (cTxt ? '' : ' disabled') + '>PDF</button></div>' +
+        '<pre class="frozen" style="max-height:230px">' + esc(cTxt || 'Nothing built for this one yet.') + '</pre></div>' +
+    '</div>';
+
+  $('prepPick').addEventListener('change', (e) => { prepId = e.target.value; renderPrep(); });
+  $('prepGo').addEventListener('click', () => draftPrep(j));
+  $('prepJdPdf').addEventListener('click', () => printPosting(j));
+  const rp = $('prepRPdf'); if (rp) rp.addEventListener('click', () => printResume(j));
+  const cp = $('prepCPdf'); if (cp) cp.addEventListener('click', () => printCoverLetter(j));
+  const cl = $('prepClear');
+  if (cl) cl.addEventListener('click', async () => {
+    if (!confirm('Clear the prep for this position? Your answers go with it.')) return;
+    delete j.prep; await saveJobs(); renderPrep();
+  });
+
+  renderPrepChecks(j);
+  renderPrepQuestions(j);
+  renderPrepSuggest(j);
+}
+
+/* What an interviewer could challenge because the three documents disagree.
+   Worth finding here rather than across a table. */
+function renderPrepChecks(j) {
+  const p = j.prep;
+  const el = $('prepChecks');
+  if (!p || !(p.checks || []).length) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<div class="sec-head"><h2>Double-check</h2><span class="count">' + p.checks.length + '</span>' +
+      '<span class="tagline">' + jobLabel(j) + '</span>' +
+      '<button class="btn ghost" id="chkToggle">' + (checksOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!checksOpen ? '' :
+      '<p class="tagline" style="margin-bottom:8px">Where the posting, the resume and the letter do not line up. Each one is something you could be asked to explain.</p>' +
+      p.checks.map((c) => '<div class="fix" style="margin-bottom:8px"><p style="font-size:13px;color:var(--muted);margin:0">' + esc(c) + '</p></div>').join(''));
+  $('chkToggle').addEventListener('click', () => { checksOpen = !checksOpen; renderPrepChecks(j); });
+}
+let checksOpen = true;
+
+/* The questions, in the same four columns the agent's questions use. The answer
+   is hers: AI help drafts, she edits, she approves. */
+function renderPrepQuestions(j) {
+  const p = j.prep;
+  const el = $('prepQuestions');
+  if (!p) {
+    el.innerHTML = '<div class="sec-head"><h2>Likely questions</h2></div>' +
+      '<div class="empty">Nothing drafted yet. Hit <b>Draft interview prep</b> above and it reads the posting, the resume and the letter together.</div>';
+    return;
+  }
+  const qs = p.questions || [];
+  const done = qs.filter((q) => q.status === 'answered').length;
+  el.innerHTML =
+    '<div class="sec-head"><h2>Likely questions</h2>' +
+      '<span class="count">' + done + ' / ' + qs.length + ' answered</span>' +
+      '<span class="tagline">' + jobLabel(j) + '</span>' +
+      '<button class="btn ghost" id="pqToggle">' + (prepQOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!prepQOpen ? '' :
+    !qs.length ? '<div class="empty">No questions came back.</div>'
+      : '<div class="qrow head"><div>Question</div><div>Why they ask it</div><div>What it probes</div><div>Your answer</div></div>' +
+        qs.map((q) =>
+          '<div class="qrow' + (q.status === 'skipped' ? ' skipped' : '') + '">' +
+            '<div class="qcell"><b>' + esc(q.question) + '</b></div>' +
+            '<div class="qcell"><p>' + esc(q.why || '') + '</p></div>' +
+            '<div class="qcell"><p>' + esc(q.probes || '') + '</p>' +
+              (q.angle ? '<p class="hint" style="margin-top:5px">' + esc(q.angle) + '</p>' : '') + '</div>' +
+            '<div class="qcell">' +
+              '<textarea class="f" data-pqa="' + esc(q.id) + '" style="min-height:88px" placeholder="What you would actually say.">' + esc(q.answer || '') + '</textarea>' +
+              '<div class="qacts">' +
+                '<button class="btn ghost" data-pqhelp="' + esc(q.id) + '">&#10022; AI help</button>' +
+                (q.status === 'answered'
+                  ? '<span class="chip st-complete">approved</span><button class="btn ghost" data-pqundo="' + esc(q.id) + '">Undo</button>'
+                  : q.status === 'skipped'
+                    ? '<span class="chip">skipped</span><button class="btn ghost" data-pqundo="' + esc(q.id) + '">Undo</button>'
+                    : '<button class="btn" data-pqok="' + esc(q.id) + '">Approve</button>' +
+                      '<button class="btn ghost" data-pqskip="' + esc(q.id) + '">Skip</button>') +
+              '</div>' +
+              '<div id="pqhelp-' + esc(q.id) + '"></div>' +
+            '</div>' +
+          '</div>').join(''));
+
+  $('pqToggle').addEventListener('click', () => { prepQOpen = !prepQOpen; renderPrepQuestions(j); });
+  const find = (id) => (p.questions || []).find((x) => x.id === id);
+  el.querySelectorAll('[data-pqa]').forEach((t) => t.addEventListener('input', () => {
+    const q = find(t.dataset.pqa); if (q) { q.answer = t.value; queueSaveJobs(); }
+  }));
+  el.querySelectorAll('[data-pqok]').forEach((b) => b.addEventListener('click', () => {
+    const q = find(b.dataset.pqok);
+    if (!q) return;
+    if (!(q.answer || '').trim()) return toast('Write what you would say first, or Skip it.', true);
+    q.status = 'answered'; queueSaveJobs(); renderPrepQuestions(j);
+  }));
+  el.querySelectorAll('[data-pqskip]').forEach((b) => b.addEventListener('click', () => {
+    const q = find(b.dataset.pqskip); if (q) q.status = 'skipped';
+    queueSaveJobs(); renderPrepQuestions(j);
+  }));
+  el.querySelectorAll('[data-pqundo]').forEach((b) => b.addEventListener('click', () => {
+    const q = find(b.dataset.pqundo); if (q) q.status = 'open';
+    queueSaveJobs(); renderPrepQuestions(j);
+  }));
+  // The same helper the agent's questions use: it drafts into a review box, and
+  // moving it into the answer is a separate click.
+  el.querySelectorAll('[data-pqhelp]').forEach((b) => b.addEventListener('click', () => {
+    const q = find(b.dataset.pqhelp);
+    if (q) helpAnswer(j, q.id, {
+      box: 'pqhelp-' + q.id, question: q.question, requirement: q.why || '', why: q.probes || '',
+      guess: q.angle || '', draft: q.answer || '',
+      apply: (text) => { q.answer = text; queueSaveJobs(); renderPrepQuestions(j); },
+    });
+  }));
+}
+let prepQOpen = true;
+
+/* What the posting says the documents should have said. Read-only on purpose:
+   the version that was sent is a record, and the place to act on this is a new
+   version in Fit Score. */
+function renderPrepSuggest(j) {
+  const p = j.prep;
+  const el = $('prepSuggest');
+  const r = (p && p.resumeSuggestions) || [], c = (p && p.coverSuggestions) || [];
+  if (!p || (!r.length && !c.length)) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<div class="sec-head"><h2>What the posting suggests</h2><span class="count">' + (r.length + c.length) + '</span>' +
+      '<button class="btn ghost" id="sugToggle">' + (suggestOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!suggestOpen ? '' :
+      '<p class="tagline" style="margin-bottom:8px">Read-only. What was sent is the record; act on any of this by building a new version in <b>Fit Score</b>.</p>' +
+      '<div class="split" style="gap:12px">' +
+        '<div><div class="group-label"><span>Resume</span><span class="line"></span><span>' + r.length + '</span></div>' +
+          (r.length ? r.map((x) => '<div class="fix" style="margin-bottom:7px"><p style="font-size:12.5px;color:var(--muted);margin:0">' + esc(x) + '</p></div>').join('')
+            : '<p class="tagline">Nothing flagged.</p>') + '</div>' +
+        '<div><div class="group-label"><span>Cover letter</span><span class="line"></span><span>' + c.length + '</span></div>' +
+          (c.length ? c.map((x) => '<div class="fix" style="margin-bottom:7px"><p style="font-size:12.5px;color:var(--muted);margin:0">' + esc(x) + '</p></div>').join('')
+            : '<p class="tagline">Nothing flagged.</p>') + '</div>' +
+      '</div>');
+  $('sugToggle').addEventListener('click', () => { suggestOpen = !suggestOpen; renderPrepSuggest(j); });
+}
+let suggestOpen = true;
+
+async function draftPrep(j) {
+  const btn = $('prepGo');
+  if (j.prep && !confirm('Redraft the prep for this position? The questions and anything you have written against them are replaced.')) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading all three…'; }
+  try {
+    const v = currentVersion(j);
+    const r = await ai({ action: 'interviewprep', master: state.master, posting: j.text,
+      resumeText: j.resume.frozenText || versionResumeText(j, v),
+      coverText: j.coverLetter.frozenText || versionCoverText(v) || coverLetterText(j.coverLetter) });
+    const a = r.result || {};
+    j.prep = {
+      at: new Date().toISOString(),
+      questions: (a.questions || []).map((q, i) => ({
+        id: uid('pq'), question: q.question || '', why: q.why || '', probes: q.probes || '',
+        angle: q.angle || '', answer: '', status: 'open',
+      })),
+      checks: a.checks || [],
+      resumeSuggestions: a.resumeSuggestions || [],
+      coverSuggestions: a.coverSuggestions || [],
+      sources: r.citations || [],
+    };
+    await saveJobs();
+    renderPrep();
+    toast((j.prep.questions.length || 0) + ' questions ready. The answers are yours to write.');
+  } catch (err) {
+    toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
+  } finally {
+    const b2 = $('prepGo');
+    if (b2) { b2.disabled = false; b2.innerHTML = j.prep ? 'Redraft' : '&#10022; Draft interview prep'; }
+  }
 }
 
 /* ── USER GUIDE PANE ───────────────────────────────────

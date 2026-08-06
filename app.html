@@ -340,7 +340,7 @@
   <section class="panel" id="panel-career">
     <div class="head">
       <div>
-        <h1>Master documents</h1>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Master documents</h1><button class="btn ghost" data-guide="career" title="The guide for this tab">Guide</button></div>
         <p>Your resume and cover letter, read-only and shown exactly as they print. They change in one direction only &mdash; you promote a version up from Fit Score. Editing happens there, against a real posting.</p>
       </div>
       <div class="spacer"></div>
@@ -366,7 +366,7 @@
   <section class="panel" id="panel-archive">
     <div class="head">
       <div>
-        <h1>Job Postings</h1>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Job Postings</h1><button class="btn ghost" data-guide="archive" title="The guide for this tab">Guide</button></div>
         <p>Where job descriptions land &mdash; by capture, by the inbox agent, or pasted in. Everything you do <em>with</em> one happens in Fit Score.</p>
       </div>
       <div class="spacer"></div>
@@ -384,7 +384,7 @@
   <section class="panel" id="panel-fit">
     <div class="head">
       <div>
-        <h1>Fit score</h1>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Fit score</h1><button class="btn ghost" data-guide="fit" title="The guide for this tab">Guide</button></div>
         <p>Pick an application from Job Postings. Every requirement in the posting is scored twice &mdash; once against the resume, once against the cover letter &mdash; each with a concrete fix.</p>
       </div>
     </div>
@@ -401,13 +401,15 @@
   <section class="panel" id="panel-prep">
     <div class="head">
       <div>
-        <h1>Interview prep</h1>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Interview prep</h1><button class="btn ghost" data-guide="prep" title="The guide for this tab">Guide</button></div>
         <p>Pick the position you are interviewing for. The posting and the documents you sent come over read-only; the answers are yours to write and approve, and they stay with that position.</p>
       </div>
     </div>
     <div class="card" id="prepPicked"></div>
     <div class="card" id="prepChecks"></div>
     <div class="card" id="prepQuestions"></div>
+    <div class="card" id="prepAsk"></div>
+    <div class="card" id="prepVersions"></div>
     <div class="card" id="prepSuggest"></div>
   </section>
 
@@ -446,6 +448,9 @@
     <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have. It carries the same columns as Job Postings: company, job title, status, posting, deadline, sent, contact, notes and what has been built.</p>
     <p>It is <strong>read-only</strong>. It is here so you can see where every application stands while you look at your masters; <strong>Job Postings is the one place you change any of it</strong>, so there is never a question of which copy of a row you typed into.</p>
     <p><strong>Built</strong> links still work &mdash; they open that application's resume or cover letter ready to print, with a chip for how many versions exist. Rows for applications you have not marked complete are dimmed.</p>
+    <p>The table starts closed, with the count on the heading &mdash; the masters underneath are what this tab is for.</p>
+    <h4>Bold, and blue</h4>
+    <p>Anywhere you write document text, <code>**stars**</code> makes it <strong>bold</strong> and <code>***three***</code> makes it bold and blue. Headings, your name and employer names already print blue. The markers never reach a PDF, the frozen record, or the agent &mdash; they are stripped from everything but the rendered page.</p>
     </div>
     <div class="gsec" data-g="archive">
     <h3 id="g-archive">Job Postings</h3>
@@ -456,6 +461,7 @@
     <p>Each row starts with a checkbox, and the one in the header selects or deselects every row at once. <strong>Remove</strong>, at the top of the box, counts what you have ticked and hides those applications on click.</p>
     <p>It is the same soft delete as the Delete button on an open posting: the data stays in your repo. Tick <em>show deleted</em> and they come straight back.</p>
     <p><strong>Posting</strong> tells you whether you have the real description or only an alert teaser. Nothing can be generated from a teaser.</p>
+    <p>The table starts closed, with the count on the heading; the posting you are working on opens underneath it.</p>
     <h4>Adding a posting</h4>
     <p><strong>Add posting</strong> for a blank one, or <strong>One-click capture</strong> to grab it from a job page with a bookmarklet &mdash; see Capture below.</p>
     <h4>Generating</h4>
@@ -482,6 +488,8 @@
     <p>For a full pass, don't use those: <strong>Approve</strong> the agent's questions, then <strong>Revise</strong>. Revise folds in every approved answer and every fix at once, and comes back with a <strong>proposed version you can edit</strong> &mdash; the summary, each letter paragraph, and which entries go in, with the resume rebuilding underneath as you change it.</p>
     <p><strong>Nothing is a version until you press Approve.</strong> Until then the current version is untouched, and Discard throws the draft away without spending your approved answers. Once approved it becomes the current version, and the Resume and Cover letter links in both Postings tables follow it.</p>
     <p>Then score again: the Versions list shows each version's own score, so you can see whether the rewrite actually moved the number.</p>
+    <h4>Everything is closed until you open it</h4>
+    <p>Score history, the questions, the versions and the ranking all start collapsed, with their counts on the headings. Picking an application moves all of them &mdash; its documents, its questions, its versions, its scores &mdash; so nothing on the page is ever describing a different company.</p>
     <div class="tip">A zero with "no evidence" is the honest answer, not a failure of the scorer. If the posting wants something you have never done, no wording fixes that &mdash; and the fix will say so rather than help you claim it.</div>
     <p>Every run is saved to the score history, so you can see whether a rewrite actually moved the number.</p>
     </div>
@@ -508,6 +516,11 @@
       <li><strong>Double-check</strong> &mdash; where the three documents disagree, quoted. The wrong company in your own letter is better found here than across a table.</li>
       <li><strong>What the posting suggests</strong> &mdash; read-only. What was sent is the record; act on it by building a new version in Fit Score.</li>
     </ul>
+    <h4>Re-running, and getting it back</h4>
+    <p>Each section has its own <strong>Re-run</strong>, with the time it last came back beside it. Re-running the questions replaces the questions and the answers you wrote against them; re-running the others leaves the questions alone. <strong>Redraft all</strong> at the top replaces everything. Each says what it is about to replace before it does it.</p>
+    <p>Nothing a re-run replaces is thrown away. The prep as it stood is filed under <strong>Prep versions</strong> first &mdash; so is a <strong>Clear</strong> &mdash; with how many questions and how many you had answered. <strong>Restore</strong> puts one back and files the current one in its place, so you can go either way. <strong>Delete</strong> is the only thing that removes one for good, and it says so.</p>
+    <h4>Questions to ask them</h4>
+    <p>The other half of an interview. These are yours to say, so the wording is editable and <strong>+ your own</strong> adds a blank one. What a <em>bad</em> answer sounds like is written next to each &mdash; that is the part you cannot look up.</p>
     <h4>AI help on an answer</h4>
     <p>Same as on the agent's questions: it drafts into a review box with its sources, nothing lands in your answer until you press <strong>Use this</strong>, and anything it could not source from your record is listed as something to confirm rather than a sentence to sign.</p>
     <p>All of it is stored against that position, so coming back a week later brings back what you wrote.
@@ -2827,6 +2840,7 @@ function renderLastScore() {
 }
 
 let historyAll = false;
+let historyOpen = false;
 function renderFitHistory() {
   const el = $('fitHistory');
   if (!el) return;
@@ -2841,7 +2855,9 @@ function renderFitHistory() {
       (j ? '<span class="tagline">' + (historyAll ? 'every application' : esc(j.company || 'this application')) + '</span>' : '') +
       (j && all.length > mine
         ? '<button class="btn ghost" id="histScope">' + (historyAll ? 'Just ' + esc(j.company || 'this one') : 'Show all ' + all.length) + '</button>'
-        : '') + '</div>' +
+        : '') +
+      '<button class="btn ghost" id="histToggle">' + (historyOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!historyOpen && list.length ? '' :
     (!list.length
       ? '<div class="empty">' + (historyAll || !j || !all.length
           ? 'No scores yet. Every run is recorded here so you can see whether a rewrite moved the number.'
@@ -2863,8 +2879,9 @@ function renderFitHistory() {
             '<div class="acts"><button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
             '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>' +
           '</div>';
-        }).join(''));
+        }).join('')));
 
+  $('histToggle').addEventListener('click', () => { historyOpen = !historyOpen; renderFitHistory(); });
   const scope = $('histScope');
   if (scope) scope.addEventListener('click', () => { historyAll = !historyAll; renderFitHistory(); });
   document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
@@ -2918,7 +2935,7 @@ function renderPrep() {
           esc((x.company || 'Untitled') + ' — ' + (x.role || 'no title') + '  ·  added ' + prepDate(x)) +
           (x.prep ? '  ✓ prepped' : '') + '</option>').join('') + '</select>' +
       (p ? '<span class="chip st-complete">prepped ' + esc(new Date(p.at).toLocaleDateString()) + '</span>' : '') +
-      '<button class="btn primary" id="prepGo">' + (p ? 'Redraft' : '&#10022; Draft interview prep') + '</button>' +
+      '<button class="btn primary" id="prepGo">' + (p ? 'Redraft all' : '&#10022; Draft interview prep') + '</button>' +
       (p ? '<button class="btn danger ghost" id="prepClear">Clear</button>' : '') + '</div>' +
     '<p class="tagline" style="margin-bottom:10px">Read-only below &mdash; this is the record of what you sent. ' +
       esc([j.company, j.role].filter(Boolean).join(' · ')) + (j.deadline ? ' · deadline ' + esc(j.deadline) : '') +
@@ -2960,12 +2977,15 @@ function renderPrep() {
   const cp = $('prepCPdf'); if (cp) cp.addEventListener('click', () => printCoverLetter(j));
   const cl = $('prepClear');
   if (cl) cl.addEventListener('click', async () => {
-    if (!confirm('Clear the prep for this position? Your answers go with it.')) return;
+    if (!confirm('Clear the prep for this position? It is filed as a version first, so you can restore it.')) return;
+    archivePrep(j, 'cleared');
     delete j.prep; await saveJobs(); renderPrep();
   });
 
   renderPrepChecks(j);
   renderPrepQuestions(j);
+  renderPrepAsk(j);
+  renderPrepVersions(j);
   renderPrepSuggest(j);
 }
 
@@ -2974,17 +2994,20 @@ function renderPrep() {
 function renderPrepChecks(j) {
   const p = j.prep;
   const el = $('prepChecks');
-  if (!p || !(p.checks || []).length) { el.innerHTML = ''; return; }
+  if (!p) { el.innerHTML = ''; return; }
   el.innerHTML =
-    '<div class="sec-head"><h2>Double-check</h2><span class="count">' + p.checks.length + '</span>' +
-      '<span class="tagline">' + jobLabel(j) + '</span>' +
+    '<div class="sec-head"><h2>Double-check</h2><span class="count">' + (p.checks || []).length + '</span>' +
+      '<span class="tagline">' + jobLabel(j) + '</span>' + rerunBtn(j, 'checks') +
       '<button class="btn ghost" id="chkToggle">' + (checksOpen ? 'Hide' : 'Show') + '</button></div>' +
     (!checksOpen ? '' :
       '<p class="tagline" style="margin-bottom:8px">Where the posting, the resume and the letter do not line up. Each one is something you could be asked to explain.</p>' +
-      p.checks.map((c) => '<div class="fix" style="margin-bottom:8px"><p style="font-size:13px;color:var(--muted);margin:0">' + esc(c) + '</p></div>').join(''));
+      ((p.checks || []).length
+        ? p.checks.map((c) => '<div class="fix" style="margin-bottom:8px"><p style="font-size:13px;color:var(--muted);margin:0">' + esc(c) + '</p></div>').join('')
+        : '<div class="empty">Nothing came back &mdash; the three documents line up.</div>'));
   $('chkToggle').addEventListener('click', () => { checksOpen = !checksOpen; renderPrepChecks(j); });
+  wireRerun(el, j, 'checks');
 }
-let checksOpen = true;
+let checksOpen = false;
 
 /* The questions, in the same four columns the agent's questions use. The answer
    is hers: AI help drafts, she edits, she approves. */
@@ -3002,7 +3025,7 @@ function renderPrepQuestions(j) {
     '<div class="sec-head"><h2>Likely questions</h2>' +
       '<span class="count">' + done + ' / ' + qs.length + ' answered</span>' +
       '<span class="tagline">' + jobLabel(j) + '</span>' +
-      '<button class="btn ghost" id="pqToggle">' + (prepQOpen ? 'Hide' : 'Show') + '</button></div>' +
+      rerunBtn(j, 'questions') + '<button class="btn ghost" id="pqToggle">' + (prepQOpen ? 'Hide' : 'Show') + '</button></div>' +
     (!prepQOpen ? '' :
     !qs.length ? '<div class="empty">No questions came back.</div>'
       : '<div class="qrow head"><div>Question</div><div>Why they ask it</div><div>What it probes</div><div>Your answer</div></div>' +
@@ -3028,6 +3051,7 @@ function renderPrepQuestions(j) {
           '</div>').join(''));
 
   $('pqToggle').addEventListener('click', () => { prepQOpen = !prepQOpen; renderPrepQuestions(j); });
+  wireRerun(el, j, 'questions');
   const find = (id) => (p.questions || []).find((x) => x.id === id);
   el.querySelectorAll('[data-pqa]').forEach((t) => t.addEventListener('input', () => {
     const q = find(t.dataset.pqa); if (q) { q.answer = t.value; queueSaveJobs(); }
@@ -3057,7 +3081,46 @@ function renderPrepQuestions(j) {
     });
   }));
 }
-let prepQOpen = true;
+let prepQOpen = false;
+
+/* The other half of an interview. These are hers to ask, so the wording is
+   editable and she can add her own — a question in someone else's phrasing is
+   one she will not actually ask. */
+let askOpen = false;
+function renderPrepAsk(j) {
+  const p = j.prep;
+  const el = $('prepAsk');
+  if (!p) { el.innerHTML = ''; return; }
+  const list = p.askThem || [];
+  el.innerHTML =
+    '<div class="sec-head"><h2>Questions to ask them</h2><span class="count">' + list.length + '</span>' +
+      '<span class="tagline">' + jobLabel(j) + '</span>' +
+      rerunBtn(j, 'askThem') + '<button class="btn ghost" id="askAdd">+ your own</button>' +
+      '<button class="btn ghost" id="askToggle">' + (askOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!askOpen ? '' :
+      '<p class="tagline" style="margin-bottom:8px">Reword any of these &mdash; you have to actually say them. What a bad answer sounds like is the part you cannot look up.</p>' +
+      (!list.length ? '<div class="empty">None drafted. Hit Draft interview prep above.</div>'
+        : '<div class="qrow head" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 44px"><div>Ask</div><div>What the answer tells you</div><div></div></div>' +
+          list.map((q, i) =>
+            '<div class="qrow" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 44px">' +
+              '<div class="qcell"><textarea class="f" data-askq="' + i + '" style="min-height:70px">' + esc(q.question || '') + '</textarea></div>' +
+              '<div class="qcell"><p>' + esc(q.why || '') + '</p></div>' +
+              '<div class="qcell"><button class="icon" data-askdel="' + i + '" title="Remove">🗑</button></div>' +
+            '</div>').join('')));
+
+  $('askToggle').addEventListener('click', () => { askOpen = !askOpen; renderPrepAsk(j); });
+  wireRerun(el, j, 'askThem');
+  $('askAdd').addEventListener('click', () => {
+    p.askThem = (p.askThem || []).concat({ question: '', why: 'Yours.' });
+    askOpen = true; queueSaveJobs(); renderPrepAsk(j);
+  });
+  el.querySelectorAll('[data-askq]').forEach((t) => t.addEventListener('input', () => {
+    p.askThem[+t.dataset.askq].question = t.value; queueSaveJobs();
+  }));
+  el.querySelectorAll('[data-askdel]').forEach((b) => b.addEventListener('click', () => {
+    p.askThem.splice(+b.dataset.askdel, 1); queueSaveJobs(); renderPrepAsk(j);
+  }));
+}
 
 /* What the posting says the documents should have said. Read-only on purpose:
    the version that was sent is a record, and the place to act on this is a new
@@ -3066,10 +3129,10 @@ function renderPrepSuggest(j) {
   const p = j.prep;
   const el = $('prepSuggest');
   const r = (p && p.resumeSuggestions) || [], c = (p && p.coverSuggestions) || [];
-  if (!p || (!r.length && !c.length)) { el.innerHTML = ''; return; }
+  if (!p) { el.innerHTML = ''; return; }
   el.innerHTML =
     '<div class="sec-head"><h2>What the posting suggests</h2><span class="count">' + (r.length + c.length) + '</span>' +
-      '<button class="btn ghost" id="sugToggle">' + (suggestOpen ? 'Hide' : 'Show') + '</button></div>' +
+      rerunBtn(j, 'suggestions') + '<button class="btn ghost" id="sugToggle">' + (suggestOpen ? 'Hide' : 'Show') + '</button></div>' +
     (!suggestOpen ? '' :
       '<p class="tagline" style="margin-bottom:8px">Read-only. What was sent is the record; act on any of this by building a new version in <b>Fit Score</b>.</p>' +
       '<div class="split" style="gap:12px">' +
@@ -3081,39 +3144,167 @@ function renderPrepSuggest(j) {
             : '<p class="tagline">Nothing flagged.</p>') + '</div>' +
       '</div>');
   $('sugToggle').addEventListener('click', () => { suggestOpen = !suggestOpen; renderPrepSuggest(j); });
+  wireRerun(el, j, 'suggestions');
 }
-let suggestOpen = true;
+let suggestOpen = false;
 
-async function draftPrep(j) {
-  const btn = $('prepGo');
-  if (j.prep && !confirm('Redraft the prep for this position? The questions and anything you have written against them are replaced.')) return;
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading all three…'; }
+/* Re-running is per section. One reply carries all four, but replacing all four
+   every time means a re-run for a better set of questions throws away the ones
+   she has already answered — so she says which part to take. */
+const PREP_PARTS = {
+  questions: 'the questions and anything you have written against them',
+  checks: 'the double-check list',
+  askThem: 'the questions to ask them, including any you reworded or added',
+  suggestions: 'the suggestions for the resume and letter',
+};
+async function draftPrep(j, only) {
+  const btn = $(only ? 'rerun-' + only : 'prepGo');
+  const label = btn && btn.innerHTML;
+  if (j.prep) {
+    const what = only ? PREP_PARTS[only] : 'everything below, including your answers';
+    if (!confirm('Re-run? This replaces ' + what + '.')) return;
+  }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading…'; }
   try {
     const v = currentVersion(j);
     const r = await ai({ action: 'interviewprep', master: state.master, posting: j.text,
       resumeText: j.resume.frozenText || versionResumeText(j, v),
       coverText: j.coverLetter.frozenText || versionCoverText(v) || coverLetterText(j.coverLetter) });
     const a = r.result || {};
-    j.prep = {
-      at: new Date().toISOString(),
-      questions: (a.questions || []).map((q, i) => ({
+    const now = new Date().toISOString();
+    const built = {
+      questions: (a.questions || []).map((q) => ({
         id: uid('pq'), question: q.question || '', why: q.why || '', probes: q.probes || '',
         angle: q.angle || '', answer: '', status: 'open',
       })),
       checks: a.checks || [],
+      askThem: (a.askThem || []).map((q) => ({ question: q.question || '', why: q.why || '' })),
       resumeSuggestions: a.resumeSuggestions || [],
       coverSuggestions: a.coverSuggestions || [],
-      sources: r.citations || [],
     };
+    // Nothing a re-run replaces is thrown away: the prep as it stood is filed
+    // as a version first, so a redraft you dislike is one Restore from undone.
+    if (j.prep) archivePrep(j, only ? 'before re-running ' + only : 'before a full redraft');
+    const p = j.prep || (j.prep = { at: now, ranAt: {}, questions: [], checks: [], askThem: [], resumeSuggestions: [], coverSuggestions: [] });
+    p.ranAt = p.ranAt || {};
+    const take = (k) => { p[k] = built[k]; p.ranAt[k] = now; };
+    if (only === 'suggestions') { take('resumeSuggestions'); take('coverSuggestions'); p.ranAt.suggestions = now; }
+    else if (only) take(only);
+    else { ['questions', 'checks', 'askThem', 'resumeSuggestions', 'coverSuggestions'].forEach(take); p.ranAt.suggestions = now; }
+    p.at = now;
+    p.sources = r.citations || [];
+    // Fresh output, all of it closed: a redraft that dumps four open sections on
+    // the page is the thing collapsing them was meant to stop.
+    checksOpen = prepQOpen = askOpen = suggestOpen = prepVersOpen = false;
+    openPrepVersion = null;
     await saveJobs();
     renderPrep();
-    toast((j.prep.questions.length || 0) + ' questions ready. The answers are yours to write.');
+    toast(only ? 'Re-run — only that section changed.'
+      : (p.questions.length || 0) + ' questions ready. The answers are yours to write.');
   } catch (err) {
     toast(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message, true);
   } finally {
-    const b2 = $('prepGo');
-    if (b2) { b2.disabled = false; b2.innerHTML = j.prep ? 'Redraft' : '&#10022; Draft interview prep'; }
+    const b2 = $(only ? 'rerun-' + only : 'prepGo');
+    if (b2) { b2.disabled = false; b2.innerHTML = only ? 'Re-run' : (j.prep ? 'Redraft all' : '&#10022; Draft interview prep'); }
   }
+}
+
+/* A copy of the prep as it stands, with a note saying what was about to happen
+   to it. Deep-cloned: a shallow one would have the live questions array in it
+   and the archive would change under her as she typed. */
+function archivePrep(j, note) {
+  if (!j.prep) return null;
+  j.prepVersions = Array.isArray(j.prepVersions) ? j.prepVersions : [];
+  const n = j.prepVersions.length ? Math.max(...j.prepVersions.map((x) => x.v)) + 1 : 1;
+  const v = { v: n, at: new Date().toISOString(), note: note || '', snapshot: JSON.parse(JSON.stringify(j.prep)) };
+  j.prepVersions.push(v);
+  return v;
+}
+
+let prepVersOpen = false;
+let openPrepVersion = null;
+function renderPrepVersions(j) {
+  const el = $('prepVersions');
+  if (!el) return;
+  const vs = (j.prepVersions || []).slice().reverse();
+  if (!vs.length) { el.innerHTML = ''; return; }
+  el.innerHTML =
+    '<div class="sec-head"><h2>Prep versions</h2><span class="count">' + vs.length + '</span>' +
+      '<span class="tagline">' + jobLabel(j) + '</span>' +
+      '<button class="btn ghost" id="pvToggle">' + (prepVersOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!prepVersOpen ? '' :
+      '<p class="tagline" style="margin-bottom:8px">Every redraft files what it replaced here first. Restore puts one back and files the current one in its place, so nothing is ever gone by accident.</p>' +
+      '<div class="lrow head" style="grid-template-columns:52px minmax(0,1.4fr) 96px 96px 84px 84px 170px">' +
+        '<div>Ver</div><div>Replaced</div><div>Questions</div><div>Answered</div><div>Checks</div><div>Ask</div><div></div></div>' +
+      vs.map((v) => {
+        const q = (v.snapshot.questions || []);
+        return '<div class="lrow" data-pvrow="' + v.v + '" style="cursor:pointer;grid-template-columns:52px minmax(0,1.4fr) 96px 96px 84px 84px 170px">' +
+          '<div><span class="chip">v' + v.v + '</span></div>' +
+          '<div class="s" title="' + esc(v.note || '') + '">' + esc(new Date(v.at).toLocaleString()) + '</div>' +
+          '<div class="s">' + q.length + '</div>' +
+          '<div class="s">' + q.filter((x) => x.status === 'answered').length + '</div>' +
+          '<div class="s">' + (v.snapshot.checks || []).length + '</div>' +
+          '<div class="s">' + (v.snapshot.askThem || []).length + '</div>' +
+          '<div class="acts"><button class="btn" data-pvuse="' + v.v + '">Restore</button>' +
+            '<button class="btn danger ghost" data-pvdel="' + v.v + '">Delete</button></div>' +
+        '</div>' +
+        // Second level: the section opens to a list of versions, and a version
+        // opens to what was in it. Neither is open until you ask.
+        (openPrepVersion !== v.v ? '' :
+          '<div style="padding:9px 0 12px;border-bottom:1px solid var(--border)">' +
+            (v.note ? '<p class="tagline"><b>' + esc(v.note) + '</b></p>' : '') +
+            (q.length
+              ? '<div class="group-label"><span>Questions, and what you had written</span><span class="line"></span><span>' + q.length + '</span></div>' +
+                q.map((x) => '<div class="fix" style="margin-bottom:7px">' +
+                  '<p class="tagline" style="margin:0"><b style="color:var(--text)">' + esc(x.question) + '</b>' +
+                    (x.status === 'answered' ? ' <span class="chip st-complete">approved</span>' : x.status === 'skipped' ? ' <span class="chip">skipped</span>' : '') + '</p>' +
+                  (x.answer ? '<p class="tagline" style="margin:0;color:var(--muted)">' + esc(x.answer) + '</p>' : '') +
+                  '</div>').join('')
+              : '<p class="tagline">No questions in this one.</p>') +
+            ((v.snapshot.checks || []).length
+              ? '<div class="group-label"><span>Double-check</span><span class="line"></span></div>' +
+                v.snapshot.checks.map((c) => '<p class="tagline" style="margin:0 0 4px">' + esc(c) + '</p>').join('')
+              : '') +
+            ((v.snapshot.askThem || []).length
+              ? '<div class="group-label"><span>Questions to ask them</span><span class="line"></span></div>' +
+                v.snapshot.askThem.map((x) => '<p class="tagline" style="margin:0 0 4px">' + esc(x.question) + '</p>').join('')
+              : '') +
+          '</div>');
+      }).join(''));
+
+  $('pvToggle').addEventListener('click', () => { prepVersOpen = !prepVersOpen; renderPrepVersions(j); });
+  el.querySelectorAll('[data-pvrow]').forEach((row) => row.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const n = +row.dataset.pvrow;
+    openPrepVersion = openPrepVersion === n ? null : n;
+    renderPrepVersions(j);
+  }));
+  el.querySelectorAll('[data-pvuse]').forEach((b) => b.addEventListener('click', async () => {
+    const v = (j.prepVersions || []).find((x) => x.v === +b.dataset.pvuse);
+    if (!v) return;
+    if (!confirm('Restore prep v' + v.v + '? The prep on screen now is filed as a version first, so you can go back either way.')) return;
+    archivePrep(j, 'replaced by restoring v' + v.v);
+    j.prep = JSON.parse(JSON.stringify(v.snapshot));
+    await saveJobs(); renderPrep();
+    toast('Restored prep v' + v.v + '.');
+  }));
+  el.querySelectorAll('[data-pvdel]').forEach((b) => b.addEventListener('click', async () => {
+    const n = +b.dataset.pvdel;
+    if (!confirm('Delete prep v' + n + '? This one is gone for good.')) return;
+    j.prepVersions = (j.prepVersions || []).filter((x) => x.v !== n);
+    await saveJobs(); renderPrepVersions(j);
+  }));
+}
+
+// "Re-run" plus when this section last came back, on each section's heading.
+function rerunBtn(j, key) {
+  const at = j.prep && j.prep.ranAt && j.prep.ranAt[key];
+  return (at ? '<span class="tagline">' + esc(new Date(at).toLocaleString()) + '</span>' : '') +
+    '<button class="btn ghost" id="rerun-' + key + '">Re-run</button>';
+}
+function wireRerun(el, j, key) {
+  const b = el.querySelector('#rerun-' + key);
+  if (b) b.addEventListener('click', () => draftPrep(j, key));
 }
 
 /* ── USER GUIDE PANE ───────────────────────────────────
@@ -3145,6 +3336,10 @@ function closeGuide() {
   setTimeout(() => { g.hidden = true; s.hidden = true; }, 240);
 }
 $('guideBtn').addEventListener('click', () => openGuide());
+// A guide button beside each page title, so it is not only in the top bar and
+// a link in the footer: it opens that tab's guide, not the whole document.
+document.querySelectorAll('[data-guide]').forEach((b) =>
+  b.addEventListener('click', () => openGuide(b.dataset.guide)));
 $('guideLink').addEventListener('click', (e) => { e.preventDefault(); openGuide(); });
 $('guideClose').addEventListener('click', closeGuide);
 $('scrim').addEventListener('click', closeGuide);

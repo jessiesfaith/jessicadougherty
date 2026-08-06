@@ -241,6 +241,19 @@
   .fix{margin-top:7px;border-left:2px solid var(--accent);padding-left:9px}
   .fix p{font-size:12.5px;color:var(--muted);margin-bottom:5px}
   @media(max-width:900px){.secrow{grid-template-columns:1fr}}
+  /* Questions, in the same four-column shape: question, why, evidence, answer. */
+  .qrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1.25fr);
+    gap:12px;padding:12px 0;border-bottom:1px solid var(--border);align-items:start}
+  .qrow.head{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border-bottom-width:2px;padding-bottom:7px}
+  .qrow.skipped{opacity:.5}
+  .qcell b{font-size:14px;display:block}
+  .qcell p{font-size:12.5px;color:var(--faint);margin:0}
+  .qcell p.hint{color:var(--accent)}
+  .qcell p.none{color:var(--faint);font-style:italic}
+  .qacts{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:5px}
+  @media(max-width:1000px){.qrow{grid-template-columns:1fr}
+    .qrow.head{display:none}
+    .qcell p{font-size:13px}}
   .foot{border-top:1px solid var(--border);padding:18px 0 40px;font-size:12.5px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 
   /* ── slide-out user guide ── */
@@ -2049,23 +2062,34 @@ function renderQuestions(j) {
     (!qs.length
       ? '<div class="empty">Nothing outstanding. Generate a draft, or hit Ask again after editing the posting.</div>'
       : '<p class="tagline" style="margin-bottom:9px">These are things the posting wants that your documents do not answer. Your answer is the only way one of them can be claimed &mdash; nothing here is filled in for you.</p>' +
+        // Four columns, the same shape the score table uses: what is being
+        // asked, why the posting wants it, what your record already hints at,
+        // and the answer — with approve and skip beside the box you type into,
+        // because that is where the decision is made.
+        '<div class="qrow head"><div>Question</div><div>Posting asks for</div>' +
+          '<div>From your record</div><div>Your answer</div></div>' +
         qs.map((q) =>
-          '<div class="item ' + (q.status === 'applied' || q.status === 'answered' ? 'done' : 'wip') + '" style="margin-bottom:9px' + (q.status === 'skipped' ? ';opacity:.5' : '') + '"><div class="item-top"><div class="item-main">' +
-            '<b style="font-size:14px">' + esc(q.question) + '</b>' +
-            '<p class="tagline">Posting asks for: ' + esc(q.requirement) + (q.why ? ' &middot; ' + esc(q.why) : '') + '</p>' +
-            (q.guess ? '<p class="tagline" style="color:var(--accent)">Possible hint from your record: ' + esc(q.guess) + '</p>' : '') +
-            '<textarea class="f" data-qa="' + esc(q.id) + '" style="min-height:62px;margin-top:6px" placeholder="Your answer — or say plainly that you have not done this.">' + esc(q.answer || '') + '</textarea>' +
-            '<label class="pick" style="padding:4px 0"><input type="checkbox" data-qm="' + esc(q.id) + '"' + (q.toMaster ? ' checked' : '') + ' /> <span class="s">also add this to my master resume</span></label>' +
-          '</div><div class="item-actions" style="flex-direction:column;gap:4px">' +
-            (q.status === 'skipped'
-              ? '<span class="chip">skipped</span><button class="icon" data-qundo="' + esc(q.id) + '" title="Bring it back">undo</button>'
-              : q.status === 'applied'
-              ? '<span class="chip st-complete">used</span>'
-              : q.status === 'answered'
-                ? '<span class="chip st-complete">approved</span><button class="icon" data-qundo="' + esc(q.id) + '" title="Take it back">undo</button>'
-                : '<button class="btn" data-qok="' + esc(q.id) + '">Approve</button>' +
-                  '<button class="btn ghost" data-qskip="' + esc(q.id) + '">Skip</button>') +
-          '</div></div></div>').join(''));
+          '<div class="qrow' + (q.status === 'skipped' ? ' skipped' : '') + '">' +
+            '<div class="qcell"><b>' + esc(q.question) + '</b></div>' +
+            '<div class="qcell"><p>' + esc(q.requirement) + (q.why ? ' &middot; ' + esc(q.why) : '') + '</p></div>' +
+            '<div class="qcell">' + (q.guess
+              ? '<p class="hint">' + esc(q.guess) + '</p>'
+              : '<p class="none">nothing in your record speaks to this</p>') + '</div>' +
+            '<div class="qcell">' +
+              '<textarea class="f" data-qa="' + esc(q.id) + '" style="min-height:74px" placeholder="Your answer — or say plainly that you have not done this.">' + esc(q.answer || '') + '</textarea>' +
+              '<label class="pick" style="padding:4px 0"><input type="checkbox" data-qm="' + esc(q.id) + '"' + (q.toMaster ? ' checked' : '') + ' /> <span class="s">also add this to my master resume</span></label>' +
+              '<div class="qacts">' +
+                (q.status === 'skipped'
+                  ? '<span class="chip">skipped</span><button class="btn ghost" data-qundo="' + esc(q.id) + '">Undo</button>'
+                  : q.status === 'applied'
+                  ? '<span class="chip st-complete">used</span>'
+                  : q.status === 'answered'
+                    ? '<span class="chip st-complete">approved</span><button class="btn ghost" data-qundo="' + esc(q.id) + '">Undo</button>'
+                    : '<button class="btn" data-qok="' + esc(q.id) + '">Approve</button>' +
+                      '<button class="btn ghost" data-qskip="' + esc(q.id) + '">Skip</button>') +
+              '</div>' +
+            '</div>' +
+          '</div>').join(''));
 
   el.querySelectorAll('[data-qa]').forEach((t) => t.addEventListener('input', () => {
     const q = j.questions.find((x) => x.id === t.dataset.qa);
@@ -2476,10 +2500,17 @@ function renderSectionScores(a, j) {
     const sec = a.sections[+b.dataset.fixc];
     const jj = state.jobs.items.find((x) => x.id === state.jdId);
     if (!jj) return;
-    const merged = coverLetterText(jj.coverLetter) + '\n\n' + sec.coverFix;
-    jj.coverLetter.paragraphs = [{ id: uid('p'), kind: 'opening', title: 'Letter', text: merged }];
-    queueSaveJobs(); show('archive');
-    toast('Added to the letter as a draft paragraph — edit it into your own words.');
+    // Append a paragraph; never round-trip through coverLetterText. That
+    // function exists to *render* the letter with a greeting and a sign-off
+    // wrapped round it — storing its output put the sign-off inside the body
+    // and had a fresh one added after it on every pass, and flattened four
+    // paragraphs into one block you could no longer edit separately.
+    jj.coverLetter.paragraphs = (jj.coverLetter.paragraphs || []).concat({
+      id: uid('p'), kind: 'proof', title: 'From the score', text: sec.coverFix,
+    });
+    queueSaveJobs();
+    renderFitDocs();
+    toast('Added to the letter as its own paragraph — edit it into your own words.');
   }));
 }
 

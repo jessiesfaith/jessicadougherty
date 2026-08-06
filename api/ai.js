@@ -347,6 +347,45 @@ Break the job description into its distinct requirement sections, then score EAC
 Score 0 where there is genuinely no evidence — do not be generous. A fix must be achievable from facts already present in the career data; if the requirement simply is not met, say so in the fix rather than inventing a way to claim it.
 At most 12 sections. Merge requirements that ask for the same thing rather than listing them twice, and keep every evidence and fix to one sentence — a long posting must still return a complete, closed JSON object.`,
 
+  interviewprep: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+THE POSTING:
+"""
+${b.posting}
+"""
+
+THE RESUME THAT WAS SENT:
+"""
+${b.resumeText || '(none)'}
+"""
+
+THE COVER LETTER THAT WAS SENT:
+"""
+${b.coverText || '(none)'}
+"""
+
+She has an interview for this role. Read all three documents against each other and prepare her.
+
+Return JSON:
+{
+ "questions": [
+   {
+     "question": "a question this panel is likely to actually ask, in their words",
+     "why": "what in the posting or her documents makes them ask it",
+     "probes": "what they are really testing",
+     "angle": "the honest line she can take, built only from her record — or 'no evidence' if she has none"
+   }
+ ],
+ "checks": ["anything an interviewer could challenge because the three documents disagree, overstate, or leave a gap — quote the wording"],
+ "resumeSuggestions": ["what the posting suggests the resume should say differently, one per line"],
+ "coverSuggestions": ["the same for the cover letter"]
+}
+
+Twelve questions at most, hardest first. Cover the obvious technical ground the posting names, the gaps her documents concede, and the two or three questions she would least like to be asked.
+CHECKS ARE THE POINT: a claim in the letter the resume does not support, a title or company named wrongly, a date range that does not add up, a system named in one document and not the other — say it plainly and quote it. She would rather find it here than across a table.
+Every angle must be built only from the career data and the documents above. Where there is nothing, say "no evidence" and let her answer it herself.`,
+
   answerhelp: (b) => `CAREER DATA:
 ${JSON.stringify(b.master)}
 
@@ -456,7 +495,7 @@ module.exports = async (req, res) => {
     if (action === 'answerhelp' && !String(body.question || '').trim()) {
       return res.status(400).json({ ok: false, error: 'No question to answer.' });
     }
-    if (['analyze', 'cover', 'score', 'scoresections', 'coversuggest', 'questions', 'revise'].includes(action) && !body.posting) {
+    if (['analyze', 'cover', 'score', 'scoresections', 'coversuggest', 'questions', 'revise', 'interviewprep'].includes(action) && !body.posting) {
       return res.status(400).json({ ok: false, error: 'Paste the job posting first.' });
     }
     if (action === 'keywords' && !body.entry) {
@@ -469,7 +508,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'That resume version is empty — nothing to score.' });
     }
 
-    const long = action === 'scoresections' || action === 'revise';
+    const long = action === 'scoresections' || action === 'revise' || action === 'interviewprep';
     const { text, model, stopReason, citations } = await callClaude({
       system: GUARDRAILS,
       user: PROMPTS[action](body),
@@ -477,7 +516,7 @@ module.exports = async (req, res) => {
       floorTokens: long ? 8000 : undefined,
       // Only this one reaches the web, and only to show her where a claim came
       // from. Nothing it finds may become a fact about her career.
-      tools: action === 'answerhelp' ? WEB_SEARCH : undefined,
+      tools: (action === 'answerhelp' || action === 'interviewprep') ? WEB_SEARCH : undefined,
     });
 
     let parsed = parseJson(text);

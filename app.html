@@ -151,6 +151,20 @@
   .arch .m{flex:1;min-width:0}
   .arch .m b{font-size:14.5px}
   .arch .m p{font-size:12.5px;color:var(--faint)}
+  /* Versions and score history: one line per entry, in columns, so a long
+     history stays scannable instead of running down the page as cards. */
+  .lrow{display:grid;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .lrow.head{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);border-bottom-width:2px;padding-bottom:6px}
+  .lrow > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lrow .co{font-weight:600}
+  .lrow .s{color:var(--faint);font-size:12.5px}
+  .lrow .acts{display:flex;gap:7px;justify-content:flex-end;overflow:visible}
+  .lrow.on{background:rgba(255,255,255,.05)}
+  /* A version is a resume and a letter and a score all at once, so each gets
+     its own column rather than being run together in one line of prose. */
+  .vrow{grid-template-columns:50px minmax(0,1fr) 88px 108px 84px 84px minmax(0,1.1fr) 96px}
+  .hrow{grid-template-columns:86px minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 150px}
+  @media(max-width:900px){.vrow,.hrow{grid-template-columns:1fr}.lrow.head{display:none}}
 
   .sug{border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:8px;background:rgba(0,0,0,.16)}
   .sug .o{font-size:12.5px;color:var(--faint);text-decoration:line-through;margin-bottom:5px}
@@ -1846,6 +1860,10 @@ function pushVersion(j, payload, note) {
     stillMissing: payload.stillMissing || [],
     resume: { itemIds: (payload.itemIds || []).filter((id) => itemById(id)), summary: payload.summary || '' },
     coverLetter: { paragraphs: (payload.coverLetter || []).map((t, i) => ({ id: uid('p'), kind: i === 0 ? 'opening' : 'proof', title: 'Paragraph ' + (i + 1), text: t })) },
+    // The answers this version was built from, kept with it. A question's
+    // status moves on and its wording can be re-asked; what she actually said,
+    // and which version it went into, should not have to be reconstructed.
+    answers: (payload.answers || []).map((a) => ({ question: a.question, answer: a.answer, requirement: a.requirement })),
     score: null,
   };
   j.versions.push(v);
@@ -1963,6 +1981,7 @@ async function reviseJd(j) {
       coverLetter: (r.result.coverLetter || []).slice(),
       changelog: r.result.changelog || [],
       stillMissing: r.result.stillMissing || [],
+      answers,
     };
     await saveJobs(); renderFitWork();
     $('fitProposal').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2112,6 +2131,7 @@ function renderProposal(j) {
     const nv = pushVersion(j, {
       summary: p.summary, itemIds: p.itemIds, coverLetter: paras,
       changelog: p.changelog, stillMissing: p.stillMissing,
+      answers: p.answers || reviseInputs(j).answers,
     }, p.note);
     // Only now are the answers spent: a discarded proposal must not consume them.
     (j.questions || []).forEach((q) => { if (q.status === 'answered') q.status = 'applied'; });
@@ -2127,6 +2147,7 @@ function renderProposal(j) {
   });
 }
 
+let questionsOpen = false;
 function renderQuestions(j) {
   const el = $('jdQuestions');
   if (!el) return;
@@ -2137,9 +2158,13 @@ function renderQuestions(j) {
   el.innerHTML =
     '<div class="sec-head"><h2>Questions from the agent</h2>' +
       '<span class="count">' + open.length + ' open</span>' +
+      '<button class="btn ghost" id="qToggle">' + (questionsOpen ? 'Hide' : 'Show') + '</button>' +
       '<button class="btn" id="btnAsk">Ask again</button>' +
       '<button class="btn primary" id="btnRevise">Revise into v' + nextV + '</button></div>' +
-    (!qs.length
+    // Closed by default: seven questions, four columns each, is most of a
+    // screen, and the count in the header already says whether to open it.
+    (!questionsOpen && qs.length ? '' :
+    !qs.length
       ? '<div class="empty">Nothing outstanding. Generate a draft, or hit Ask again after editing the posting.</div>'
       : '<p class="tagline" style="margin-bottom:9px">These are things the posting wants that your documents do not answer. Your answer is the only way one of them can be claimed &mdash; nothing here is filled in for you.</p>' +
         // Four columns, the same shape the score table uses: what is being
@@ -2171,6 +2196,7 @@ function renderQuestions(j) {
             '</div>' +
           '</div>').join(''));
 
+  $('qToggle').addEventListener('click', () => { questionsOpen = !questionsOpen; renderQuestions(j); });
   el.querySelectorAll('[data-qa]').forEach((t) => t.addEventListener('input', () => {
     const q = j.questions.find((x) => x.id === t.dataset.qa);
     if (q) { q.answer = t.value; queueSaveJobs(); }
@@ -2219,25 +2245,56 @@ function addAnswerToMaster(q) {
   toast('Added to your master resume as in-progress — tidy it up and Save.');
 }
 
+let openVersion = null;
 function renderVersions(j) {
   const el = $('jdVersions');
   if (!el) return;
   const vs = (j.versions || []).slice().reverse();
   el.innerHTML =
-    '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span></div>' +
+    '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span>' +
+      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' &middot; ')) + '</span></div>' +
     (!vs.length ? '<div class="empty">No versions yet. Generate a draft to create v1.</div>'
-      : vs.map((v) =>
-        '<div class="arch' + (v.v === j.currentVersion ? ' on' : '') + '">' +
-          '<span class="chip' + (v.v === j.currentVersion ? ' st-complete' : '') + '">v' + v.v + '</span>' +
-          '<div class="m"><b>' + esc(v.note || 'version ' + v.v) + '</b>' +
-            '<p>' + esc(new Date(v.createdAt).toLocaleString()) +
-            (v.score ? ' · scored ' + v.score.overallResume + ' / ' + v.score.overallCover : ' · not scored') + '</p>' +
-            (v.changelog && v.changelog.length ? '<p class="s">' + v.changelog.map(esc).join(' · ') + '</p>' : '') +
-            (v.stillMissing && v.stillMissing.length ? '<p class="s" style="color:var(--warn)">still missing: ' + v.stillMissing.map(esc).join(', ') + '</p>' : '') +
+      : '<div class="lrow head vrow"><div>Ver</div><div>Company</div><div>Resume</div><div>Cover letter</div>' +
+          '<div>Answers</div><div>Score</div><div>Created</div><div></div></div>' +
+        vs.map((v) => {
+          const q = (v.answers || []).length;
+          const extra = [v.note, (v.changelog || []).join(' · '),
+            (v.stillMissing || []).length ? 'still missing: ' + v.stillMissing.join(', ') : ''].filter(Boolean).join('\n');
+          return '<div class="lrow vrow' + (v.v === j.currentVersion ? ' on' : '') + '" data-vrow="' + v.v + '"' +
+              ' title="' + esc(extra || 'version ' + v.v) + '" style="cursor:pointer">' +
+            '<div><span class="chip' + (v.v === j.currentVersion ? ' st-complete' : '') + '">v' + v.v + '</span></div>' +
+            '<div class="co">' + esc(j.company || '— no company') + '</div>' +
+            '<div class="s">' + (v.resume.itemIds || []).length + ' entries</div>' +
+            '<div class="s">' + (v.coverLetter.paragraphs || []).length + ' paragraphs</div>' +
+            '<div class="s">' + (q ? q + (q === 1 ? ' answer' : ' answers') : '—') + '</div>' +
+            '<div class="s">' + (v.score ? v.score.overallResume + ' / ' + v.score.overallCover : '<span class="s">not scored</span>') + '</div>' +
+            '<div class="s">' + esc(new Date(v.createdAt).toLocaleString()) + '</div>' +
+            '<div class="acts">' + (v.v === j.currentVersion
+              ? '<span class="chip">current</span>'
+              : '<button class="btn" data-usev="' + v.v + '">Use this</button>') + '</div>' +
           '</div>' +
-          (v.v === j.currentVersion ? '<span class="chip">current</span>' : '<button class="btn" data-usev="' + v.v + '">Use this</button>') +
-        '</div>').join(''));
+          // One line each until you want the rest; the note, the changelog, what
+          // is still unanswered and the answers it was built from live here.
+          (openVersion !== v.v ? '' :
+            '<div style="padding:9px 0 12px;border-bottom:1px solid var(--border)">' +
+              (v.note ? '<p class="tagline"><b>' + esc(v.note) + '</b></p>' : '') +
+              ((v.changelog || []).length ? '<p class="tagline">' + v.changelog.map(esc).join(' &middot; ') + '</p>' : '') +
+              ((v.stillMissing || []).length ? '<p class="tagline" style="color:var(--warn)">still missing: ' + v.stillMissing.map(esc).join(', ') + '</p>' : '') +
+              ((v.answers || []).length
+                ? '<div class="group-label"><span>Answers this version was built from</span><span class="line"></span></div>' +
+                  v.answers.map((a) => '<div class="fix" style="margin-bottom:7px">' +
+                    '<p class="tagline" style="margin:0"><b style="color:var(--text)">' + esc(a.question) + '</b></p>' +
+                    '<p class="tagline" style="margin:0;color:var(--muted)">' + esc(a.answer) + '</p></div>').join('')
+                : '<p class="tagline">No answers went into this one.</p>') +
+            '</div>');
+        }).join(''));
 
+  el.querySelectorAll('[data-vrow]').forEach((row) => row.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const n = +row.dataset.vrow;
+    openVersion = openVersion === n ? null : n;
+    renderVersions(j);
+  }));
   el.querySelectorAll('[data-usev]').forEach((b) => b.addEventListener('click', () => {
     const v = (j.versions || []).find((x) => x.v === +b.dataset.usev);
     if (!v) return;
@@ -2606,11 +2663,24 @@ function renderFitHistory() {
   el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span></div>' +
     (!list.length
       ? '<div class="empty">No scores yet. Every run is recorded here so you can see whether a rewrite moved the number.</div>'
-      : list.slice(0, 40).map((f) =>
-        '<div class="arch"><span class="chip">' + (f.score != null ? f.score : '–') + ' / ' + (f.coverScore != null ? f.coverScore : '–') + '</span>' +
-        '<div class="m"><b>' + esc(f.jobLabel || '') + '</b><p>' + esc(new Date(f.at).toLocaleString()) + '</p></div>' +
-        '<button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
-        '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>').join(''));
+      : '<div class="lrow head hrow"><div>Resume / letter</div><div>Company</div><div>Job title</div>' +
+          '<div>Run</div><div></div></div>' +
+        list.slice(0, 40).map((f) => {
+          // jobLabel is "Company — Role"; prefer the live application, which
+          // stays right if either was renamed after the run.
+          const j2 = state.jobs.items.find((x) => x.id === f.jobId);
+          const bits = String(f.jobLabel || '').split(' — ');
+          const co = (j2 && j2.company) || bits[0] || 'Untitled';
+          const role = (j2 && j2.role) || bits.slice(1).join(' — ') || '—';
+          return '<div class="lrow hrow">' +
+            '<div><span class="chip">' + (f.score != null ? f.score : '–') + ' / ' + (f.coverScore != null ? f.coverScore : '–') + '</span></div>' +
+            '<div class="co" title="' + esc(co) + '">' + esc(co) + '</div>' +
+            '<div class="s" title="' + esc(role) + '">' + esc(role) + '</div>' +
+            '<div class="s">' + esc(new Date(f.at).toLocaleString()) + '</div>' +
+            '<div class="acts"><button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
+            '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>' +
+          '</div>';
+        }).join(''));
 
   document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
     const f = state.fits.items.find((x) => x.id === b.dataset.fitview);

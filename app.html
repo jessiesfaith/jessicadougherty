@@ -100,6 +100,10 @@
 
   .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
   @media(max-width:900px){.split{grid-template-columns:1fr}}
+  /* The posting and the two documents written against it, side by side. */
+  .split3{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}
+  @media(max-width:1100px){.split3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+  @media(max-width:900px){.split3{grid-template-columns:1fr}}
   .sticky{position:sticky;top:74px}
 
   .pick{display:flex;gap:9px;align-items:flex-start;padding:7px 8px;border-radius:8px;cursor:pointer}
@@ -176,6 +180,10 @@
   .apptbl input:focus{border-color:var(--accent);background:rgba(0,0,0,.18);outline:none}
   .apptbl input::placeholder{color:var(--faint);opacity:.6}
   .apptbl tr.dim td.co,.apptbl tr.dim td.ro{opacity:.55}
+  /* The select column: a plain box, not the full-width field every other cell holds. */
+  .apptbl td.pickcell,.apptbl th.pickcell{padding-right:0;text-align:left}
+  .apptbl .pickcell input{width:auto;padding:0;margin:0;cursor:pointer;accent-color:var(--accent)}
+  .apptbl .pickcell input:hover{border-color:transparent}
   .jdtbl tbody tr{cursor:pointer}
   .jdtbl tbody tr:hover td{background:rgba(255,255,255,.03)}
   .jdtbl tbody tr.on td{background:rgba(255,255,255,.06)}
@@ -340,7 +348,6 @@
       </div>
     </div>
     <div class="card" id="fitPicked"></div>
-    <div class="card" id="fitJdCard"></div>
     <div class="card" id="jdQuestions"></div>
     <div class="card" id="jdVersions"></div>
     <div id="fitOut"></div>
@@ -381,12 +388,17 @@
     <p><strong>&#10022; Tag keywords</strong> fills both with AI. It only touches entries that have none, so running it again is safe. It saves for you when it finishes.</p>
 
     <h3 id="g-apps">The postings list</h3>
-    <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have.</p>
-    <p><strong>Documents</strong> links open that application's resume or cover letter, ready to print. <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type.</p>
-    <p>Rows for applications you have not marked complete are dimmed.</p>
+    <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have. It carries the same columns as Job Postings: company, job title, status, posting, deadline, sent, contact, notes and what has been built.</p>
+    <p>It is <strong>read-only</strong>. It is here so you can see where every application stands while you look at your masters; <strong>Job Postings is the one place you change any of it</strong>, so there is never a question of which copy of a row you typed into.</p>
+    <p><strong>Built</strong> links still work &mdash; they open that application's resume or cover letter ready to print, with a chip for how many versions exist. Rows for applications you have not marked complete are dimmed.</p>
 
     <h3 id="g-archive">Job Postings</h3>
     <p>Every posting on one row, every field its own column &mdash; company, job title, status, how much of the description you actually have, deadline, sent date, contact, notes, and what has been built. Click a row to open it in full underneath.</p>
+    <h4>Editing in the row</h4>
+    <p><strong>Deadline</strong>, <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type. Clicking anywhere else on the row opens that posting below.</p>
+    <h4>Removing applications</h4>
+    <p>Each row starts with a checkbox, and the one in the header selects or deselects every row at once. <strong>Remove</strong>, at the top of the box, counts what you have ticked and hides those applications on click.</p>
+    <p>It is the same soft delete as the Delete button on an open posting: the data stays in your repo. Tick <em>show deleted</em> and they come straight back.</p>
     <p><strong>Posting</strong> tells you whether you have the real description or only an alert teaser. Nothing can be generated from a teaser.</p>
     <h4>Adding a posting</h4>
     <p><strong>Add posting</strong> for a blank one, or <strong>One-click capture</strong> to grab it from a job page with a bookmarklet &mdash; see Capture below.</p>
@@ -402,7 +414,8 @@
     <div class="warn">Moving a completed document back to draft asks first, because it discards the record of what you sent.</div>
 
     <h3 id="g-fit">Fit score</h3>
-    <p>Pick an application. Every requirement in the posting is scored <strong>twice</strong> &mdash; once against the resume, once against the cover letter &mdash; because they fail in different ways. A resume can cover something the letter never mentions.</p>
+    <p>The Application box holds three columns: the <strong>posting</strong> on the left, then the <strong>resume</strong> and the <strong>cover letter</strong> written against it, so you can read a requirement and its answer without scrolling between them. The posting's heading is the picker &mdash; changing it switches every column to that application. <strong>Show</strong> opens the description for editing; edits save to that application.</p>
+    <p>Every requirement in the posting is scored <strong>twice</strong> &mdash; once against the resume, once against the cover letter &mdash; because they fail in different ways. A resume can cover something the letter never mentions.</p>
     <ul>
       <li><strong>Copy fix</strong> on the resume side hands you the suggestion. There is no single unambiguous place to apply it, so it does not guess.</li>
       <li><strong>Add to letter</strong> appends the suggestion to this application's letter as a draft paragraph for you to rewrite.</li>
@@ -505,6 +518,8 @@ const notDeleted = (x) => x && x.status !== 'deleted';
 // An alert email gives a title and a link, not requirements. Until the real
 // posting is in, generating anything from it would be guesswork.
 const needsJd = (j) => !((j.text || '').trim());
+// How much of a description you actually have, in words — shown in both tables.
+const jdWords = (s) => (String(s || '').trim().match(/\S+/g) || []).length;
 
 /* ── transport ─────────────────────────────────────────── */
 async function api(kind, method, doc, expectedVersion) {
@@ -745,60 +760,115 @@ function docLinks(j) {
     '</span>';
 }
 
-/* Postings is a table, one row per application: at a glance it stays one line
-   tall however many you have. Sent, contact and notes are yours to type in —
-   they are tracking, not resume content, so they are editable here. */
+/* The read-only cells the two Postings tables share, so a column means the same
+   thing in the Resume tab as it does in Job Postings. */
+function statusCell(j) {
+  return statusChip(j.status) + (j.source ? ' <span class="chip">inbox</span>' : '');
+}
+function postingCell(j) {
+  return (needsJd(j)
+    ? '<span class="chip st-draft">needs posting</span>'
+    : '<span class="tagline">' + jdWords(j.text) + ' words</span>') +
+    (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener" title="' + esc(j.url) + '">link</a>' : '');
+}
+function builtCell(j) {
+  const vs = (j.versions || []).length;
+  return (vs ? '<span class="chip">v' + vs + '</span>' : '<span class="tagline">—</span>') + docLinks(j);
+}
+
+/* The tracking fields, as a row reads them. Deadline, sent, contact and notes
+   are editable in exactly one place — the Job Postings tab — so there is never
+   a question of which copy of a row you are typing into. */
+const appPicked = new Set();
 const APP_FIELDS = [
+  ['deadline', 'date', ''],
   ['appliedOn', 'date', ''],
   ['contactEmail', 'email', 'name@company.com'],
   ['notes', 'text', 'Emails, interviews, follow-ups…'],
 ];
+const dash = (s) => (s ? esc(s) : '<span class="tagline">—</span>');
 
+function appReadCells(j) {
+  return '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
+    '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
+    '<td class="ro" title="' + esc(j.contactEmail || '') + '">' + dash(j.contactEmail) + '</td>' +
+    '<td class="ro" title="' + esc(j.notes || '') + '">' + dash((j.notes || '').replace(/\s*\n+\s*/g, ' · ')) + '</td>';
+}
+
+function appEditCells(j) {
+  return APP_FIELDS.map(([f, type, ph]) => {
+    // Notes are the one field that outgrows a cell: the cell shows a one-line
+    // preview and clicking it opens the full, scrollable note.
+    if (f === 'notes') {
+      const flat = (j.notes || '').replace(/\s*\n+\s*/g, ' · ');
+      return '<td><input type="text" readonly data-notesopen="' + esc(j.id) + '"' +
+        ' placeholder="' + esc(ph) + '" title="Click to open the full note"' +
+        ' value="' + esc(flat) + '" /></td>';
+    }
+    return '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
+      (ph ? ' placeholder="' + esc(ph) + '"' : '') +
+      ' value="' + esc(j[f] || '') + '" /></td>';
+  }).join('');
+}
+
+/* The Resume tab's copy is a mirror: the same nine columns, none of them
+   editable. It is there to tell you where each application stands while you
+   look at the master documents, not to be a second place to change one. */
 function renderCompanyTable() {
   const rows = jdList().slice().sort((a, b) =>
     (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
   $('docsByCompany').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span></div>' +
-    '<p class="tagline" style="margin-bottom:8px">One row per application. Sent and contact save as you type; click Notes to open the full box.</p>' +
+    '<p class="tagline" style="margin-bottom:8px">One row per application, read-only. Editing, and removing, happen in <strong>Job Postings</strong>.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
-        '<col style="width:15%"><col style="width:19%"><col style="width:14%">' +
-        '<col style="width:10%"><col style="width:17%"><col style="width:25%">' +
+        '<col style="width:13%"><col style="width:15%"><col style="width:9%"><col style="width:9%">' +
+        '<col style="width:9%"><col style="width:9%"><col style="width:13%"><col style="width:13%"><col style="width:10%">' +
       '</colgroup><thead><tr>' +
-        '<th>Company</th><th>Job title</th><th>Documents</th>' +
-        '<th>Sent</th><th>Contact email</th><th>Notes</th>' +
+        '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
+        '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
       '</tr></thead><tbody>' +
       rows.map((j) =>
         '<tr' + (j.status === 'complete' ? '' : ' class="dim"') + '>' +
           '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || '— no company') + '</td>' +
           '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || '— no title') + '</td>' +
-          '<td>' + docLinks(j) + '</td>' +
-          APP_FIELDS.map(([f, type, ph]) => {
-            // Notes are the one field that outgrows a cell: the cell shows a
-            // one-line preview and clicking it opens the full, scrollable note.
-            if (f === 'notes') {
-              const flat = (j.notes || '').replace(/\s*\n+\s*/g, ' · ');
-              return '<td><input type="text" readonly data-notesopen="' + esc(j.id) + '"' +
-                ' placeholder="' + esc(ph) + '" title="Click to open the full note"' +
-                ' value="' + esc(flat) + '" /></td>';
-            }
-            return '<td><input type="' + type + '" data-appf="' + esc(j.id) + '|' + f + '"' +
-              (ph ? ' placeholder="' + esc(ph) + '"' : '') +
-              ' value="' + esc(j[f] || '') + '" /></td>';
-          }).join('') +
+          '<td>' + statusCell(j) + '</td>' +
+          '<td>' + postingCell(j) + '</td>' +
+          appReadCells(j) +
+          '<td>' + builtCell(j) + '</td>' +
         '</tr>').join('') +
       '</tbody></table>');
+}
 
-  // Never re-render on input — that is what stole focus mid-word last time.
-  $('docsByCompany').querySelectorAll('[data-appf]').forEach((el) => el.addEventListener('input', () => {
-    const [id, field] = el.dataset.appf.split('|');
-    const j = state.jobs.items.find((x) => x.id === id);
-    if (!j) return;
-    j[field] = el.value;
-    queueSaveJobs();
-  }));
-  $('docsByCompany').querySelectorAll('[data-notesopen]').forEach((el) =>
-    el.addEventListener('click', () => openNotesEditor(el.dataset.notesopen)));
+/* The Remove button's label is the only thing a tick changes until you press
+   it, so it is updated on its own rather than through a full re-render. */
+function refreshAppRemove(rows) {
+  const picked = rows.filter((j) => appPicked.has(j.id)).length;
+  const rm = $('appRemove');
+  if (rm) {
+    rm.disabled = !picked;
+    rm.textContent = 'Remove' + (picked ? ' (' + picked + ')' : '');
+  }
+  const all = $('appPickAll');
+  if (all) {
+    all.checked = picked === rows.length && picked > 0;
+    all.indeterminate = picked > 0 && picked < rows.length;
+  }
+}
+
+/* Remove hides, it does not destroy: the same soft delete the Job Postings
+   detail uses, so a mis-click is one "show deleted" away from being undone. */
+function removePickedApps(rows) {
+  const hit = rows.filter((j) => appPicked.has(j.id));
+  if (!hit.length) return;
+  const what = hit.length === 1
+    ? '"' + (hit[0].company || 'this application') + '"'
+    : hit.length + ' applications';
+  if (!confirm('Remove ' + what + '? They are hidden, not destroyed — tick "show deleted" to bring them back.')) return;
+  hit.forEach((j) => { j.status = 'deleted'; appPicked.delete(j.id); });
+  queueSaveJobs();
+  renderArchive();
+  renderDocLists();
 }
 
 /* Notes hold the story of an application — emails, interviews, follow-ups —
@@ -1292,40 +1362,41 @@ const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
    scan down. Clicking a row opens it in full underneath. */
 function renderJdListOnly() {
   const list = jdList();
-  const words = (s) => (String(s || '').trim().match(/\S+/g) || []).length;
+  // A tick that survives a re-render but never outlives the rows it points at.
+  appPicked.forEach((id) => { if (!list.some((j) => j.id === id)) appPicked.delete(id); });
+  const picked = list.filter((j) => appPicked.has(j.id)).length;
   $('jdList').innerHTML =
-    '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span></div>' +
+    '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span>' +
+      '<button class="btn danger ghost" id="appRemove"' + (picked ? '' : ' disabled') + '>' +
+        'Remove' + (picked ? ' (' + picked + ')' : '') + '</button></div>' +
     (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
-      : '<table class="apptbl jdtbl"><colgroup>' +
-          '<col style="width:13%"><col style="width:16%"><col style="width:11%"><col style="width:9%">' +
-          '<col style="width:8%"><col style="width:8%"><col style="width:13%"><col style="width:12%"><col style="width:10%">' +
+      : '<p class="tagline" style="margin-bottom:8px">Deadline, sent and contact save as you type; click Notes to open the full box. Tick rows and hit Remove to hide them &mdash; nothing is destroyed, they come back with <em>show deleted</em>.</p>' +
+        '<table class="apptbl jdtbl"><colgroup>' +
+          '<col style="width:4%"><col style="width:12%"><col style="width:14%"><col style="width:9%"><col style="width:9%">' +
+          '<col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:12%"><col style="width:10%">' +
         '</colgroup><thead><tr>' +
+          '<th class="pickcell"><input type="checkbox" id="appPickAll" title="Select all"' +
+            (picked === list.length ? ' checked' : '') + (picked && picked < list.length ? ' data-some="1"' : '') + ' /></th>' +
           '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
           '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
         '</tr></thead><tbody>' +
-        list.map((j) => {
-          const w = words(j.text);
-          const vs = (j.versions || []).length;
-          return '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
+        list.map((j) =>
+          '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
+            '<td class="pickcell"><input type="checkbox" data-apppick="' + esc(j.id) + '"' +
+              (appPicked.has(j.id) ? ' checked' : '') + ' title="Select this application" /></td>' +
             '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || 'Untitled') + '</td>' +
             '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || 'no role yet') + '</td>' +
-            '<td>' + statusChip(j.status) + (j.source ? ' <span class="chip">inbox</span>' : '') + '</td>' +
-            '<td>' + (needsJd(j)
-              ? '<span class="chip st-draft">needs posting</span>'
-              : '<span class="tagline">' + w + ' words</span>') +
-              (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener" title="' + esc(j.url) + '">link</a>' : '') + '</td>' +
-            '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
-            '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
-            '<td class="ro" title="' + esc(j.contactEmail || '') + '">' + (j.contactEmail ? esc(j.contactEmail) : '<span class="tagline">—</span>') + '</td>' +
-            '<td class="ro" title="' + esc(j.notes || '') + '">' + (j.notes ? esc(j.notes) : '<span class="tagline">—</span>') + '</td>' +
-            '<td>' + (vs ? '<span class="chip">v' + vs + '</span>' : '<span class="tagline">—</span>') + docLinks(j) + '</td>' +
-          '</tr>';
-        }).join('') +
+            '<td>' + statusCell(j) + '</td>' +
+            '<td>' + postingCell(j) + '</td>' +
+            appEditCells(j) +
+            '<td>' + builtCell(j) + '</td>' +
+          '</tr>').join('') +
         '</tbody></table>');
 
-  // Anchors inside a row do their own thing; the row click is for selecting.
+  // Anchors and the fields in a row do their own thing; the row click, meaning
+  // anywhere else on it, is for opening that posting underneath.
   $('jdList').querySelectorAll('[data-jd]').forEach((el) => el.addEventListener('click', (e) => {
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a, input, select, textarea, button, label')) return;
     state.jdId = el.dataset.jd; renderArchive();
   }));
   $('jdList').querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
@@ -1335,6 +1406,37 @@ function renderJdListOnly() {
     if (!j) return;
     if (what === 'r') printResume(j); else printCoverLetter(j);
   }));
+
+  // Never re-render on input — that is what stole focus mid-word last time. The
+  // Resume tab's mirror catches up when you next open it.
+  $('jdList').querySelectorAll('[data-appf]').forEach((el) => el.addEventListener('input', () => {
+    const [id, field] = el.dataset.appf.split('|');
+    const j = state.jobs.items.find((x) => x.id === id);
+    if (!j) return;
+    j[field] = el.value;
+    queueSaveJobs();
+  }));
+  $('jdList').querySelectorAll('[data-notesopen]').forEach((el) =>
+    el.addEventListener('click', () => openNotesEditor(el.dataset.notesopen)));
+
+  // Ticking a row only redraws the header — re-rendering the table here would
+  // take the focus off the box you just clicked.
+  $('jdList').querySelectorAll('[data-apppick]').forEach((el) => el.addEventListener('change', () => {
+    if (el.checked) appPicked.add(el.dataset.apppick); else appPicked.delete(el.dataset.apppick);
+    refreshAppRemove(list);
+  }));
+  const all = $('appPickAll');
+  if (all) {
+    // Some but not all ticked is its own state: neither box says "select all".
+    all.indeterminate = all.dataset.some === '1';
+    all.addEventListener('change', () => {
+      list.forEach((j) => { if (all.checked) appPicked.add(j.id); else appPicked.delete(j.id); });
+      $('jdList').querySelectorAll('[data-apppick]').forEach((el) => { el.checked = all.checked; });
+      refreshAppRemove(list);
+    });
+  }
+  const rm = $('appRemove');
+  if (rm) rm.addEventListener('click', () => removePickedApps(list));
 }
 
 /* The bookmarklet is the fast path, but a site can refuse to run one: Chrome
@@ -1997,41 +2099,51 @@ function showGrabber() {
    to that application, never silently to your masters. */
 function renderFit() {
   const list = jdList().filter((j) => (j.text || '').trim());
+  // The picker lives in the posting column now, so which application is open is
+  // held here rather than read back off a <select> that may not be drawn yet.
+  if (list.length && !list.some((j) => j.id === state.jdId)) state.jdId = list[0].id;
   $('fitPicked').innerHTML =
     '<div class="sec-head"><h2>Application</h2></div>' +
     (!list.length
       ? '<div class="empty">No applications with a job description yet. Add one in Archive.</div>'
-      : '<select class="f" id="fitJd" style="max-width:420px">' +
-        list.map((j) => '<option value="' + esc(j.id) + '"' + (j.id === state.jdId ? ' selected' : '') + '>' +
-          esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '</option>').join('') + '</select>' +
-        '<div id="fitDocs"></div>' +
+      : '<div id="fitDocs"></div>' +
         '<div style="margin-top:12px"><button class="btn primary" id="btnScore">Score against resume and letter</button></div>');
 
-  const selEl = $('fitJd');
-  if (selEl) selEl.addEventListener('change', () => { state.jdId = selEl.value; renderFitJd(); renderFitDocs(); renderFitWork(); });
-  renderFitJd(); renderFitDocs(); renderFitWork();
+  renderFitDocs(); renderFitWork();
   const b = $('btnScore');
   if (b) b.addEventListener('click', runSectionScoring);
 }
 
 // The documents being scored, with their PDFs, right where you are comparing
 // them — so grabbing what you are about to send is one click from the score.
-// The posting itself, on the page where you work against it — collapsed by
-// default so it does not push the scores off screen.
+/* The posting sits beside the two documents written against it, as the first of
+   the three columns: you read the requirement and the answer without scrolling
+   between them. Which application you are on is the column's own heading — the
+   posting is the application, so one control does both jobs. */
 function renderFitJd() {
-  const el = $('fitJdCard');
+  const el = $('fitJdCol');
   if (!el) return;
   const j = fitJob();
   if (!j) { el.innerHTML = ''; return; }
+  const list = jdList().filter((x) => (x.text || '').trim());
   el.innerHTML =
-    '<div class="sec-head"><h2>Job description</h2>' + statusChip(j.status) +
-      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' · ')) + '</span>' +
+    // The picker takes the width the rule takes in the other two headings, so
+    // a long company name shortens itself instead of shoving the controls out.
+    '<div class="group-label"><select class="f" id="fitJd" title="' + esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '" style="flex:1 1 auto;min-width:0;font-size:12px;padding:4px 7px">' +
+      list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === j.id ? ' selected' : '') + '>' +
+        esc((x.company || 'Untitled') + ' — ' + (x.role || '?')) + '</option>').join('') + '</select>' +
+      statusChip(j.status) +
       '<button class="btn ghost" id="jdToggle">' + (fitJdOpen ? 'Hide' : 'Show') + '</button></div>' +
     (fitJdOpen
-      ? '<textarea class="f" id="fitJdText" style="min-height:240px">' + esc(j.text || '') + '</textarea>' +
+      ? '<textarea class="f" id="fitJdText" style="min-height:200px;height:200px">' + esc(j.text || '') + '</textarea>' +
         '<div class="tagline" style="margin-top:6px">Edits here save to this application.</div>'
-      : '<p class="tagline">' + esc((j.text || '').slice(0, 220) || 'No description yet — paste it here or capture it from the posting.') + (((j.text || '').length > 220) ? '…' : '') + '</p>');
+      : '<pre class="frozen" style="max-height:200px">' + esc(j.text || 'No description yet — hit Show and paste it in, or capture it from the posting.') + '</pre>');
 
+  const sel = $('fitJd');
+  if (sel) sel.addEventListener('change', () => {
+    state.jdId = sel.value;
+    renderFitDocs(); renderFitWork();
+  });
   $('jdToggle').addEventListener('click', () => { fitJdOpen = !fitJdOpen; renderFitJd(); });
   const t = $('fitJdText');
   if (t) t.addEventListener('input', () => { j.text = t.value; queueSaveJobs(); });
@@ -2039,8 +2151,7 @@ function renderFitJd() {
 let fitJdOpen = false;
 
 function fitJob() {
-  const id = $('fitJd') ? $('fitJd').value : state.jdId;
-  return state.jobs.items.find((x) => x.id === id) || null;
+  return state.jobs.items.find((x) => x.id === state.jdId) || null;
 }
 
 // Generate / questions / versions all live here now.
@@ -2055,20 +2166,20 @@ function renderFitWork() {
 function renderFitDocs() {
   const el = $('fitDocs');
   if (!el) return;
-  const j = state.jobs.items.find((x) => x.id === ($('fitJd') ? $('fitJd').value : state.jdId));
+  const j = fitJob();
   if (!j) { el.innerHTML = ''; return; }
   const v = currentVersion(j);
   const rTxt = j.resume.frozenText || versionResumeText(j, v);
   const cTxt = j.coverLetter.frozenText || versionCoverText(v) || coverLetterText(j.coverLetter);
   el.innerHTML =
-    '<div class="split" style="gap:12px;margin-top:12px">' +
+    '<div class="split split3" style="gap:12px;margin-top:12px">' +
+      '<div id="fitJdCol"></div>' +
       '<div><div class="group-label"><span>Resume ' + (v ? 'v' + v.v : '') + '</span><span class="line"></span>' +
         '<select class="f" style="width:auto;font-size:12px;padding:4px 7px" data-jdf="resume.status">' +
           STATUSES.map((st) => '<option value="' + st + '"' + (j.resume.status === st ? ' selected' : '') + '>' + st + '</option>').join('') +
         '</select>' + (j.resume.frozenText ? '<span class="chip">frozen</span>' : '') + '</div>' +
         '<pre class="frozen" style="max-height:200px">' + esc(rTxt || 'Nothing yet — generate it in Archive.') + '</pre>' +
-        '<button class="btn" id="fitPdfR"' + (rTxt ? '' : ' disabled') + '>Resume PDF</button>' +
-        (j.resume.frozenText ? '' : '<div id="jdPicker"></div>') + '</div>' +
+        '<button class="btn" id="fitPdfR"' + (rTxt ? '' : ' disabled') + '>Resume PDF</button></div>' +
       '<div><div class="group-label"><span>Cover letter</span><span class="line"></span>' +
         '<select class="f" style="width:auto;font-size:12px;padding:4px 7px" data-jdf="coverLetter.status">' +
           STATUSES.map((st) => '<option value="' + st + '"' + (j.coverLetter.status === st ? ' selected' : '') + '>' + st + '</option>').join('') +
@@ -2078,6 +2189,9 @@ function renderFitDocs() {
         (cTxt ? '<button class="btn ghost" id="fitToMaster" title="Make this your master cover letter">Save as master letter</button>' : '') +
         '</div>' +
     '</div>' +
+    // A third column left the entry picker too narrow to read, so it runs the
+    // full width underneath the documents it decides the contents of.
+    (j.resume.frozenText ? '' : '<div id="jdPicker"></div>') +
     '<div style="margin-top:12px"><button class="btn' + (v ? '' : ' primary') + '" id="fitGen">' +
       (v ? 'Regenerate from scratch' : 'Generate resume + letter') + '</button>' +
       '<span class="tagline" style="margin-left:9px">' + (v ? 'Creates a fresh v' + ((j.versions || []).length + 1) + ' from your masters, ignoring answers so far.' : 'Drafts v1 from your master resume and letter.') + '</span></div>';
@@ -2095,11 +2209,12 @@ function renderFitDocs() {
     handleFreeze(j, path, before, sel2.value);
     queueSaveJobs(); renderFitDocs();
   }));
+  renderFitJd();
   if (!j.resume.frozenText) renderJdPicker(j);
 }
 
 async function runSectionScoring() {
-  const j = state.jobs.items.find((x) => x.id === ($('fitJd') ? $('fitJd').value : state.jdId));
+  const j = fitJob();
   if (!j) return;
   state.jdId = j.id;
   const resumeText = j.resume.frozenText || resumePlainText({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role });

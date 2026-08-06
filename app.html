@@ -61,6 +61,10 @@
   .head h1{font-size:clamp(24px,4vw,32px)}
   .head p{color:var(--muted);font-size:14.5px;max-width:640px}
   .head .spacer{flex:1}
+  /* Reads as the same link as "User guide" in the footer, because it is the
+     same thing — not a control that does something to the page. */
+  .guidelink{background:none;border:0;padding:0;font:inherit;font-size:13.5px;color:var(--accent);cursor:pointer}
+  .guidelink:hover{text-decoration:underline}
 
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
   .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -340,7 +344,7 @@
   <section class="panel" id="panel-career">
     <div class="head">
       <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Master documents</h1><button class="btn ghost" data-guide="career" title="The guide for this tab">Guide</button></div>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Master documents</h1><button class="guidelink" data-guide="career" title="The guide for this tab">Guide</button></div>
         <p>Your resume and cover letter, read-only and shown exactly as they print. They change in one direction only &mdash; you promote a version up from Fit Score. Editing happens there, against a real posting.</p>
       </div>
       <div class="spacer"></div>
@@ -366,7 +370,7 @@
   <section class="panel" id="panel-archive">
     <div class="head">
       <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Job Postings</h1><button class="btn ghost" data-guide="archive" title="The guide for this tab">Guide</button></div>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Job Postings</h1><button class="guidelink" data-guide="archive" title="The guide for this tab">Guide</button></div>
         <p>Where job descriptions land &mdash; by capture, by the inbox agent, or pasted in. Everything you do <em>with</em> one happens in Fit Score.</p>
       </div>
       <div class="spacer"></div>
@@ -384,7 +388,7 @@
   <section class="panel" id="panel-fit">
     <div class="head">
       <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Fit score</h1><button class="btn ghost" data-guide="fit" title="The guide for this tab">Guide</button></div>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Fit score</h1><button class="guidelink" data-guide="fit" title="The guide for this tab">Guide</button></div>
         <p>Pick an application from Job Postings. Every requirement in the posting is scored twice &mdash; once against the resume, once against the cover letter &mdash; each with a concrete fix.</p>
       </div>
     </div>
@@ -401,7 +405,7 @@
   <section class="panel" id="panel-prep">
     <div class="head">
       <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Interview prep</h1><button class="btn ghost" data-guide="prep" title="The guide for this tab">Guide</button></div>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>Interview prep</h1><button class="guidelink" data-guide="prep" title="The guide for this tab">Guide</button></div>
         <p>Pick the position you are interviewing for. The posting and the documents you sent come over read-only; the answers are yours to write and approve, and they stay with that position.</p>
       </div>
     </div>

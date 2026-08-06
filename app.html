@@ -255,12 +255,12 @@
       <div>
         <div class="card">
           <div class="row">
-            <div><label class="f">Template name</label><input class="f" id="tplName" placeholder="Controller — public company" /></div>
+            <div><label class="f">Template name</label><input class="f" id="tplName" placeholder="Auto-named from target role" /></div>
             <div><label class="f">Target role</label><input class="f" id="tplRole" placeholder="Controller" /></div>
           </div>
           <label class="f">Professional summary for this version</label>
           <textarea class="f" id="tplSummary" style="min-height:110px"></textarea>
-          <div class="tagline">Leave blank to use the summary from your Career master.</div>
+          <div class="tagline">Leave the summary blank to use the one from your Career master. The template name follows the target role until you type a name of your own.</div>
         </div>
         <div class="card" id="pickers"></div>
       </div>
@@ -899,6 +899,11 @@ function renderBuilder() {
   if (!state.templates.items.length) newTemplate(true);
   const t = currentTpl();
   if (!t) return;
+  // Retro-fix templates created before auto-naming existed.
+  if (isAutoNamed(t) && (t.targetRole || '').trim() && t.name !== t.targetRole.trim()) {
+    t.name = t.targetRole.trim();
+    queueSaveTemplates();
+  }
   $('tplSelect').value = t.id;
   $('tplName').value = t.name || '';
   $('tplRole').value = t.targetRole || '';
@@ -940,16 +945,40 @@ function refreshPreview(t) {
 let tplSaveTimer = null;
 function queueSaveTemplates() { clearTimeout(tplSaveTimer); tplSaveTimer = setTimeout(saveTemplates, 600); }
 
-['tplName','tplRole','tplSummary'].forEach((id) => $(id).addEventListener('input', () => {
+// Two fields, one expectation: typing a target role should name the template,
+// unless you have deliberately given it a name of its own.
+function isAutoNamed(t) {
+  return t.nameAuto !== false && (!t.name || !t.name.trim() || t.name.trim() === 'Untitled template' || t.name.trim() === (t.targetRole || '').trim());
+}
+$('tplName').addEventListener('input', () => {
   const t = currentTpl(); if (!t) return;
-  t.name = $('tplName').value; t.targetRole = $('tplRole').value; t.summary = $('tplSummary').value;
+  t.name = $('tplName').value;
+  t.nameAuto = !t.name.trim();     // cleared it? fall back to auto-naming again
+  $('preview').innerHTML = renderResume(t);
+  renderTplSelect();
+  queueSaveTemplates();
+});
+$('tplRole').addEventListener('input', () => {
+  const t = currentTpl(); if (!t) return;
+  t.targetRole = $('tplRole').value;
+  if (isAutoNamed(t)) {
+    t.name = t.targetRole.trim() || 'Untitled template';
+    $('tplName').value = t.name;
+    renderTplSelect();
+  }
   $('preview').innerHTML = renderResume(t);
   queueSaveTemplates();
-}));
+});
+$('tplSummary').addEventListener('input', () => {
+  const t = currentTpl(); if (!t) return;
+  t.summary = $('tplSummary').value;
+  $('preview').innerHTML = renderResume(t);
+  queueSaveTemplates();
+});
 $('tplSelect').addEventListener('change', () => { state.tplId = $('tplSelect').value; renderBuilder(); });
 $('tplNew').addEventListener('click', () => newTemplate());
 function newTemplate(silent) {
-  const t = { id: uid('tpl'), name: 'Untitled template', targetRole: '', summary: '', itemIds: state.master.sections.flatMap((s) => s.items.map((i) => i.id)), createdAt: new Date().toISOString() };
+  const t = { id: uid('tpl'), name: 'Untitled template', nameAuto: true, targetRole: '', summary: '', itemIds: state.master.sections.flatMap((s) => s.items.map((i) => i.id)), createdAt: new Date().toISOString() };
   state.templates.items.unshift(t); state.tplId = t.id;
   saveTemplates(); // persist immediately, otherwise a template you never touched is lost on navigation
   if (!silent) { renderTplSelect(); renderBuilder(); toast('New template'); }

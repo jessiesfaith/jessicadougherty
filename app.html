@@ -381,8 +381,9 @@
     <p><strong>&#10022; Tag keywords</strong> fills both with AI. It only touches entries that have none, so running it again is safe. It saves for you when it finishes.</p>
 
     <h3 id="g-apps">The postings list</h3>
-    <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have.</p>
-    <p><strong>Documents</strong> links open that application's resume or cover letter, ready to print. <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type.</p>
+    <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have. It carries the same columns as Job Postings: company, job title, status, posting, deadline, sent, contact, notes and what has been built.</p>
+    <p><strong>Status</strong> and <strong>Posting</strong> are the same read-only signals you see in Job Postings &mdash; whether the application is a draft or complete, and whether you have the real description or only a teaser. <strong>Built</strong> links open that application's resume or cover letter, ready to print, with a chip for how many versions exist.</p>
+    <p><strong>Deadline</strong>, <strong>Sent</strong> and <strong>Contact email</strong> are yours to type into right in the row. <strong>Notes</strong> shows a one-line preview &mdash; click it and a full-size, scrollable box opens, so an interview log or an email trail fits. Everything saves as you type.</p>
     <p>Rows for applications you have not marked complete are dimmed.</p>
 
     <h3 id="g-archive">Job Postings</h3>
@@ -505,6 +506,8 @@ const notDeleted = (x) => x && x.status !== 'deleted';
 // An alert email gives a title and a link, not requirements. Until the real
 // posting is in, generating anything from it would be guesswork.
 const needsJd = (j) => !((j.text || '').trim());
+// How much of a description you actually have, in words — shown in both tables.
+const jdWords = (s) => (String(s || '').trim().match(/\S+/g) || []).length;
 
 /* ── transport ─────────────────────────────────────────── */
 async function api(kind, method, doc, expectedVersion) {
@@ -745,10 +748,27 @@ function docLinks(j) {
     '</span>';
 }
 
+/* The read-only cells the two Postings tables share, so a column means the same
+   thing in the Resume tab as it does in Job Postings. */
+function statusCell(j) {
+  return statusChip(j.status) + (j.source ? ' <span class="chip">inbox</span>' : '');
+}
+function postingCell(j) {
+  return (needsJd(j)
+    ? '<span class="chip st-draft">needs posting</span>'
+    : '<span class="tagline">' + jdWords(j.text) + ' words</span>') +
+    (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener" title="' + esc(j.url) + '">link</a>' : '');
+}
+function builtCell(j) {
+  const vs = (j.versions || []).length;
+  return (vs ? '<span class="chip">v' + vs + '</span>' : '<span class="tagline">—</span>') + docLinks(j);
+}
+
 /* Postings is a table, one row per application: at a glance it stays one line
-   tall however many you have. Sent, contact and notes are yours to type in —
-   they are tracking, not resume content, so they are editable here. */
+   tall however many you have. Deadline, sent, contact and notes are yours to
+   type in — they are tracking, not resume content, so they are editable here. */
 const APP_FIELDS = [
+  ['deadline', 'date', ''],
   ['appliedOn', 'date', ''],
   ['contactEmail', 'email', 'name@company.com'],
   ['notes', 'text', 'Emails, interviews, follow-ups…'],
@@ -759,20 +779,21 @@ function renderCompanyTable() {
     (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
   $('docsByCompany').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span></div>' +
-    '<p class="tagline" style="margin-bottom:8px">One row per application. Sent and contact save as you type; click Notes to open the full box.</p>' +
+    '<p class="tagline" style="margin-bottom:8px">One row per application. Deadline, sent and contact save as you type; click Notes to open the full box.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
-        '<col style="width:15%"><col style="width:19%"><col style="width:14%">' +
-        '<col style="width:10%"><col style="width:17%"><col style="width:25%">' +
+        '<col style="width:13%"><col style="width:15%"><col style="width:9%"><col style="width:9%">' +
+        '<col style="width:9%"><col style="width:9%"><col style="width:13%"><col style="width:13%"><col style="width:10%">' +
       '</colgroup><thead><tr>' +
-        '<th>Company</th><th>Job title</th><th>Documents</th>' +
-        '<th>Sent</th><th>Contact email</th><th>Notes</th>' +
+        '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
+        '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
       '</tr></thead><tbody>' +
       rows.map((j) =>
         '<tr' + (j.status === 'complete' ? '' : ' class="dim"') + '>' +
           '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || '— no company') + '</td>' +
           '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || '— no title') + '</td>' +
-          '<td>' + docLinks(j) + '</td>' +
+          '<td>' + statusCell(j) + '</td>' +
+          '<td>' + postingCell(j) + '</td>' +
           APP_FIELDS.map(([f, type, ph]) => {
             // Notes are the one field that outgrows a cell: the cell shows a
             // one-line preview and clicking it opens the full, scrollable note.
@@ -786,6 +807,7 @@ function renderCompanyTable() {
               (ph ? ' placeholder="' + esc(ph) + '"' : '') +
               ' value="' + esc(j[f] || '') + '" /></td>';
           }).join('') +
+          '<td>' + builtCell(j) + '</td>' +
         '</tr>').join('') +
       '</tbody></table>');
 
@@ -1292,7 +1314,6 @@ const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
    scan down. Clicking a row opens it in full underneath. */
 function renderJdListOnly() {
   const list = jdList();
-  const words = (s) => (String(s || '').trim().match(/\S+/g) || []).length;
   $('jdList').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span></div>' +
     (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
@@ -1303,24 +1324,18 @@ function renderJdListOnly() {
           '<th>Company</th><th>Job title</th><th>Status</th><th>Posting</th>' +
           '<th>Deadline</th><th>Sent</th><th>Contact email</th><th>Notes</th><th>Built</th>' +
         '</tr></thead><tbody>' +
-        list.map((j) => {
-          const w = words(j.text);
-          const vs = (j.versions || []).length;
-          return '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
+        list.map((j) =>
+          '<tr data-jd="' + esc(j.id) + '"' + (j.id === state.jdId ? ' class="on"' : (j.status === 'complete' ? '' : ' class="dim"')) + '>' +
             '<td class="co" title="' + esc(j.company || '') + '">' + esc(j.company || 'Untitled') + '</td>' +
             '<td class="ro" title="' + esc(j.role || '') + '">' + esc(j.role || 'no role yet') + '</td>' +
-            '<td>' + statusChip(j.status) + (j.source ? ' <span class="chip">inbox</span>' : '') + '</td>' +
-            '<td>' + (needsJd(j)
-              ? '<span class="chip st-draft">needs posting</span>'
-              : '<span class="tagline">' + w + ' words</span>') +
-              (j.url ? ' <a href="' + esc(j.url) + '" target="_blank" rel="noopener" title="' + esc(j.url) + '">link</a>' : '') + '</td>' +
+            '<td>' + statusCell(j) + '</td>' +
+            '<td>' + postingCell(j) + '</td>' +
             '<td>' + (j.deadline ? '<span class="tagline">' + esc(j.deadline) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
             '<td>' + (j.appliedOn ? '<span class="tagline">' + esc(j.appliedOn) + '</span>' : '<span class="tagline">—</span>') + '</td>' +
             '<td class="ro" title="' + esc(j.contactEmail || '') + '">' + (j.contactEmail ? esc(j.contactEmail) : '<span class="tagline">—</span>') + '</td>' +
             '<td class="ro" title="' + esc(j.notes || '') + '">' + (j.notes ? esc(j.notes) : '<span class="tagline">—</span>') + '</td>' +
-            '<td>' + (vs ? '<span class="chip">v' + vs + '</span>' : '<span class="tagline">—</span>') + docLinks(j) + '</td>' +
-          '</tr>';
-        }).join('') +
+            '<td>' + builtCell(j) + '</td>' +
+          '</tr>').join('') +
         '</tbody></table>');
 
   // Anchors inside a row do their own thing; the row click is for selecting.

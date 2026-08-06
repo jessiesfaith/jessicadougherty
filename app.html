@@ -78,6 +78,7 @@
   .item.dragging{opacity:.4}
   .item.drop-above{box-shadow:0 -3px 0 var(--accent)}
   .item.drop-below{box-shadow:0 3px 0 var(--accent)}
+  .tailorbox:not(:empty){margin-bottom:10px}
   .item-actions button.icon:disabled{opacity:.25;cursor:default;background:none}
   .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px}
   label.f{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
@@ -151,6 +152,19 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2b21;border:1px solid var(--border);
     padding:11px 18px;border-radius:11px;font-size:13.5px;box-shadow:var(--shadow);z-index:200;max-width:min(560px,92vw)}
   .toast.err{border-color:rgba(224,122,106,.5);color:#f0b6ab}
+  .fitpick{accent-color:var(--accent-2);width:16px;height:16px;flex:none;cursor:pointer}
+  table.matrix{border-collapse:separate;border-spacing:4px;margin:4px 0 6px}
+  table.matrix th{font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 8px;text-align:center;vertical-align:bottom}
+  table.matrix th.rowh{text-align:left;color:var(--text);max-width:190px}
+  table.matrix th .s{font-size:11px;color:var(--faint);font-weight:400}
+  td.cell{text-align:center;border-radius:9px;background:var(--card-2);min-width:64px}
+  td.cell.good{background:rgba(159,199,166,.22)}
+  td.cell.ok{background:rgba(159,199,166,.11)}
+  td.cell.thin{background:rgba(232,176,106,.15)}
+  td.cell.weak{background:rgba(224,122,106,.15)}
+  td.cell.err{color:var(--danger)}
+  .cellbtn{background:none;border:none;color:var(--text);font:inherit;font-size:17px;font-weight:700;padding:12px 10px;cursor:pointer;width:100%;border-radius:9px}
+  .cellbtn:hover{background:rgba(255,255,255,.07)}
   .foot{border-top:1px solid var(--border);padding:18px 0 40px;font-size:12.5px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 
   /* ── slide-out user guide ── */
@@ -199,6 +213,7 @@
       <button class="tab" data-tab="builder">Resume Builder</button>
       <button class="tab" data-tab="archive">Archive</button>
       <button class="tab" data-tab="jobs">Jobs</button>
+      <button class="tab" data-tab="fit">Fit Score</button>
     </div>
     <div class="nav-right">
       <span class="saveState" id="saveState"></span>
@@ -289,6 +304,7 @@
       <button class="btn danger ghost" id="jobDelete">Delete</button>
     </div>
     <div class="card" id="grabberCard" style="display:none"></div>
+    <div class="card" id="jobList"></div>
     <div class="split">
       <div class="card">
         <div class="row">
@@ -318,6 +334,20 @@
     </div>
   </section>
 
+  <!-- ═══ FIT SCORE ═══ -->
+  <section class="panel" id="panel-fit">
+    <div class="head">
+      <div>
+        <h1>Fit score</h1>
+        <p>Tick resumes in <strong>Archive</strong> and postings in <strong>Jobs</strong>, then score every pairing at once. The useful part is the split between what a resume left out and what you genuinely don't have.</p>
+      </div>
+    </div>
+    <div class="card" id="fitPicked"></div>
+    <div id="fitOut"></div>
+    <div id="fitDetail"></div>
+    <div class="card" id="fitHistory"></div>
+  </section>
+
   <div class="foot">
     <span>Private workspace</span>
     <span id="storeInfo"></span>
@@ -336,6 +366,7 @@
     <button data-goto="g-builder">Builder</button>
     <button data-goto="g-archive">Archive</button>
     <button data-goto="g-jobs">Jobs</button>
+    <button data-goto="g-fit">Fit score</button>
     <button data-goto="g-capture">Capture</button>
     <button data-goto="g-data">Your data</button>
     <button data-goto="g-trouble">Problems</button>
@@ -387,6 +418,26 @@
     <p>The <strong>Status</strong> dropdown (considering / applied / interviewing / closed) is your application log. Keep it current and after thirty applications you'll know which framing actually gets replies.</p>
     <p>Anything the cover letter couldn't support from your master gets listed under <strong>flags</strong>. Read those before sending.</p>
 
+    <h3 id="g-fit">Fit score</h3>
+    <p>Jobs → <strong>Analyse fit</strong> asks "does my career suit this role?". This tab asks the narrower, more useful question: <strong>does this exact resume answer this exact posting?</strong> — and it does it for several at once.</p>
+    <h4>Choosing what to compare</h4>
+    <ol>
+      <li><strong>Jobs tab</strong> → tick the postings you want, in the Saved jobs list</li>
+      <li><strong>Archive tab</strong> → tick the resume versions you want</li>
+      <li><strong>Fit Score tab</strong> → it shows what you picked, then <strong>Score</strong></li>
+    </ol>
+    <p>The tab label shows your selection as <code>Fit Score (2×3)</code> — two resumes against three postings — so you can see what you've ticked without switching tabs.</p>
+    <h4>Reading the grid</h4>
+    <p>Resumes down the side, postings across the top, a score in each cell, colour-coded. Click any score for the detail. The strongest pairing opens automatically.</p>
+    <h4>The three lists that matter</h4>
+    <ul>
+      <li><strong>Covered</strong> — the posting asks for it, this resume shows it</li>
+      <li><strong>You have it, this version left it out</strong> — a fix. The button adds those entries to the template this resume was built from.</li>
+      <li><strong>Not in your career data at all</strong> — no resume edit fixes this. Either add real experience to Career master, or take it as a signal about whether to apply.</li>
+    </ul>
+    <div class="tip">Only archived resumes can be scored, because only those are frozen text — the thing you'd actually send. Build a version in the Builder and <strong>Save to archive</strong> first, then it appears here.</div>
+    <div class="warn">A posting with no description pasted in is skipped and named, rather than silently scored as a zero. Twelve pairings is the cap per run; anything beyond that is reported, not quietly dropped.</div>
+
     <h3 id="g-capture">One-click capture</h3>
     <p>Grabs a job posting from the page you're looking at, with no copy-paste.</p>
     <ol>
@@ -433,7 +484,9 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = (p) => p + '-' + Math.random().toString(36).slice(2, 9);
 
-const state = { master:null, templates:null, archives:null, jobs:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false };
+const state = { master:null, templates:null, archives:null, jobs:null, fits:null, tab:'career', tplId:null, jobId:null, dirty:false, busy:false,
+  // ticked in the Jobs and Archive tabs, consumed by Fit Score
+  fitJobs:new Set(), fitResumes:new Set() };
 
 /* ── transport ─────────────────────────────────────────── */
 async function api(kind, method, doc, expectedVersion) {
@@ -469,8 +522,8 @@ function markClean() { state.dirty = false; $('saveBtn').disabled = true; $('sav
 /* ── boot ──────────────────────────────────────────────── */
 async function boot() {
   try {
-    const [master, templates, archives, jobs] = await Promise.all([api('master'), api('templates'), api('archives'), api('jobs')]);
-    state.master = master; state.templates = templates; state.archives = archives; state.jobs = jobs;
+    const [master, templates, archives, jobs, fits] = await Promise.all([api('master'), api('templates'), api('archives'), api('jobs'), api('fits')]);
+    state.master = master; state.templates = templates; state.archives = archives; state.jobs = jobs; state.fits = fits;
     $('boot').remove();
     $('storeInfo').textContent = 'Career master v' + master.version + (master.updatedAt ? ' · updated ' + new Date(master.updatedAt).toLocaleString() : '');
     renderCareer(); renderTplSelect(); renderJobSelect(); renderArchive();
@@ -493,6 +546,7 @@ function show(tab) {
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tab));
   if (tab === 'builder') renderBuilder();
   if (tab === 'archive') renderArchive();
+  if (tab === 'fit') { renderFit(); renderFitHistory(); }
 }
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
   if (state.dirty && !confirm('You have unsaved changes to your career master. Leave anyway?')) return;
@@ -552,6 +606,7 @@ function itemHtml(it, si, sec) {
     '<button class="icon" data-move="' + si + '|' + it.id + '|' + where + '" title="' + title + '"' + (off ? ' disabled' : '') + '>' + label + '</button>';
 
   return '<div class="item ' + (it.status === 'in_progress' ? 'wip' : 'done') + '" data-item="' + esc(it.id) + '" data-sec="' + si + '">' +
+    '<div class="tailorbox" id="tb-' + esc(it.id) + '"></div>' +
     '<div class="item-top">' +
     '<span class="grip" draggable="true" title="Drag to reorder">⠿</span>' +
     '<div class="item-main">' + fields +
@@ -564,12 +619,58 @@ function itemHtml(it, si, sec) {
         '<option value="completed"' + (it.status !== 'in_progress' ? ' selected' : '') + '>Completed</option>' +
         '<option value="in_progress"' + (it.status === 'in_progress' ? ' selected' : '') + '>In progress</option>' +
       '</select>' +
+      '<button class="icon" data-tailor="' + si + '|' + it.id + '" title="Tailor these lines with AI">✨</button>' +
       mv('top', '⤒', 'Move to top', first) +
       mv('up', '▲', 'Move up', first) +
       mv('down', '▼', 'Move down', last) +
       mv('bottom', '⤓', 'Move to bottom', last) +
       '<button class="icon" data-del="'+si+','+ii+'" title="Delete">🗑</button>' +
     '</div></div></div>';
+}
+
+/* ── TAILOR ONE ENTRY WITH AI ──────────────────────────
+   Same guarantee as everywhere else: it proposes, you accept. Nothing is
+   written to your master until you click Accept, and even then you still have
+   to press Save. */
+async function tailorItem(key) {
+  const [si, id] = key.split('|');
+  const found = itemById(id);
+  if (!found) return;
+  const box = $('tb-' + id);
+  if (!box) return;
+  if (box.dataset.open === '1') { box.innerHTML = ''; box.dataset.open = '0'; return; }
+  box.dataset.open = '1';
+  box.innerHTML = '<div class="banner info"><span class="spin"></span> Asking for tighter wording for this entry…</div>';
+
+  try {
+    const r = await ai({ action: 'tailor', master: state.master, itemIds: [id], targetRole: state.master.profile.headline });
+    const sugs = (r.result.suggestions || []).filter((x) => x.itemId === id);
+    if (!sugs.length) {
+      box.innerHTML = '<div class="banner info">No changes suggested — these lines already read well.</div>';
+      return;
+    }
+    box.innerHTML = '<div class="banner warn"><b>Suggestions for this entry</b>Nothing changes until you accept. Claude may only rephrase facts already here — reject anything that looks new.</div>' +
+      sugs.map((x, i) =>
+        '<div class="sug" id="ts-' + esc(id) + '-' + i + '"><div class="o">' + esc(x.original) + '</div>' +
+        '<div class="n">' + esc(x.suggested) + '</div><div class="r">' + esc(x.reason || '') + '</div>' +
+        '<button class="btn primary" data-tacc="' + esc(id) + '|' + i + '">Accept</button> ' +
+        '<button class="btn ghost" data-trej="' + esc(id) + '|' + i + '">Reject</button></div>').join('');
+
+    box.querySelectorAll('[data-tacc]').forEach((b) => b.addEventListener('click', () => {
+      const i = +b.dataset.tacc.split('|')[1];
+      const x = sugs[i];
+      const bullet = (found.item.bullets || []).find((bb) => bb.id === x.bulletId || bb.text === x.original);
+      if (bullet) { bullet.text = x.suggested; markDirty(); renderCareer(); toast('Applied — press Save to keep it'); }
+      else toast('That line has changed since the suggestion was made.', true);
+    }));
+    box.querySelectorAll('[data-trej]').forEach((b) => b.addEventListener('click', () => {
+      const i = +b.dataset.trej.split('|')[1];
+      const n = document.getElementById('ts-' + id + '-' + i);
+      if (n) n.remove();
+    }));
+  } catch (err) {
+    box.innerHTML = '<div class="banner err"><b>' + (err.code === 'NO_KEY' ? 'API key not set' : 'Tailoring failed') + '</b>' + esc(err.message) + '</div>';
+  }
 }
 
 /* ── ORDERING ──────────────────────────────────────────
@@ -668,6 +769,8 @@ function bind() {
     const [si, id, where] = el.dataset.move.split('|');
     if (reorder(+si, id, where)) { markDirty(); renderCareer(); }
   }));
+
+  document.querySelectorAll('[data-tailor]').forEach((el) => el.addEventListener('click', () => tailorItem(el.dataset.tailor)));
 
   // Drag to reorder. The grip is the only draggable part, so dragging never
   // fights with selecting text inside the fields.
@@ -879,7 +982,7 @@ $('btnArchive').addEventListener('click', async () => {
   const t = currentTpl(); if (!t) return;
   const snap = {
     id: uid('arc'), name: t.name || 'Untitled', targetRole: t.targetRole || '',
-    templateId: t.id, masterVersion: state.master.version,
+    templateId: t.id, masterVersion: state.master.version, itemIds: (t.itemIds || []).slice(),
     company: '', jobId: state.jobId || null,
     createdAt: new Date().toISOString(),
     html: renderResume(t), text: resumePlainText(t),
@@ -929,31 +1032,81 @@ $('btnTailor').addEventListener('click', async () => {
 /* ── ARCHIVE TAB ───────────────────────────────────────── */
 function renderArchive() {
   const list = state.archives.items;
-  $('archiveList').innerHTML = !list.length
+  $('archiveList').innerHTML =
+    '<div class="sec-head"><h2>Saved resumes</h2><span class="count">' + list.length + '</span></div>' +
+    (!list.length
     ? '<div class="empty">Nothing archived yet. Build a resume, then hit "Save to archive".</div>'
     : list.map((a) =>
-      '<div class="arch"><div class="m"><b>' + esc(a.name) + '</b>' +
-      '<p>' + esc([a.targetRole, a.company, new Date(a.createdAt).toLocaleString(), 'master v' + a.masterVersion].filter(Boolean).join(' · ')) + '</p></div>' +
-      '<button class="btn" data-view="' + esc(a.id) + '">View</button>' +
-      '<button class="btn" data-copy="' + esc(a.id) + '">Copy text</button>' +
-      '<button class="btn danger ghost" data-delarc="' + esc(a.id) + '">Delete</button></div>').join('');
+      '<div class="item done" style="margin-bottom:10px">' +
+        '<div class="item-top">' +
+          '<input type="checkbox" class="fitpick" data-fitres="' + esc(a.id) + '"' + (state.fitResumes.has(a.id) ? ' checked' : '') + ' title="Compare in Fit Score" style="margin-top:10px" />' +
+          '<div class="item-main">' +
+            '<div class="row">' +
+              '<div><label class="f">Name</label><input class="f" data-arcname="' + esc(a.id) + '" value="' + esc(a.name) + '" /></div>' +
+              '<div><label class="f">Company / context</label><input class="f" data-arccompany="' + esc(a.id) + '" value="' + esc(a.company || '') + '" /></div>' +
+            '</div>' +
+            '<label class="f">Note to yourself</label>' +
+            '<textarea class="f" data-arcnote="' + esc(a.id) + '" style="min-height:44px" placeholder="Sent 6 Aug, referred by …">' + esc(a.note || '') + '</textarea>' +
+            '<div class="tagline">' + esc([a.targetRole, new Date(a.createdAt).toLocaleString(), 'career master v' + a.masterVersion].filter(Boolean).join(' · ')) + '</div>' +
+          '</div>' +
+          '<div class="item-actions" style="flex-direction:column;gap:5px">' +
+            '<button class="btn" data-view="' + esc(a.id) + '">View</button>' +
+            '<button class="btn" data-copy="' + esc(a.id) + '">Copy text</button>' +
+            '<button class="btn" data-restore="' + esc(a.id) + '">Reopen in builder</button>' +
+            '<button class="btn danger ghost" data-delarc="' + esc(a.id) + '">Delete</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>').join('')) +
+    (list.length ? '<div class="tagline">The resume text itself stays frozen — that is the point of an archive. To change the content, reopen it in the builder and archive a new version.</div>' : '');
+
+  let t = null;
+  const live = (id) => state.archives.items.find((x) => x.id === id);
+  const editArc = (id, field, value) => {
+    const a = live(id);
+    if (!a) return;
+    a[field] = value;
+    clearTimeout(t); t = setTimeout(saveArchives, 700);
+  };
+  document.querySelectorAll('[data-arcname]').forEach((el) => el.addEventListener('input', () => editArc(el.dataset.arcname, 'name', el.value)));
+  document.querySelectorAll('[data-arccompany]').forEach((el) => el.addEventListener('input', () => editArc(el.dataset.arccompany, 'company', el.value)));
+  document.querySelectorAll('[data-arcnote]').forEach((el) => el.addEventListener('input', () => editArc(el.dataset.arcnote, 'note', el.value)));
+
+  document.querySelectorAll('[data-fitres]').forEach((el) => el.addEventListener('change', () => {
+    if (el.checked) state.fitResumes.add(el.dataset.fitres); else state.fitResumes.delete(el.dataset.fitres);
+    updateFitBadges();
+  }));
 
   document.querySelectorAll('[data-view]').forEach((el) => el.addEventListener('click', () => {
-    const a = list.find((x) => x.id === el.dataset.view);
+    const a = live(el.dataset.view);
     const w = window.open('', '_blank');
     w.document.write('<html><head><title>' + esc(a.name) + '</title><style>body{font-family:Georgia,serif;max-width:7.5in;margin:0 auto;padding:.5in;color:#1a1a1a;line-height:1.45}h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#2f5a45;border-bottom:1.5px solid #2f5a45;font-family:Helvetica,sans-serif;margin:14px 0 8px}.e-top{display:flex;justify-content:space-between}.e-org{font-weight:700}.e-meta{font-size:9.5pt;color:#666}.e-role{font-style:italic}ul{margin-left:18px}</style></head><body>' + a.html + '</body></html>');
     w.document.close();
   }));
   document.querySelectorAll('[data-copy]').forEach((el) => el.addEventListener('click', async () => {
-    const a = list.find((x) => x.id === el.dataset.copy);
+    const a = live(el.dataset.copy);
     try { await navigator.clipboard.writeText(a.text); toast('Plain text copied'); } catch { toast('Clipboard blocked — use View instead', true); }
   }));
-  document.querySelectorAll('[data-delarc]').forEach((el) => el.addEventListener('click', async () => {
-    if (!confirm('Delete this archived snapshot? This is the record of what you actually sent.')) return;
-    state.archives.items = state.archives.items.filter((x) => x.id !== el.dataset.delarc);
-    try { state.archives = await api('archives', 'PUT', state.archives, state.archives.version); renderArchive(); }
-    catch (err) { toast(err.message, true); }
+  document.querySelectorAll('[data-restore]').forEach((el) => el.addEventListener('click', () => {
+    const a = live(el.dataset.restore);
+    const ids = (a.itemIds || []).filter((id) => itemById(id));
+    if (!ids.length) return toast('This snapshot predates entry tracking, so it cannot be reopened. View and copy it instead.', true);
+    const tpl = { id: uid('tpl'), name: a.name + ' (reopened)', targetRole: a.targetRole || '', summary: '', itemIds: ids, createdAt: new Date().toISOString() };
+    state.templates.items.unshift(tpl); state.tplId = tpl.id;
+    saveTemplates(); renderTplSelect(); show('builder');
+    toast('Reopened as an editable version — the original archive is untouched');
   }));
+  document.querySelectorAll('[data-delarc]').forEach((el) => el.addEventListener('click', async () => {
+    const a = live(el.dataset.delarc);
+    if (!confirm('Delete "' + (a.name || 'this snapshot') + '"? This is the record of what you actually sent.')) return;
+    state.archives.items = state.archives.items.filter((x) => x.id !== el.dataset.delarc);
+    state.fitResumes.delete(el.dataset.delarc);
+    await saveArchives(); renderArchive(); updateFitBadges();
+  }));
+}
+
+async function saveArchives() {
+  try { state.archives = await api('archives', 'PUT', state.archives, state.archives.version); }
+  catch (err) { toast('Could not save the archive: ' + err.message, true); }
 }
 
 /* ── JOBS TAB ──────────────────────────────────────────── */
@@ -968,6 +1121,7 @@ function renderJobSelect() {
     || '<option value="">No jobs yet</option>';
   if (state.jobId) sel.value = state.jobId;
   loadJobForm();
+  renderJobList();
 }
 function loadJobForm() {
   const j = currentJob();
@@ -979,6 +1133,50 @@ function loadJobForm() {
   $('jobOut').innerHTML = j && j.analysis ? analysisHtml(j.analysis) : '';
   if (j && j.coverLetter) $('jobOut').innerHTML += coverHtml(j.coverLetter);
 }
+function renderJobList() {
+  const list = state.jobs.items;
+  $('jobList').innerHTML =
+    '<div class="sec-head"><h2>Saved jobs</h2><span class="count">' + list.length + '</span>' +
+    '<span class="tagline" id="jobPickCount"></span></div>' +
+    (!list.length
+      ? '<div class="empty">No jobs yet. Hit New, or use one-click capture.</div>'
+      : list.map((x) =>
+        '<div class="arch"><input type="checkbox" class="fitpick" data-fitjob="' + esc(x.id) + '"' + (state.fitJobs.has(x.id) ? ' checked' : '') + ' title="Compare in Fit Score" />' +
+        '<div class="m"><b>' + esc((x.company || 'Untitled') + ' \u2014 ' + (x.role || '?')) + '</b>' +
+        '<p>' + esc([x.status || 'considering', (x.text || '').trim() ? '' : 'no description pasted', x.analysis ? 'analysed' : ''].filter(Boolean).join(' \u00b7 ')) + '</p></div>' +
+        '<button class="btn" data-openjob="' + esc(x.id) + '">Open</button>' +
+        '<button class="btn danger ghost" data-deljob="' + esc(x.id) + '">Delete</button></div>').join(''));
+
+  document.querySelectorAll('[data-deljob]').forEach((el) => el.addEventListener('click', async () => {
+    const x = state.jobs.items.find((y) => y.id === el.dataset.deljob);
+    if (!confirm('Delete "' + ((x && x.company) || 'this job') + '" and its analysis?')) return;
+    state.jobs.items = state.jobs.items.filter((y) => y.id !== el.dataset.deljob);
+    state.fitJobs.delete(el.dataset.deljob);
+    if (state.jobId === el.dataset.deljob) state.jobId = null;
+    await saveJobs(); renderJobSelect(); updateFitBadges();
+  }));
+
+  document.querySelectorAll('[data-fitjob]').forEach((el) => el.addEventListener('change', () => {
+    if (el.checked) state.fitJobs.add(el.dataset.fitjob); else state.fitJobs.delete(el.dataset.fitjob);
+    updateFitBadges();
+  }));
+  document.querySelectorAll('[data-openjob]').forEach((el) => el.addEventListener('click', () => {
+    state.jobId = el.dataset.openjob; $('jobSelect').value = state.jobId; loadJobForm();
+    window.scrollTo({ top: 260, behavior: 'smooth' });
+  }));
+  updateFitBadges();
+}
+
+// Keeps the tab label honest about how much is ticked, from either tab.
+function updateFitBadges() {
+  const tab = document.querySelector('[data-tab="fit"]');
+  const n = state.fitResumes.size, m = state.fitJobs.size;
+  if (tab) tab.textContent = (n || m) ? 'Fit Score (' + n + '\u00d7' + m + ')' : 'Fit Score';
+  const pc = $('jobPickCount');
+  if (pc) pc.textContent = m ? m + ' ticked for Fit Score' : '';
+  if (state.tab === 'fit') renderFit();
+}
+
 $('jobSelect').addEventListener('change', () => { state.jobId = $('jobSelect').value; loadJobForm(); });
 $('jobNew').addEventListener('click', () => {
   const j = { id: uid('job'), company:'', role:'', url:'', status:'considering', text:'', createdAt:new Date().toISOString() };
@@ -1139,10 +1337,202 @@ function coverHtml(c) {
     '<p>' + esc(c.closing || '') + '</p></div></div>';
 }
 
+/* ── FIT SCORE TAB ─────────────────────────────────────
+   Compares ticked resumes against ticked postings. Separating "omitted" from
+   "missing" is the point: one is a one-click fix, the other is a reason to
+   reconsider applying. */
+const MAX_PAIRINGS = 12;
+
+function pickedResumes() { return state.archives.items.filter((a) => state.fitResumes.has(a.id)); }
+function pickedJobs() { return state.jobs.items.filter((j) => state.fitJobs.has(j.id) && (j.text || '').trim()); }
+
+function renderFit() {
+  const rs = pickedResumes(), js = pickedJobs();
+  const skipped = state.jobs.items.filter((j) => state.fitJobs.has(j.id) && !(j.text || '').trim());
+  const pairs = rs.length * js.length;
+
+  $('fitPicked').innerHTML =
+    '<div class="sec-head"><h2>Selected</h2><span class="count">' + pairs + ' pairing' + (pairs === 1 ? '' : 's') + '</span></div>' +
+    '<div class="split" style="gap:10px">' +
+      '<div><div class="group-label"><span>Resumes — ticked in Archive</span><span class="line"></span></div>' +
+        (rs.length ? rs.map((a) => '<div class="pick"><span><span class="t">' + esc(a.name) + '</span><br><span class="s">' + esc(new Date(a.createdAt).toLocaleDateString()) + ' · master v' + a.masterVersion + '</span></span></div>').join('')
+                   : '<div class="empty">None ticked. Go to Archive and tick the versions you want to compare.</div>') + '</div>' +
+      '<div><div class="group-label"><span>Postings — ticked in Jobs</span><span class="line"></span></div>' +
+        (js.length ? js.map((j) => '<div class="pick"><span><span class="t">' + esc((j.company || 'Untitled') + ' — ' + (j.role || '?')) + '</span><br><span class="s">' + esc(j.status || 'considering') + '</span></span></div>').join('')
+                   : '<div class="empty">None ticked. Go to Jobs and tick the postings you want to compare.</div>') + '</div>' +
+    '</div>' +
+    (skipped.length ? '<div class="banner warn"><b>Skipped</b>' + skipped.map((j) => esc(j.company || 'Untitled')).join(', ') + ' — ticked, but no job description pasted in.</div>' : '') +
+    (pairs > MAX_PAIRINGS ? '<div class="banner warn"><b>Too many at once</b>' + pairs + ' pairings selected; only the first ' + MAX_PAIRINGS + ' will be scored. Untick some to control what gets used.</div>' : '') +
+    '<div style="margin-top:12px"><button class="btn primary" id="btnScore"' + (pairs ? '' : ' disabled') + '>Score ' + (pairs || '') + ' pairing' + (pairs === 1 ? '' : 's') + '</button></div>';
+
+  const b = $('btnScore');
+  if (b) b.addEventListener('click', runScoring);
+}
+
+async function runScoring() {
+  const rs = pickedResumes(), js = pickedJobs();
+  const pairs = [];
+  rs.forEach((a) => js.forEach((j) => pairs.push({ a, j })));
+  const run = pairs.slice(0, MAX_PAIRINGS);
+
+  $('btnScore').disabled = true;
+  $('fitOut').innerHTML = '<div class="card"><span class="spin"></span> Scoring ' + run.length + ' pairing' + (run.length === 1 ? '' : 's') + '… this takes a few seconds each.</div>';
+
+  const results = [];
+  for (const p of run) {
+    try {
+      const r = await ai({ action: 'score', master: state.master, resumeText: p.a.text, templateName: p.a.name, posting: p.j.text });
+      results.push({ ...p, result: r.result });
+    } catch (err) {
+      results.push({ ...p, error: err.message, code: err.code });
+      if (err.code === 'NO_KEY') break; // no point hammering a missing key
+    }
+  }
+  renderFitMatrix(rs, js, results);
+
+  // Keep a record of every run, so you can see whether a rewrite actually moved
+  // the number rather than trusting your memory of last week's score.
+  const stamp = new Date().toISOString();
+  results.filter((r) => r.result).forEach((r) => {
+    state.fits.items.unshift({
+      id: uid('fit'), at: stamp,
+      resumeId: r.a.id, resumeName: r.a.name,
+      jobId: r.j.id, jobLabel: (r.j.company || 'Untitled') + ' — ' + (r.j.role || '?'),
+      score: r.result.score, verdict: r.result.verdict, result: r.result,
+    });
+  });
+  if (results.some((r) => r.result)) { await saveFits(); renderFitHistory(); }
+  $('btnScore').disabled = false;
+}
+
+function renderFitMatrix(rs, js, results) {
+  const find = (aid, jid) => results.find((r) => r.a.id === aid && r.j.id === jid);
+  const noKey = results.find((r) => r.code === 'NO_KEY');
+  if (noKey) {
+    $('fitOut').innerHTML = '<div class="banner err"><b>API key not set</b>' + esc(noKey.error) + '</div>';
+    return;
+  }
+
+  let html = '<div class="card"><div class="sec-head"><h2>Scores</h2></div>' +
+    '<table class="matrix"><tr><td></td>' + js.map((j) => '<th>' + esc(j.company || 'Untitled') + '<br><span class="s">' + esc(j.role || '') + '</span></th>').join('') + '</tr>';
+  rs.forEach((a) => {
+    html += '<tr><th class="rowh">' + esc(a.name) + '</th>';
+    js.forEach((j) => {
+      const r = find(a.id, j.id);
+      if (!r) html += '<td class="cell">—</td>';
+      else if (r.error) html += '<td class="cell err">!</td>';
+      else {
+        const n = r.result.score != null ? r.result.score : 0;
+        const tone = n >= 80 ? 'good' : n >= 60 ? 'ok' : n >= 40 ? 'thin' : 'weak';
+        html += '<td class="cell ' + tone + '"><button class="cellbtn" data-pair="' + esc(a.id) + '|' + esc(j.id) + '">' + n + '</button></td>';
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</table><p class="tagline">Click any score for the detail.</p></div>';
+  $('fitOut').innerHTML = html;
+
+  document.querySelectorAll('[data-pair]').forEach((el) => el.addEventListener('click', () => {
+    const [aid, jid] = el.dataset.pair.split('|');
+    const r = find(aid, jid);
+    if (r && r.result) renderFitDetail(r.result, r.a, r.j);
+  }));
+
+  const best = results.filter((r) => r.result).sort((x, y) => (y.result.score || 0) - (x.result.score || 0))[0];
+  if (best) renderFitDetail(best.result, best.a, best.j);
+}
+
+async function saveFits() {
+  try { state.fits = await api('fits', 'PUT', state.fits, state.fits.version); }
+  catch (err) { toast('Could not save the fit-score history: ' + err.message, true); }
+}
+
+function renderFitHistory() {
+  const el = $('fitHistory');
+  if (!el) return;
+  const list = state.fits.items;
+  el.innerHTML = '<div class="sec-head"><h2>Score history</h2><span class="count">' + list.length + '</span>' +
+    (list.length ? '<button class="btn ghost danger" id="clearFits">Clear</button>' : '') + '</div>' +
+    (!list.length
+      ? '<div class="empty">No scores yet. Every run gets recorded here so you can watch a rewrite move the number.</div>'
+      : list.slice(0, 40).map((f) =>
+        '<div class="arch"><span class="chip" style="font-size:15px;font-weight:700;min-width:44px;text-align:center">' + (f.score != null ? f.score : '–') + '</span>' +
+        '<div class="m"><b>' + esc(f.resumeName) + ' → ' + esc(f.jobLabel) + '</b>' +
+        '<p>' + esc(new Date(f.at).toLocaleString()) + '</p></div>' +
+        '<button class="btn" data-fitview="' + esc(f.id) + '">View</button>' +
+        '<button class="btn danger ghost" data-delfit="' + esc(f.id) + '">Delete</button></div>').join(''));
+
+  document.querySelectorAll('[data-delfit]').forEach((b) => b.addEventListener('click', async () => {
+    state.fits.items = state.fits.items.filter((x) => x.id !== b.dataset.delfit);
+    await saveFits(); renderFitHistory();
+  }));
+
+  document.querySelectorAll('[data-fitview]').forEach((b) => b.addEventListener('click', () => {
+    const f = state.fits.items.find((x) => x.id === b.dataset.fitview);
+    const arc = state.archives.items.find((a) => a.id === f.resumeId) || { name: f.resumeName, templateId: null };
+    const job = state.jobs.items.find((j) => j.id === f.jobId) || { company: f.jobLabel };
+    renderFitDetail(f.result, arc, job);
+    $('fitDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  const c = $('clearFits');
+  if (c) c.addEventListener('click', async () => {
+    if (!confirm('Delete the whole score history? The archived resumes and jobs are not affected.')) return;
+    state.fits.items = []; await saveFits(); renderFitHistory();
+  });
+}
+
+function renderFitDetail(a, arc, job) {
+  const label = (n) => (n >= 80 ? 'Strong' : n >= 60 ? 'Reasonable' : n >= 40 ? 'Thin' : 'Weak');
+  const omitted = (a.omitted || []).filter((o) => itemById(o.itemId));
+  const nameOf = (id) => { const f = itemById(id); return f ? (f.item.org || f.item.role) : id; };
+  const tpl = state.templates.items.find((t) => t.id === arc.templateId);
+
+  $('fitDetail').innerHTML =
+    '<div class="card">' +
+      '<div class="sec-head"><h2>' + esc(arc.name) + ' → ' + esc(job.company || 'posting') + '</h2></div>' +
+      '<div class="score"><span class="n">' + (a.score != null ? a.score : '–') + '</span>' +
+        '<div class="bar"><i style="width:' + (a.score || 0) + '%"></i></div>' +
+        '<span class="chip">' + label(a.score || 0) + '</span></div>' +
+      '<p style="font-size:14px;color:var(--muted)">' + esc(a.verdict || '') + '</p>' +
+
+      '<div class="group-label done"><span>Covered by this resume</span><span class="line"></span><span>' + (a.covered || []).length + '</span></div>' +
+      ((a.covered || []).length
+        ? a.covered.map((c) => '<div class="gap" style="border-left-color:var(--accent-2)"><b>' + esc(c.requirement) + '</b><p>' + esc(c.evidence || '') + '</p></div>').join('')
+        : '<div class="empty">Nothing matched.</div>') +
+
+      '<div class="group-label wip"><span>You have it — this version left it out</span><span class="line"></span><span>' + omitted.length + '</span></div>' +
+      (omitted.length
+        ? omitted.map((o) => '<div class="gap partial"><b>' + esc(o.requirement) + '</b><p>' + esc(nameOf(o.itemId)) + ' — ' + esc(o.why || '') + '</p></div>').join('') +
+          (tpl ? '<button class="btn primary" id="btnAddOmitted">Add these ' + omitted.length + ' to “' + esc(tpl.name || 'Untitled') + '”</button>'
+               : '<div class="tagline">The template this was built from no longer exists, so there is nothing to add them to. Add them by hand in the Builder.</div>')
+        : '<div class="empty">Nothing relevant was left out.</div>') +
+
+      '<div class="group-label"><span>Not in your career data at all</span><span class="line"></span><span>' + (a.missing || []).length + '</span></div>' +
+      ((a.missing || []).length
+        ? a.missing.map((m) => '<div class="gap"><b>' + esc(m.requirement) + '</b><p>' + esc(m.note || '') + '</p></div>').join('')
+        : '<div class="empty">Nothing the posting asks for is absent from your record.</div>') +
+
+      ((a.keywordsAbsent || []).length
+        ? '<div class="group-label"><span>Wording this resume never uses</span><span class="line"></span></div><div class="chips">' +
+          a.keywordsAbsent.map((k) => '<span class="chip">' + esc(k) + '</span>').join('') + '</div>'
+        : '') +
+    '</div>';
+
+  const add = $('btnAddOmitted');
+  if (add) add.addEventListener('click', () => {
+    tpl.itemIds = tpl.itemIds || [];
+    let n = 0;
+    omitted.forEach((o) => { if (!tpl.itemIds.includes(o.itemId)) { tpl.itemIds.push(o.itemId); n++; } });
+    saveTemplates();
+    toast(n + ' added to “' + (tpl.name || 'Untitled') + '”. Rebuild and re-archive, then score again.');
+    add.disabled = true; add.textContent = 'Added — rebuild and re-archive to compare';
+  });
+}
+
 /* ── USER GUIDE PANE ───────────────────────────────────
    Opens on whichever section matches the tab you are looking at, so the
    answer you need is the first thing on screen. */
-const TAB_TO_GUIDE = { career: 'g-career', builder: 'g-builder', archive: 'g-archive', jobs: 'g-jobs' };
+const TAB_TO_GUIDE = { career: 'g-career', builder: 'g-builder', archive: 'g-archive', jobs: 'g-jobs', fit: 'g-fit' };
 
 function openGuide(sectionId) {
   const g = $('guide'), s = $('scrim');

@@ -15,9 +15,14 @@
    ADDING A MODULE: add it to MODULES with a `group`, and if it needs a page of
    its own, create api/<module>.js with the guard from api/dashboard.js and a
    rewrite in vercel.json. */
+/* Tabs, not one flat wall of cards. The Career group is the workspace itself:
+   one card per tab of /career, in the order they appear there, so the dashboard
+   and the app never drift into describing different things.
+   ADDING A MODULE: add it to MODULES with a `group`, and a `sub` if its group
+   has sub-tabs. If it needs a page of its own, create api/<module>.js with the
+   guard from api/dashboard.js and a rewrite in vercel.json. */
 const GROUPS = [
-  { key: 'career', title: 'Career', blurb: 'Your master documents and the versions built from them.' },
-  { key: 'jobs', title: 'Job search', blurb: 'Postings, how well you match them, and getting ready to be asked about it.' },
+  { key: 'career', title: 'Career', blurb: 'The workspace, one card per tab.' },
   { key: 'edex', title: 'Education and Experience', blurb: 'What you studied and what you have done, kept apart from the documents that quote them.' },
   { key: 'public', title: 'Public', blurb: 'The parts of this anyone can see.' },
 ];
@@ -32,39 +37,39 @@ const SUBTABS = {
 
 const MODULES = [
   {
-    key: 'career', group: 'career',
-    title: 'Career master',
-    blurb: 'Every role, degree, certification, event and hackathon — one editable source of truth.',
-    icon: 'M3 7h18v12H3zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    key: 'resume', group: 'career',
+    title: 'Resume',
+    blurb: 'Your master resume and cover letter, read-only and shown exactly as they print.',
+    icon: 'M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM14 4v6h6',
     href: '/career#career',
   },
   {
-    key: 'fit', group: 'career',
-    title: 'Fit Score',
-    blurb: 'Score a resume and letter against a posting, twice per requirement, then revise and approve the next version.',
-    icon: 'M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM14 4v6h6',
-    href: '/career#fit',
-  },
-  {
-    key: 'archive', group: 'career',
-    title: 'Versions',
-    blurb: 'Every version kept, with its score — and a completed one frozen as the record of what you sent.',
-    icon: 'M3 7h18v13H3zM3 7l2-4h14l2 4M10 12h4',
-    href: '/career#fit',
-  },
-  {
-    key: 'jobs', group: 'jobs',
+    key: 'postings', group: 'career',
     title: 'Job Postings',
-    blurb: 'Paste or capture a posting, track deadline, sent date, contact and notes in the row.',
+    blurb: 'Every application on one row — deadline, sent date, contact, notes, and what has been built.',
     icon: 'M3 9h18M7 3v4m10-4v4M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
     href: '/career#archive',
   },
   {
-    key: 'prep', group: 'jobs',
+    key: 'fit', group: 'career',
+    title: 'Fit Score',
+    blurb: 'Every requirement scored twice, then a proposed next version you edit and approve.',
+    icon: 'M4 19V9m5 10V5m5 14v-7m5 7V8',
+    href: '/career#fit',
+  },
+  {
+    key: 'prep', group: 'career',
     title: 'Interview Prep',
-    blurb: 'Likely questions, where your three documents disagree, and the questions worth asking them.',
+    blurb: 'Likely questions, where your three documents disagree, and what to ask them.',
     icon: 'M12 3a9 9 0 1 0 9 9M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01',
     href: '/career#prep',
+  },
+  {
+    key: 'other', group: 'career',
+    title: 'Other',
+    blurb: 'Education, experience, events and project plans — what you intend to do, not what you have done.',
+    icon: 'M9 11H3v10h6zM15 3H9v18h6zM21 7h-6v14h6z',
+    href: '/career#other',
   },
   {
     key: 'education', group: 'edex', sub: 'education',
@@ -95,9 +100,9 @@ const MODULES = [
     href: '/career#career',
   },
   {
-    key: 'resume', group: 'public',
+    key: 'publicresume', group: 'public',
     title: 'Public resume',
-    blurb: 'What anyone gets from the Resume buttons on the landing page. Publish it from the Resume tab.',
+    blurb: 'What both Resume buttons on the landing page show. Publish it from a row in Job Postings.',
     icon: 'M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z',
     href: '/resume',
   },

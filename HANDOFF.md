@@ -18,6 +18,9 @@ Vercel functions, and your data is JSON in a private GitHub repo you own.
 | `api/resume.js` | **Public.** Serves the published resume at `/resume` |
 | `api/_dashboard-page.js` | The dashboard, as tabs over grouped modules |
 
+The dashboard's **Career** group is one card per tab of `/career`, in the order
+they appear there, so the two never drift into describing different things.
+
 ### The four tabs
 
 **Resume** — your master resume and cover letter, read-only, shown exactly as
@@ -31,6 +34,14 @@ fields in the row, tick and Remove. Removing is a soft delete: status becomes
 **Fit Score** — the working tab. Posting, resume and cover letter side by side;
 every requirement scored twice; the agent's questions; a proposed next version
 you edit and approve; versions; score history.
+
+**Other** — four plans: Education, Experience, Events and Project. Each is a flat
+sortable list — Item, Type, Enrolled, Duration, Link, Priority — of what you
+intend to do, kept apart from the career master, which is the record of what you
+have done. Sorting is display-only; the stored order is the order you added
+things. Stored in `career/plans.json`. **No agent reads them and no version is
+built from them** — when something on a plan happens, it goes into the master by
+hand, which is the moment it becomes a fact.
 
 **Interview Prep** — after the documents are sent. Likely questions, a
 double-check of where the three documents disagree, questions to ask them, and

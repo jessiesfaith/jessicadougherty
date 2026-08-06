@@ -4,7 +4,7 @@ const { seed } = require('./_seed');
 
 const LIST_KINDS = ['templates', 'archives', 'jobs', 'fits', 'cover', 'settings'];
 // Not a list: a single published resume, or nothing published yet.
-const DOC_KINDS = ['published'];
+const DOC_KINDS = ['published', 'plans'];
 const ALL_KINDS = ['master', ...LIST_KINDS, ...DOC_KINDS];
 
 function emptyList() {

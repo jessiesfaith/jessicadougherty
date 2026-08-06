@@ -963,7 +963,11 @@ function renderTagSummary() {
   const items = state.master.sections.flatMap((sec) => sec.items);
   const tagged = items.filter((it) => (it.titles || []).length || (it.skills || []).length);
   $('tagOut').innerHTML =
-    '<div class="sec-head"><h2>Keywords</h2><span class="count">' + tagged.length + ' / ' + items.length + ' tagged</span></div>' +
+    '<div class="sec-head"><h2>Keywords</h2><span class="count">' + tagged.length + ' / ' + items.length + ' tagged</span>' +
+      '<button class="btn ghost" id="tagToggle">' + (keywordsOpen ? 'Hide' : 'Show') + '</button></div>' +
+    // Closed by default: every entry with two chip lists is a screen of its
+    // own, and the tagged count in the header is the part worth watching.
+    (!keywordsOpen ? '' :
     '<p class="tagline" style="margin-bottom:8px">These are what let the agent pick the right entries for a posting. An untagged entry is invisible to it.</p>' +
     (!tagged.length ? '<div class="empty">Nothing tagged yet. Hit ✦ Tag all.</div>'
       : items.map((it) =>
@@ -973,8 +977,10 @@ function renderTagSummary() {
             ? '<div class="chips">' + (it.titles || []).map((t) => '<span class="chip">' + esc(t) + '</span>').join('') +
               (it.skills || []).map((t) => '<span class="chip" style="color:var(--accent-2)">' + esc(t) + '</span>').join('') + '</div>'
             : '<span class="tagline"> — untagged</span>') +
-        '</div>').join(''));
+        '</div>').join('')));
+  $('tagToggle').addEventListener('click', () => { keywordsOpen = !keywordsOpen; renderTagSummary(); });
 }
+let keywordsOpen = false;
 $('masterPdf').addEventListener('click', () => printMasterResume());
 
 $('coverPdf').addEventListener('click', () => printMasterCover());
@@ -2147,6 +2153,58 @@ function renderProposal(j) {
   });
 }
 
+/* Help with an answer, in the one place where a wrong fact is most expensive:
+   an answer is the only route by which a new claim enters her documents. So the
+   draft lands in a review box, never in the answer field — and what it could
+   not source from her record is listed separately, as things to confirm rather
+   than sentences to sign. It searches for how comparable postings word the
+   requirement and for the standard behind it, and shows the links. */
+async function helpAnswer(j, qid) {
+  const q = (j.questions || []).find((x) => x.id === qid);
+  const box = $('qhelp-' + qid);
+  if (!q || !box) return;
+  box.innerHTML = '<div class="banner info"><span class="spin"></span> Reading the question, your record and the sources behind it…</div>';
+  try {
+    const r = await ai({ action: 'answerhelp', master: state.master, posting: j.text,
+      question: q.question, requirement: q.requirement, why: q.why || '', guess: q.guess || '',
+      draft: q.answer || '' });
+    const a = r.result || {};
+    const refs = (a.references || []).concat(
+      // Anything the model cited but did not list, so a source is never hidden.
+      (r.citations || []).filter((c) => !(a.references || []).some((x) => x.url === c.url))
+        .map((c) => ({ label: c.title, detail: '', url: c.url })));
+    box.innerHTML =
+      '<div class="sug" style="margin-top:8px">' +
+        '<div class="group-label"><span>Suggested answer</span><span class="line"></span>' +
+          '<button class="btn" data-quse="' + esc(qid) + '">Use this</button>' +
+          '<button class="btn ghost" data-qdrop="' + esc(qid) + '">Dismiss</button></div>' +
+        '<p class="n" style="white-space:pre-wrap">' + esc(a.draft || '') + '</p>' +
+        (a.note ? '<p class="r">' + esc(a.note) + '</p>' : '') +
+        ((a.usedFacts || []).length
+          ? '<p class="r"><b>Built from:</b> ' + a.usedFacts.map(esc).join(' &middot; ') + '</p>' : '') +
+        ((a.mustConfirm || []).length
+          ? '<div class="banner warn" style="margin:8px 0 0"><b>Confirm before you use this</b>' +
+            a.mustConfirm.map(esc).join(' &middot; ') + '</div>' : '') +
+        (refs.length
+          ? '<div class="group-label"><span>Sources</span><span class="line"></span></div>' +
+            refs.map((f) => '<p class="r" style="margin-bottom:4px">' +
+              '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><b>' + esc(f.label || f.url) + '</b></a>' +
+              (f.detail ? ' &mdash; ' + esc(f.detail) : '') + '</p>').join('')
+          : '<p class="r">No sources came back for this one.</p>') +
+      '</div>';
+    box.querySelector('[data-quse]').addEventListener('click', () => {
+      q.answer = a.draft || '';
+      queueSaveJobs();
+      renderQuestions(j);
+      toast('Dropped into your answer — read it, make it yours, then Approve.');
+    });
+    box.querySelector('[data-qdrop]').addEventListener('click', () => { box.innerHTML = ''; });
+  } catch (err) {
+    box.innerHTML = '<div class="banner err"><b>Could not draft an answer</b>' +
+      esc(err.code === 'NO_KEY' ? 'No Anthropic API key set yet.' : err.message) + '</div>';
+  }
+}
+
 let questionsOpen = false;
 function renderQuestions(j) {
   const el = $('jdQuestions');
@@ -2184,6 +2242,7 @@ function renderQuestions(j) {
               '<textarea class="f" data-qa="' + esc(q.id) + '" style="min-height:74px" placeholder="Your answer — or say plainly that you have not done this.">' + esc(q.answer || '') + '</textarea>' +
               '<label class="pick" style="padding:4px 0"><input type="checkbox" data-qm="' + esc(q.id) + '"' + (q.toMaster ? ' checked' : '') + ' /> <span class="s">also add this to my master resume</span></label>' +
               '<div class="qacts">' +
+                '<button class="btn ghost" data-qhelp="' + esc(q.id) + '" title="Rewrite what you have written, or draft a starting point from the other three columns">&#10022; AI help</button>' +
                 (q.status === 'skipped'
                   ? '<span class="chip">skipped</span><button class="btn ghost" data-qundo="' + esc(q.id) + '">Undo</button>'
                   : q.status === 'applied'
@@ -2193,10 +2252,12 @@ function renderQuestions(j) {
                     : '<button class="btn" data-qok="' + esc(q.id) + '">Approve</button>' +
                       '<button class="btn ghost" data-qskip="' + esc(q.id) + '">Skip</button>') +
               '</div>' +
+              '<div id="qhelp-' + esc(q.id) + '"></div>' +
             '</div>' +
           '</div>').join(''));
 
   $('qToggle').addEventListener('click', () => { questionsOpen = !questionsOpen; renderQuestions(j); });
+  el.querySelectorAll('[data-qhelp]').forEach((b) => b.addEventListener('click', () => helpAnswer(j, b.dataset.qhelp)));
   el.querySelectorAll('[data-qa]').forEach((t) => t.addEventListener('input', () => {
     const q = j.questions.find((x) => x.id === t.dataset.qa);
     if (q) { q.answer = t.value; queueSaveJobs(); }

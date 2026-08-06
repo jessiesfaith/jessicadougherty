@@ -39,7 +39,7 @@ HARD RULES:
 - Prefer her own wording where it is already strong. Do not add corporate filler.
 - Output valid JSON only. No markdown fences, no commentary outside the JSON.`;
 
-async function post(model, system, user, maxTokens) {
+async function post(model, system, user, maxTokens, tools) {
   const r = await fetch(API + '/messages', {
     method: 'POST',
     headers: {
@@ -52,9 +52,27 @@ async function post(model, system, user, maxTokens) {
       max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: user }],
+      ...(tools ? { tools } : {}),
     }),
   });
   return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
+}
+
+// Anthropic's hosted search. Not every key or model has it, and a request that
+// asks for it and is refused should still answer — just without sources.
+const WEB_SEARCH = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }];
+const NO_TOOL_ERR = /tool|unsupported|not supported|invalid.*type/i;
+
+// Where a claim came from, so "is this legitimate" has an answer you can click.
+function citationsOf(content) {
+  const seen = new Set(), out = [];
+  (content || []).forEach((c) => (c.citations || []).forEach((ct) => {
+    const url = ct.url || '';
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({ url, title: ct.title || url });
+  }));
+  return out;
 }
 
 // Models differ in how much they will write in one reply, and the ceiling is
@@ -63,15 +81,18 @@ async function post(model, system, user, maxTokens) {
 // come back with the smaller figure rather than failing the whole request.
 const CEILING_ERR = /max_tokens|output.*(limit|token)/i;
 
-async function callClaude({ system, user, maxTokens = 4000, floorTokens }) {
+async function callClaude({ system, user, maxTokens = 4000, floorTokens, tools }) {
   const model = await resolveModel();
-  let r = await post(model, system, user, maxTokens);
+  let r = await post(model, system, user, maxTokens, tools);
+  if (!r.ok && tools && NO_TOOL_ERR.test(r.body?.error?.message || '')) {
+    r = await post(model, system, user, maxTokens);   // answer without sources
+  }
   if (!r.ok && floorTokens && floorTokens < maxTokens && CEILING_ERR.test(r.body?.error?.message || '')) {
-    r = await post(model, system, user, floorTokens);
+    r = await post(model, system, user, floorTokens, tools);
   }
   if (!r.ok) throw new Error(r.body?.error?.message || 'Claude API error (HTTP ' + r.status + ')');
   const text = (r.body.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
-  return { text, model, stopReason: r.body.stop_reason || '' };
+  return { text, model, stopReason: r.body.stop_reason || '', citations: citationsOf(r.body.content) };
 }
 
 /* A reply that ran out of room is still mostly good: the sections already
@@ -326,6 +347,46 @@ Break the job description into its distinct requirement sections, then score EAC
 Score 0 where there is genuinely no evidence — do not be generous. A fix must be achievable from facts already present in the career data; if the requirement simply is not met, say so in the fix rather than inventing a way to claim it.
 At most 12 sections. Merge requirements that ask for the same thing rather than listing them twice, and keep every evidence and fix to one sentence — a long posting must still return a complete, closed JSON object.`,
 
+  answerhelp: (b) => `CAREER DATA:
+${JSON.stringify(b.master)}
+
+JOB DESCRIPTION:
+"""
+${b.posting}
+"""
+
+THE QUESTION SHE IS ANSWERING:
+${b.question}
+
+WHAT THE POSTING ASKS FOR:
+${b.requirement}${b.why ? '\n' + b.why : ''}
+
+WHAT HER OWN RECORD ALREADY HINTS AT:
+${b.guess || '(nothing)'}
+
+WHAT SHE HAS WRITTEN SO FAR:
+"""
+${(b.draft || '').trim() || '(nothing yet)'}
+"""
+
+${(b.draft || '').trim()
+  ? 'She has written something. Tighten it into a clear answer a hiring manager could act on. Keep every fact she stated, in her meaning. Do not add experience she did not state.'
+  : 'She has written nothing. Draft a STARTING POINT from the three columns above and the career data only. Where the career data does not settle something, leave a plain gap marker like [confirm: how many entities] rather than guessing a value — she fills those in.'}
+
+Then use web search for two things, and only these two:
+1. How comparable postings for this kind of role word this requirement, so she can see what the phrase is normally taken to mean.
+2. The specific standard, regulation or code the requirement rests on where one exists — ASC topics, SOX sections, IRC sections, GAAP/GAAS references, state board rules — with the citation, so she can check it herself.
+
+Return JSON:
+{
+ "draft": "the answer, in her voice, first person, no more than 90 words",
+ "usedFacts": ["each fact you used, quoted from the career data or from what she wrote"],
+ "mustConfirm": ["anything the draft needs that neither the career data nor her own text establishes"],
+ "references": [{"label":"e.g. ASC 842 or 'comparable posting'","detail":"one sentence on what it says and why it is relevant","url":"the source"}],
+ "note": "one sentence on what you did"
+}
+HARD RULE for this task: the draft may contain no claim about her experience that is not either in the career data or in what she has already written. Anything else belongs in mustConfirm, never in the draft. A short honest answer beats a fuller one you cannot source. If the honest answer is that she has not done this, write that.`,
+
   coversuggest: (b) => `CAREER DATA:
 ${JSON.stringify(b.master)}
 
@@ -392,6 +453,9 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Unknown action. Expected one of: ' + Object.keys(PROMPTS).join(', ') });
     }
     if (!body.master) return res.status(400).json({ ok: false, error: 'Missing career data.' });
+    if (action === 'answerhelp' && !String(body.question || '').trim()) {
+      return res.status(400).json({ ok: false, error: 'No question to answer.' });
+    }
     if (['analyze', 'cover', 'score', 'scoresections', 'coversuggest', 'questions', 'revise'].includes(action) && !body.posting) {
       return res.status(400).json({ ok: false, error: 'Paste the job posting first.' });
     }
@@ -406,11 +470,14 @@ module.exports = async (req, res) => {
     }
 
     const long = action === 'scoresections' || action === 'revise';
-    const { text, model, stopReason } = await callClaude({
+    const { text, model, stopReason, citations } = await callClaude({
       system: GUARDRAILS,
       user: PROMPTS[action](body),
       maxTokens: action === 'cover' ? 2000 : action === 'keywords' ? 800 : long ? 16000 : 5000,
       floorTokens: long ? 8000 : undefined,
+      // Only this one reaches the web, and only to show her where a claim came
+      // from. Nothing it finds may become a fact about her career.
+      tools: action === 'answerhelp' ? WEB_SEARCH : undefined,
     });
 
     let parsed = parseJson(text);
@@ -425,7 +492,8 @@ module.exports = async (req, res) => {
         : { ok: false, error: 'Claude returned something unparseable. Try again.', raw: text.slice(0, 800) });
     }
 
-    return res.status(200).json({ ok: true, action, model, result: parsed, truncated: stopReason === 'max_tokens' });
+    return res.status(200).json({ ok: true, action, model, result: parsed,
+      truncated: stopReason === 'max_tokens', citations: citations || [] });
   } catch (err) {
     return res.status(500).json({ ok: false, error: String((err && err.message) || err) });
   }

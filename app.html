@@ -980,21 +980,49 @@ $('btnPrint').addEventListener('click', () => {
 
 $('btnArchive').addEventListener('click', async () => {
   const t = currentTpl(); if (!t) return;
-  const snap = {
-    id: uid('arc'), name: t.name || 'Untitled', targetRole: t.targetRole || '',
-    templateId: t.id, masterVersion: state.master.version, itemIds: (t.itemIds || []).slice(),
-    company: '', jobId: state.jobId || null,
-    createdAt: new Date().toISOString(),
-    html: renderResume(t), text: resumePlainText(t),
-  };
+  const btn = $('btnArchive');
+  if (btn.disabled) return;
+
+  if (!(t.itemIds || []).length) return toast('Nothing selected — tick some entries first.', true);
+
+  const text = resumePlainText(t);
+
+  // You clicked it four times because it looked dead. Guard the duplicate too.
+  const prev = state.archives.items[0];
+  if (prev && prev.templateId === t.id && prev.text === text) {
+    if (!confirm('This is identical to the snapshot you saved at ' + new Date(prev.createdAt).toLocaleTimeString() + '.\n\nSave another copy anyway?')) return;
+  }
+
+  // An archive full of "Untitled template" is useless six months from now.
+  const named = (t.name && t.name.trim() && t.name.trim() !== 'Untitled template') ? t.name.trim() : '';
   const job = state.jobs.items.find((j) => j.id === state.jobId);
-  if (job) { snap.company = job.company || ''; }
+  const label = named || [t.targetRole, job && job.company].filter(Boolean).join(' — ') ||
+    ('Resume ' + new Date().toLocaleDateString());
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const snap = {
+    id: uid('arc'), name: label, targetRole: t.targetRole || '',
+    templateId: t.id, masterVersion: state.master.version, itemIds: (t.itemIds || []).slice(),
+    company: job ? (job.company || '') : '', jobId: state.jobId || null, note: '',
+    createdAt: new Date().toISOString(),
+    html: renderResume(t), text,
+  };
   state.archives.items.unshift(snap);
+
   try {
     state.archives = await api('archives', 'PUT', state.archives, state.archives.version);
-    toast('Archived — snapshot ' + state.archives.items.length + ', frozen against career master v' + snap.masterVersion);
-    renderArchive();
-  } catch (err) { toast('Archive failed: ' + err.message, true); }
+    btn.textContent = 'Saved ✓';
+    toast('“' + label + '” archived — ' + state.archives.items.length + ' snapshot' + (state.archives.items.length === 1 ? '' : 's') + ' now. Open the Archive tab to rename or tick it for Fit Score.');
+    renderArchive(); updateFitBadges();
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2500);
+  } catch (err) {
+    state.archives.items = state.archives.items.filter((x) => x.id !== snap.id); // don't leave a phantom in the list
+    btn.textContent = original; btn.disabled = false;
+    toast('Archive failed: ' + err.message, true);
+  }
 });
 
 $('btnTailor').addEventListener('click', async () => {

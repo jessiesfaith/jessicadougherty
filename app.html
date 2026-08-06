@@ -894,7 +894,9 @@ function renderCompanyTable() {
   const rows = jdList().slice().sort((a, b) =>
     (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
   $('docsByCompany').innerHTML =
-    '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span></div>' +
+    '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span>' +
+      '<button class="btn ghost" id="coTblToggle">' + (companyTableOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!companyTableOpen && rows.length ? '' :
     '<p class="tagline" style="margin-bottom:8px">One row per application, read-only. Editing, and removing, happen in <strong>Job Postings</strong>.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
@@ -913,8 +915,10 @@ function renderCompanyTable() {
           appReadCells(j) +
           '<td>' + builtCell(j) + '</td>' +
         '</tr>').join('') +
-      '</tbody></table>');
+      '</tbody></table>'));
+  $('coTblToggle').addEventListener('click', () => { companyTableOpen = !companyTableOpen; renderCompanyTable(); });
 }
+let companyTableOpen = false;
 
 /* The Remove button's label is the only thing a tick changes until you press
    it, so it is updated on its own rather than through a full re-render. */
@@ -1445,6 +1449,7 @@ const statusChip = (st) => '<span class="chip st-' + st + '">' + st + '</span>';
 // The list alone, leaving whatever you are typing in untouched.
 /* Every posting on one row, every field its own column — a flat dataset you can
    scan down. Clicking a row opens it in full underneath. */
+let jdTableOpen = false;
 function renderJdListOnly() {
   const list = jdList();
   // A tick that survives a re-render but never outlives the rows it points at.
@@ -1453,8 +1458,10 @@ function renderJdListOnly() {
   $('jdList').innerHTML =
     '<div class="sec-head"><h2>Postings</h2><span class="count">' + list.length + '</span>' +
       '<button class="btn danger ghost" id="appRemove"' + (picked ? '' : ' disabled') + '>' +
-        'Remove' + (picked ? ' (' + picked + ')' : '') + '</button></div>' +
-    (!list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
+        'Remove' + (picked ? ' (' + picked + ')' : '') + '</button>' +
+      '<button class="btn ghost" id="jdTblToggle">' + (jdTableOpen ? 'Hide' : 'Show') + '</button></div>' +
+    (!jdTableOpen && list.length ? '' :
+    !list.length ? '<div class="empty">Nothing yet. Add a posting, or capture one from a job page.</div>'
       : '<p class="tagline" style="margin-bottom:8px">Deadline, sent and contact save as you type; click Notes to open the full box. Tick rows and hit Remove to hide them &mdash; nothing is destroyed, they come back with <em>show deleted</em>.</p>' +
         '<table class="apptbl jdtbl"><colgroup>' +
           // Measured against what each column actually needs on one line: Built
@@ -1480,6 +1487,8 @@ function renderJdListOnly() {
             '<td>' + builtCell(j) + '</td>' +
           '</tr>').join('') +
         '</tbody></table>');
+
+  $('jdTblToggle').addEventListener('click', () => { jdTableOpen = !jdTableOpen; renderJdListOnly(); });
 
   // Anchors and the fields in a row do their own thing; the row click, meaning
   // anywhere else on it, is for opening that posting underneath.

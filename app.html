@@ -156,6 +156,15 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2b21;border:1px solid var(--border);
     padding:11px 18px;border-radius:11px;font-size:13.5px;box-shadow:var(--shadow);z-index:200;max-width:min(560px,92vw)}
   .toast.err{border-color:rgba(224,122,106,.5);color:#f0b6ab}
+  .docgroup{border-bottom:1px solid var(--border);padding:8px 0}
+  .docgroup>b{font-size:13.5px;display:block;margin-bottom:4px}
+  .docrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+  .docrow .sub{font-size:12.5px;color:var(--faint);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .doclinks{display:flex;gap:8px;flex:none}
+  .doclinks a{font-size:12.5px;color:var(--accent)}
+  .doclinks .none{font-size:12px;color:var(--faint);font-style:italic}
+  .grabme{cursor:grab}
+  .grabme:active{cursor:grabbing}
   .fitpick{accent-color:var(--accent-2);width:16px;height:16px;flex:none;cursor:pointer}
   table.matrix{border-collapse:separate;border-spacing:4px;margin:4px 0 6px}
   table.matrix th{font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 8px;text-align:center;vertical-align:bottom}
@@ -260,13 +269,22 @@
     <div class="head">
       <div>
         <h1>Master resume</h1>
-        <p>Your source of truth, shown exactly as it prints. Every application draws from here, and nothing an agent writes is saved back unless you promote it.</p>
+        <p>Read-only, shown exactly as it prints. It changes in one direction only &mdash; you promote a version up from Fit Score. Editing happens there, against a real posting.</p>
       </div>
       <div class="spacer"></div>
       <button class="btn" id="masterPdf">Resume PDF</button>
-      <button class="btn" id="masterEditToggle">Edit</button>
+      <button class="btn ghost" id="tagAll" title="Fill in job titles and skills — keywords only, never your wording">✦ Tag keywords</button>
     </div>
-    <div class="card" id="masterView"></div>
+    <div class="split" style="grid-template-columns:minmax(0,330px) minmax(0,1fr)">
+      <div>
+        <div class="card" id="docsByCompany"></div>
+        <div class="card" id="docsByTitle"></div>
+      </div>
+      <div>
+        <div class="card" id="masterView"></div>
+        <div class="card" id="tagOut"></div>
+      </div>
+    </div>
     <div id="masterEdit" hidden>
       <div class="card" id="profileCard"></div>
       <div id="sections"></div>
@@ -278,12 +296,10 @@
     <div class="head">
       <div>
         <h1>Master cover letter</h1>
-        <p>Shown as it prints. The agent rewrites it against each posting rather than reassembling blocks, so the result still reads like prose.</p>
+        <p>Read-only, shown exactly as it prints. Write and edit against a real posting in Fit Score, then use <b>Save as master letter</b> there to bring it up here.</p>
       </div>
       <div class="spacer"></div>
       <button class="btn" id="coverPdf">Cover letter PDF</button>
-      <button class="btn" id="coverEditToggle">Edit</button>
-      <button class="btn primary" id="saveCover" hidden>Save</button>
     </div>
     <div class="card" id="coverView"></div>
     <div class="split" id="coverEdit" hidden>
@@ -528,6 +544,8 @@ async function boot() {
     renderCareer();
     renderMasterView();
     renderCoverView();
+    renderTagSummary();
+    renderDocLists();
 
     const captured = readCapture();
     if (captured) { await acceptCapture(captured); return; }
@@ -545,8 +563,8 @@ function show(tab) {
   state.tab = tab;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + tab));
-  if (tab === 'career') renderMasterView();
-  if (tab === 'cover') { renderCoverView(); if (!$('coverEdit').hidden) renderCover(); }
+  if (tab === 'career') { renderMasterView(); renderTagSummary(); renderDocLists(); }
+  if (tab === 'cover') renderCoverView();
   if (tab === 'archive') renderArchive();
   if (tab === 'fit') { renderFit(); renderFitHistory(); }
 }
@@ -654,7 +672,7 @@ function renderCoverView() {
       ? '<p style="margin-bottom:12px">' + esc(L.greeting || '') + '</p>' +
         paras.map((t) => '<p style="margin-bottom:12px">' + esc(t) + '</p>').join('') +
         '<p style="white-space:pre-line">' + esc(L.signoff || '') + '</p>'
-      : '<p style="color:#666">Nothing written yet. Either hit <b>Edit</b> and write it once, or generate a letter for a posting in <b>Fit Score</b> and use <b>Save as master letter</b> there.</p>') +
+      : '<p style="color:#666">Nothing here yet. Generate a letter for a posting in <b>Fit Score</b>, get it how you want it, then use <b>Save as master letter</b> there.</p>') +
     '</div>';
 }
 function toggleEditor(viewId, editId, btnId, onOpen) {
@@ -666,16 +684,110 @@ function toggleEditor(viewId, editId, btnId, onOpen) {
   if (opening && onOpen) onOpen();
   return opening;
 }
-$('masterEditToggle').addEventListener('click', () => {
-  const opened = toggleEditor('masterView', 'masterEdit', 'masterEditToggle');
-  if (!opened) renderMasterView();
-});
+// Keywords are the one thing the agent needs from the master that it cannot
+// infer, so tagging stays reachable — it changes keywords, never your words.
+$('tagAll').addEventListener('click', tagEverything);
+async function tagEverything() {
+  const btn = $('tagAll');
+  const items = state.master.sections.flatMap((sec) => sec.items.map((it) => ({ sec, it })));
+  const todo = items.filter(({ it }) => !(it.titles || []).length && !(it.skills || []).length);
+  // Tag what has never been tagged; only redo everything once nothing is left,
+  // so a stray click cannot wipe keywords you have already corrected.
+  const target = todo.length ? todo : items;
+  const msg = todo.length
+    ? 'Tag the ' + todo.length + ' entr' + (todo.length === 1 ? 'y' : 'ies') + ' that have no keywords yet?\n\n' +
+      (items.length - todo.length) + ' already tagged will be left alone. This only sets keywords — none of your wording changes.'
+    : 'Everything already has keywords. Re-tag all ' + items.length + ' entries, replacing what is there?\n\nThis only sets keywords — none of your wording changes.';
+  if (!confirm(msg)) return;
+
+  btn.disabled = true;
+  let done = 0, failed = 0;
+  for (const { it } of target) {
+    btn.textContent = '✦ Tagging ' + (done + 1) + '/' + target.length;
+    try {
+      const r = await ai({ action: 'keywords', master: state.master, entry: it });
+      it.titles = (r.result.titles || []).slice(0, 8);
+      it.skills = (r.result.skills || []).slice(0, 8);
+      done++;
+    } catch (err) {
+      failed++;
+      if (err.code === 'NO_KEY') { toast('No Anthropic API key set yet — add it in Vercel.', true); break; }
+    }
+  }
+  try {
+    state.master = await api('master', 'PUT', state.master, state.master.version);
+    toast('Tagged ' + done + ' entr' + (done === 1 ? 'y' : 'ies') + (failed ? ', ' + failed + ' failed' : '') + ' and saved.');
+  } catch (err) { toast('Tagged, but could not save: ' + err.message, true); }
+  renderTagSummary();
+  btn.disabled = false; btn.textContent = '✦ Tag keywords';
+}
+
+/* Everything you have actually produced, reachable two ways: by who you sent it
+   to, and by what the role was. Each link opens that document ready to print. */
+function docLinks(j) {
+  const v = currentVersion(j);
+  const rTxt = j.resume.frozenText || (v ? versionResumeText(j, v) : '');
+  const cTxt = j.coverLetter.frozenText || (v ? versionCoverText(v) : '');
+  return '<span class="doclinks">' +
+    (rTxt ? '<a href="#" data-doc="r|' + esc(j.id) + '">Resume</a>' : '<span class="none">no resume</span>') +
+    (cTxt ? '<a href="#" data-doc="c|' + esc(j.id) + '">Cover letter</a>' : '<span class="none">no letter</span>') +
+    '</span>';
+}
+
+function groupedDocs(keyFn, emptyLabel) {
+  const groups = new Map();
+  jdList().forEach((j) => {
+    const key = (keyFn(j) || '').trim() || emptyLabel;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(j);
+  });
+  return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function renderDocLists() {
+  const build = (elId, heading, keyFn, emptyLabel, hint) => {
+    const groups = groupedDocs(keyFn, emptyLabel);
+    $(elId).innerHTML =
+      '<div class="sec-head"><h2>' + heading + '</h2><span class="count">' + groups.length + '</span></div>' +
+      '<p class="tagline" style="margin-bottom:8px">' + hint + '</p>' +
+      (!groups.length ? '<div class="empty">Nothing generated yet.</div>'
+        : groups.map(([key, js]) =>
+          '<div class="docgroup"><b>' + esc(key) + '</b>' +
+            js.map((j) => '<div class="docrow"><span class="sub">' + esc(keyFn === companyOf ? (j.role || 'no role') : (j.company || 'no company')) + '</span>' + docLinks(j) + '</div>').join('') +
+          '</div>').join(''));
+  };
+  build('docsByCompany', 'By company', companyOf, 'No company', 'Who you sent it to.');
+  build('docsByTitle', 'By job title', titleOf, 'No title', 'What the role was.');
+
+  document.querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const [what, id] = a.dataset.doc.split('|');
+    const j = state.jobs.items.find((x) => x.id === id);
+    if (!j) return;
+    if (what === 'r') printResume(j); else printCoverLetter(j);
+  }));
+}
+const companyOf = (j) => j.company;
+const titleOf = (j) => j.role;
+
+function renderTagSummary() {
+  const items = state.master.sections.flatMap((sec) => sec.items);
+  const tagged = items.filter((it) => (it.titles || []).length || (it.skills || []).length);
+  $('tagOut').innerHTML =
+    '<div class="sec-head"><h2>Keywords</h2><span class="count">' + tagged.length + ' / ' + items.length + ' tagged</span></div>' +
+    '<p class="tagline" style="margin-bottom:8px">These are what let the agent pick the right entries for a posting. An untagged entry is invisible to it.</p>' +
+    (!tagged.length ? '<div class="empty">Nothing tagged yet. Hit ✦ Tag all.</div>'
+      : items.map((it) =>
+        '<div style="padding:6px 0;border-bottom:1px solid var(--border)">' +
+          '<b style="font-size:13.5px">' + esc(it.org || it.role) + '</b>' +
+          ((it.titles || []).length || (it.skills || []).length
+            ? '<div class="chips">' + (it.titles || []).map((t) => '<span class="chip">' + esc(t) + '</span>').join('') +
+              (it.skills || []).map((t) => '<span class="chip" style="color:var(--accent-2)">' + esc(t) + '</span>').join('') + '</div>'
+            : '<span class="tagline"> — untagged</span>') +
+        '</div>').join(''));
+}
 $('masterPdf').addEventListener('click', () => printMasterResume());
-$('coverEditToggle').addEventListener('click', () => {
-  const opened = toggleEditor('coverView', 'coverEdit', 'coverEditToggle', renderCover);
-  $('saveCover').hidden = !opened;
-  if (!opened) renderCoverView();
-});
+
 $('coverPdf').addEventListener('click', () => printMasterCover());
 
 /* ── TAILOR ONE ENTRY WITH AI ──────────────────────────
@@ -1060,22 +1172,21 @@ function renderCover() {
 }
 
 let coverDirty = false;
-function markCoverDirty() { coverDirty = true; $('saveCover').textContent = 'Save •'; }
-$('saveCover').addEventListener('click', async () => {
-  $('saveCover').disabled = true;
-  try {
-    adoptVersion(state.cover, await api('cover', 'PUT', state.cover, state.cover.version));
-    coverDirty = false; $('saveCover').textContent = 'Saved ✓';
-    setTimeout(() => { $('saveCover').textContent = 'Save'; $('saveCover').disabled = false; }, 2000);
-    toast('Cover letter saved');
-  } catch (err) { $('saveCover').disabled = false; toast(err.message, true); }
-});
+function markCoverDirty() { coverDirty = true; }
+
 
 function coverLetterText(cl) {
   if (cl && cl.frozenText) return cl.frozenText;
   const paras = (cl && cl.paragraphs && cl.paragraphs.length) ? cl.paragraphs : state.cover.letter.paragraphs;
   const L = state.cover.letter;
-  return [L.greeting, ...paras.map((p) => p.text).filter(Boolean), L.signoff].filter(Boolean).join('\n\n');
+  const body = paras.map((p) => (p.text || '').trim()).filter(Boolean);
+  const opensWithGreeting = /^(dear |to whom|hello|hi )/i.test(body[0] || '');
+  const endsWithSignoff = /(sincerely|regards|best|thank you)[\s,]*$/i.test((body[body.length - 1] || '').split('\n').pop() || '');
+  return [
+    opensWithGreeting ? '' : L.greeting,
+    ...body,
+    endsWithSignoff ? '' : L.signoff,
+  ].filter(Boolean).join('\n\n');
 }
 
 /* ── ARCHIVE: ONE GROUP PER APPLICATION ─────────────────
@@ -1277,6 +1388,11 @@ async function promoteLetterToMaster(j) {
 
   const existing = state.cover.letter.paragraphs.filter((p) => (p.text || '').trim()).length;
   if (existing && !confirm('Replace your master cover letter with this one?\n\nYour current master has ' + existing + ' written paragraph(s). This cannot be undone from here — the version on this application is unaffected either way.')) return;
+
+  // Drop a leading greeting or trailing sign-off: the master supplies those.
+  while (paras.length && /^(dear |to whom|hello|hi )/i.test(paras[0])) paras.shift();
+  while (paras.length && /^(sincerely|regards|best|thank you)/i.test(paras[paras.length - 1]) && paras[paras.length - 1].length < 60) paras.pop();
+  if (!paras.length) return toast('That letter is only a greeting and sign-off — nothing to promote.', true);
 
   state.cover.letter.paragraphs = paras.map((t, i) => ({
     id: uid('p'),
@@ -1596,15 +1712,46 @@ function showGrabber() {
   if (card.style.display === 'block') { card.style.display = 'none'; return; }
   card.style.display = 'block';
   card.innerHTML =
-    '<div class="sec-head"><h2>One-click capture</h2></div>' +
-    '<p style="font-size:14px;color:var(--muted);margin-bottom:12px">Drag this button to your bookmarks bar. Then on any job posting — LinkedIn, Indeed, a company careers page — click it and the description lands here as a new application.</p>' +
-    '<p><a class="btn primary" style="text-decoration:none" id="bmLink">Grab this job</a>' +
-    ' <button class="btn" id="bmCopy">Copy the code instead</button></p>' +
-    '<div class="banner info" style="margin-top:12px"><b>How it works</b>It reads the page your browser has already loaded and passes the text in the URL fragment — which never reaches any server. Nothing is scraped, and it works on sites that block automated fetching.</div>' +
-    '<div class="banner warn"><b>If your bookmarks bar is hidden</b>Ctrl+Shift+B shows it in Chrome. Or use "Copy the code instead", then make a new bookmark by hand and paste that as the URL.</div>';
+    '<div class="sec-head"><h2>Job capture bookmark</h2>' +
+      '<button class="btn ghost" id="bmClose">Close</button></div>' +
+
+    '<p style="font-size:14.5px;color:var(--muted);margin-bottom:4px"><b style="color:var(--text)">What it is for:</b> ' +
+      'getting a job description in here without selecting text, copying it, switching tabs and pasting. ' +
+      'You need the full posting because a resume can only be tailored against the real requirements &mdash; ' +
+      'and job-alert emails only ever carry a teaser and a link.</p>' +
+
+    '<div class="group-label"><span>Set up once</span><span class="line"></span></div>' +
+    '<ol style="font-size:14px;color:var(--muted);margin:0 0 6px 18px">' +
+      '<li>Make sure your bookmarks bar is showing &mdash; <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">B</span> in Chrome.</li>' +
+      '<li><b style="color:var(--text)">Drag</b> the green button below up onto that bar. Do not click it &mdash; dragging is the whole point.</li>' +
+      '<li>It becomes a bookmark called "Grab this job". That is all the setup there is.</li>' +
+    '</ol>' +
+    '<p style="margin:10px 0 14px"><a class="btn primary grabme" style="text-decoration:none" id="bmLink" draggable="true">&#10303; Grab this job</a>' +
+      ' <button class="btn ghost" id="bmCopy">Copy the code instead</button>' +
+      '<span class="tagline" style="margin-left:8px">&#8592; drag this one</span></p>' +
+
+    '<div class="group-label"><span>Then, for each job</span><span class="line"></span></div>' +
+    '<ol style="font-size:14px;color:var(--muted);margin:0 0 6px 18px">' +
+      '<li>Open the posting in your browser &mdash; LinkedIn, Indeed, a company careers page, anywhere.</li>' +
+      '<li>Click your <b style="color:var(--text)">Grab this job</b> bookmark.</li>' +
+      '<li>A tab opens here with the posting already saved.</li>' +
+    '</ol>' +
+
+    '<div class="banner info"><b>What you end up with</b>' +
+      'A new posting in the list on the left, with the job description filled in, and the company and role guessed from the page title. ' +
+      'Check those two are right, then open it in Fit Score to generate a resume and letter against it.</div>' +
+
+    '<div class="banner warn"><b>If dragging will not work</b>' +
+      'Use "Copy the code instead", then right-click your bookmarks bar &rarr; Add page, give it any name, and paste what you copied as the URL.</div>' +
+
+    '<p class="tagline">It reads the page your browser has already loaded and hands the text over in the URL fragment, which never reaches any server. ' +
+      'Nothing is scraped, which is why it still works on sites that block automated fetching.</p>';
+
   const a = $('bmLink');
   a.setAttribute('href', BOOKMARKLET);
-  a.addEventListener('click', (e) => { e.preventDefault(); toast('Drag it to your bookmarks bar rather than clicking it here.'); });
+  a.addEventListener('click', (e) => { e.preventDefault(); toast('This one gets dragged to your bookmarks bar, not clicked. Once it is up there, you click it while looking at a job posting.'); });
+  const close = $('bmClose');
+  if (close) close.addEventListener('click', () => { card.style.display = 'none'; });
   $('bmCopy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(BOOKMARKLET); toast('Bookmarklet code copied — paste it as a new bookmark’s URL'); }
     catch { toast('Clipboard blocked — drag the button instead', true); }

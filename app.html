@@ -2102,12 +2102,18 @@ function renderProposal(j) {
         ? '<div class="banner info"><b>What it changed</b>' + p.changelog.map(esc).join(' · ') + '</div>' : '') +
       (p.stillMissing.length
         ? '<div class="banner warn"><b>Still not answered by either document</b>' + p.stillMissing.map(esc).join(' · ') + '</div>' : '') +
-      '<div class="split" style="gap:12px">' +
+      // Three columns, the same shape as the Application box above it: what you
+      // write, what it produces, and the letter. Stacking the summary and the
+      // preview in one column read as a jumble beside the letter, not as
+      // columns at all.
+      '<div class="split split3" style="gap:12px">' +
         '<div>' +
           '<div class="group-label"><span>Professional summary</span><span class="line"></span></div>' +
-          '<textarea class="f" id="propSummary" style="min-height:96px">' + esc(p.summary) + '</textarea>' +
+          '<textarea class="f" id="propSummary" style="min-height:230px">' + esc(p.summary) + '</textarea>' +
+        '</div>' +
+        '<div>' +
           '<div class="group-label"><span>Resume, as it will read</span><span class="line"></span></div>' +
-          '<pre class="frozen" style="max-height:260px" id="propPreview"></pre>' +
+          '<pre class="frozen" style="max-height:230px" id="propPreview"></pre>' +
         '</div>' +
         '<div>' +
           '<div class="group-label"><span>Cover letter</span><span class="line"></span>' +

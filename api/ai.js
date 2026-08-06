@@ -379,11 +379,18 @@ Return JSON:
  ],
  "checks": ["anything an interviewer could challenge because the three documents disagree, overstate, or leave a gap — quote the wording"],
  "resumeSuggestions": ["what the posting suggests the resume should say differently, one per line"],
- "coverSuggestions": ["the same for the cover letter"]
+ "coverSuggestions": ["the same for the cover letter"],
+ "askThem": [
+   {
+     "question": "a question SHE should ask THEM, specific to this posting and this company",
+     "why": "what the answer tells her, and what a bad answer would sound like"
+   }
+ ]
 }
 
 Twelve questions at most, hardest first. Cover the obvious technical ground the posting names, the gaps her documents concede, and the two or three questions she would least like to be asked.
 CHECKS ARE THE POINT: a claim in the letter the resume does not support, a title or company named wrongly, a date range that does not add up, a system named in one document and not the other — say it plainly and quote it. She would rather find it here than across a table.
+ASK THEM: six to eight questions worth her asking, drawn from this posting rather than any generic list. Prefer ones that would change whether she wants the job — how the close is staffed and where it currently breaks, why the seat is open, who owns the audit relationship, what the systems roadmap actually is, what the first quarter is judged on. Say what a bad answer sounds like, since that is the part she cannot look up.
 Every angle must be built only from the career data and the documents above. Where there is nothing, say "no evidence" and let her answer it herself.`,
 
   answerhelp: (b) => `CAREER DATA:

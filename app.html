@@ -1097,7 +1097,8 @@ function renderJdDetail() {
 
     '<div class="card">' +
       '<div class="sec-head"><h2>Cover letter</h2>' + sel('c', j.coverLetter.status, 'coverLetter.status') +
-        (j.coverLetter.frozenText ? '<span class="chip">frozen</span>' : '') + '</div>' +
+        (j.coverLetter.frozenText ? '<span class="chip">frozen</span>' : '') +
+        '<button class="btn" id="cPrint">Print / PDF</button></div>' +
       (j.coverLetter.frozenText
         ? '<pre class="frozen">' + esc(j.coverLetter.frozenText) + '</pre>'
         : '<textarea class="f" id="jdCover" style="min-height:230px">' + esc(coverLetterText(j.coverLetter)) + '</textarea>') +
@@ -1129,6 +1130,8 @@ function wireJdDetail(j) {
   $('genBoth').addEventListener('click', () => generateForJd(j));
   const rp = $('rPrint');
   if (rp) rp.addEventListener('click', () => printResume(j));
+  const cp = $('cPrint');
+  if (cp) cp.addEventListener('click', () => printCoverLetter(j));
 }
 
 function getPath(o, p) { return p.split('.').reduce((a, k) => (a ? a[k] : undefined), o); }
@@ -1180,16 +1183,49 @@ function renderJdPicker(j) {
   }));
 }
 
+function pdfName(j, what) {
+  const bits = [state.master.profile.name, what, j.company, j.role].filter(Boolean);
+  return bits.join(' - ').replace(/[\\/:*?"<>|]/g, '');
+}
+
 function printResume(j) {
   const html = j.resume.frozenHtml || renderResume({ itemIds: j.resume.itemIds, summary: j.resume.summary, targetRole: j.role });
   const w = window.open('', '_blank');
-  w.document.write('<html><head><title>' + esc(j.company || 'Resume') + '</title><style>' +
+  w.document.write('<html><head><title>' + esc(pdfName(j, 'Resume')) + '</title><style>' +
     'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.5in;font-size:11pt;line-height:1.45}' +
     'h1{font-size:20pt;margin-bottom:2px}.ph{font-size:11pt;color:#444}.pc{font-size:9.5pt;color:#555;margin-bottom:14px}' +
     'h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#2f5a45;border-bottom:1.5px solid #2f5a45;padding-bottom:2px;margin:14px 0 8px;font-family:Helvetica,Arial,sans-serif}' +
     '.e{margin-bottom:10px}.e-top{display:flex;justify-content:space-between}.e-org{font-weight:700}.e-meta{font-size:9.5pt;color:#666}' +
     '.e-role{font-style:italic;font-size:10.5pt;margin-bottom:2px}ul{margin:0 0 0 18px}li{margin-bottom:2px}' +
     '@media print{@page{margin:.5in}}</style></head><body>' + html + '</body></html>');
+  w.document.close(); setTimeout(() => w.print(), 350);
+}
+
+// The letter prints as a letter — her contact block, the date, proper margins —
+// not as a bare wall of text.
+function printCoverLetter(j) {
+  const p = state.master.profile;
+  const text = coverLetterText(j.coverLetter);
+  if (!text.trim()) return toast('Nothing in the letter yet.', true);
+  const paras = text.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+  const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const contact = [p.location, p.email, p.linkedin].filter(Boolean).join('  |  ');
+
+  const w = window.open('', '_blank');
+  w.document.write('<html><head><title>' + esc(pdfName(j, 'Cover Letter')) + '</title><style>' +
+    'body{font-family:Georgia,serif;color:#1a1a1a;max-width:7.5in;margin:0 auto;padding:.75in .5in;font-size:11.5pt;line-height:1.55}' +
+    'h1{font-size:17pt;margin-bottom:2px;letter-spacing:-.3px}' +
+    '.contact{font-size:9.5pt;color:#555;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:22px}' +
+    '.date{margin-bottom:18px;font-size:10.5pt;color:#444}' +
+    '.to{margin-bottom:18px;font-size:10.5pt;color:#444}' +
+    'p{margin-bottom:12px}' +
+    '@media print{@page{margin:.5in}}</style></head><body>' +
+    '<h1>' + esc(p.name) + '</h1>' +
+    '<div class="contact">' + esc(contact) + '</div>' +
+    '<div class="date">' + esc(today) + '</div>' +
+    (j.company ? '<div class="to">' + esc(j.company) + (j.role ? '<br>Re: ' + esc(j.role) : '') + '</div>' : '') +
+    paras.map((t) => '<p>' + esc(t).replace(/\n/g, '<br>') + '</p>').join('') +
+    '</body></html>');
   w.document.close(); setTimeout(() => w.print(), 350);
 }
 
@@ -1428,6 +1464,10 @@ function renderFitHistory() {
     const f = state.fits.items.find((x) => x.id === b.dataset.fitview);
     const j = state.jobs.items.find((x) => x.id === f.jobId) || { company: f.jobLabel, role: '' };
     renderSectionScores(f.result, j);
+    // The results render above the history, so from the bottom of the page it
+    // looked like the button did nothing at all.
+    $('fitOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Showing the run from ' + new Date(f.at).toLocaleString());
   }));
   document.querySelectorAll('[data-delfit]').forEach((b) => b.addEventListener('click', async () => {
     state.fits.items = state.fits.items.filter((x) => x.id !== b.dataset.delfit);

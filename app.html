@@ -489,7 +489,7 @@
     <p><strong>Nothing is a version until you press Approve.</strong> Until then the current version is untouched, and Discard throws the draft away without spending your approved answers. Once approved it becomes the current version, and the Resume and Cover letter links in both Postings tables follow it.</p>
     <p>Then score again: the Versions list shows each version's own score, so you can see whether the rewrite actually moved the number.</p>
     <h4>Everything is closed until you open it</h4>
-    <p>Score history, the questions, the versions and the ranking all start collapsed, with their counts on the headings. Picking an application moves all of them &mdash; its documents, its questions, its versions, its scores &mdash; so nothing on the page is ever describing a different company.</p>
+    <p>The proposed version, score history, the questions, the versions and the ranking all start collapsed, with their counts on the headings. A draft arrives closed too &mdash; <strong>Approve</strong>, <strong>Discard</strong> and <strong>AI help</strong> sit on its heading, so you can act on one without opening it. Picking an application moves all of them &mdash; its documents, its questions, its versions, its scores &mdash; so nothing on the page is ever describing a different company.</p>
     <div class="tip">A zero with "no evidence" is the honest answer, not a failure of the scorer. If the posting wants something you have never done, no wording fixes that &mdash; and the fix will say so rather than help you claim it.</div>
     <p>Every run is saved to the score history, so you can see whether a rewrite actually moved the number.</p>
     </div>
@@ -2071,6 +2071,7 @@ async function reviseJd(j) {
       stillMissing: r.result.stillMissing || [],
       answers,
     };
+    proposalOpen = false; propPickerOpen = false;
     await saveJobs(); renderFitWork();
     $('fitProposal').scrollIntoView({ behavior: 'smooth', block: 'start' });
     toast('Draft ready — edit it, then Approve to make it v' + ((j.versions || []).length + 1) + '.');
@@ -2116,6 +2117,7 @@ async function aiHelpProposal(j) {
 }
 
 let propPickerOpen = false;
+let proposalOpen = false;
 function renderProposal(j) {
   const el = $('fitProposal');
   if (!el) return;
@@ -2130,9 +2132,14 @@ function renderProposal(j) {
         '<span class="tagline">' + esc(p.note || '') + '</span>' +
         '<button class="btn" id="propHelp">&#10022; AI help</button>' +
         '<button class="btn primary" id="propApprove">Approve as v' + nextV + '</button>' +
-        '<button class="btn danger ghost" id="propDiscard">Discard</button></div>' +
+        '<button class="btn danger ghost" id="propDiscard">Discard</button>' +
+        '<button class="btn ghost" id="propToggle">' + (proposalOpen ? 'Hide' : 'Show') + '</button></div>' +
       '<p class="tagline" style="margin-bottom:10px">Nothing has changed yet &mdash; v' +
-        (j.currentVersion || 1) + ' is still current. Edit anything below, then approve.</p>' +
+        (j.currentVersion || 1) + ' is still current. ' +
+        (proposalOpen ? 'Edit anything below, then approve.' : 'Open it to read and edit it, or approve it as it stands.') + '</p>' +
+      // Closed like every other section. Approve, Discard and AI help stay on
+      // the heading, so the draft is still actionable without opening it.
+      (!proposalOpen ? '' :
       (p.changelog.length
         ? '<div class="banner info"><b>What it changed</b>' + p.changelog.map(esc).join(' · ') + '</div>' : '') +
       (p.stillMissing.length
@@ -2181,8 +2188,12 @@ function renderProposal(j) {
           '<label class="pick"><input type="checkbox" data-proppick="' + esc(it.id) + '"' +
             (p.itemIds.includes(it.id) ? ' checked' : '') + ' />' +
           '<span><span class="t">' + esc(it.org || it.role) + '</span> <span class="s">' + esc(it.dates || '') + '</span></span></label>').join('')
-      ).join('')) +
+      ).join('')) + '') +
     '</div>';
+
+  $('propToggle').addEventListener('click', () => { proposalOpen = !proposalOpen; renderProposal(j); });
+  wireProposalActions(j, p);
+  if (!proposalOpen) return;   // nothing below exists while it is closed
 
   const preview = () => {
     $('propPreview').textContent =
@@ -2209,7 +2220,6 @@ function renderProposal(j) {
     queueSaveJobs(); renderProposal(j);
     toast('Added to the draft letter — edit it into your own words before approving.');
   }));
-  $('propHelp').addEventListener('click', () => aiHelpProposal(j));
   // The picker only redraws the preview — redrawing the card would close the
   // box you just ticked and lose your place in a long list.
   el.querySelectorAll('[data-proppick]').forEach((c) => c.addEventListener('change', () => {
@@ -2219,6 +2229,12 @@ function renderProposal(j) {
     queueSaveJobs(); preview();
   }));
 
+}
+
+/* The three things that act on the whole draft. They live on the heading, so
+   they are wired whether or not the card is open. */
+function wireProposalActions(j, p) {
+  $('propHelp').addEventListener('click', () => aiHelpProposal(j));
   $('propApprove').addEventListener('click', async () => {
     const paras = p.coverLetter.map((t) => String(t || '').trim()).filter(Boolean);
     if (!p.itemIds.length && !paras.length) return toast('Nothing selected and no letter — nothing to approve.', true);

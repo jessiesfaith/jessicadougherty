@@ -2307,14 +2307,19 @@ function addAnswerToMaster(q) {
 }
 
 let openVersion = null;
+let versionsOpen = false;
 function renderVersions(j) {
   const el = $('jdVersions');
   if (!el) return;
   const vs = (j.versions || []).slice().reverse();
   el.innerHTML =
     '<div class="sec-head"><h2>Versions</h2><span class="count">' + vs.length + '</span>' +
-      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' &middot; ')) + '</span></div>' +
-    (!vs.length ? '<div class="empty">No versions yet. Generate a draft to create v1.</div>'
+      '<span class="tagline">' + esc([j.company, j.role].filter(Boolean).join(' &middot; ')) + '</span>' +
+      '<button class="btn ghost" id="vToggle">' + (versionsOpen ? 'Hide' : 'Show') + '</button></div>' +
+    // Closed by default. Which version is current is what the rest of the page
+    // already acts on; the list is for going back, which is occasional.
+    (!versionsOpen && vs.length ? '' :
+    !vs.length ? '<div class="empty">No versions yet. Generate a draft to create v1.</div>'
       : '<div class="lrow head vrow"><div>Ver</div><div>Company</div><div>Resume</div><div>Cover letter</div>' +
           '<div>Answers</div><div>Score</div><div>Created</div><div></div></div>' +
         vs.map((v) => {
@@ -2350,6 +2355,7 @@ function renderVersions(j) {
             '</div>');
         }).join(''));
 
+  $('vToggle').addEventListener('click', () => { versionsOpen = !versionsOpen; renderVersions(j); });
   el.querySelectorAll('[data-vrow]').forEach((row) => row.addEventListener('click', (e) => {
     if (e.target.closest('button')) return;
     const n = +row.dataset.vrow;

@@ -267,7 +267,7 @@
     </span>
     <div class="tabs">
       <button class="tab active" data-tab="career">Resume</button>
-      <button class="tab" data-tab="archive">Archive</button>
+      <button class="tab" data-tab="archive">Job Postings</button>
       <button class="tab" data-tab="fit">Fit Score</button>
     </div>
     <div class="nav-right">
@@ -295,16 +295,9 @@
       <button class="btn ghost" id="tagAll" title="Fill in job titles and skills — keywords only, never your wording">✦ Tag keywords</button>
     </div>
     <div class="card" id="docsByCompany"></div>
-    <div class="split" style="grid-template-columns:minmax(0,330px) minmax(0,1fr)">
-      <div>
-        <div class="card" id="docsByTitle"></div>
-      </div>
-      <div>
-        <div class="card" id="masterView"></div>
-        <div class="card" id="coverView"></div>
-        <div class="card" id="tagOut"></div>
-      </div>
-    </div>
+    <div class="card" id="masterView"></div>
+    <div class="card" id="coverView"></div>
+    <div class="card" id="tagOut"></div>
     <div id="masterEdit" hidden>
       <div class="card" id="profileCard"></div>
       <div id="sections"></div>
@@ -319,7 +312,7 @@
   <section class="panel" id="panel-archive">
     <div class="head">
       <div>
-        <h1>Archive</h1>
+        <h1>Job Postings</h1>
         <p>Where job descriptions land &mdash; by capture, by the inbox agent, or pasted in. Everything you do <em>with</em> one happens in Fit Score.</p>
       </div>
       <div class="spacer"></div>
@@ -338,7 +331,7 @@
     <div class="head">
       <div>
         <h1>Fit score</h1>
-        <p>Pick an application from the Archive. Every requirement in the posting is scored twice &mdash; once against the resume, once against the cover letter &mdash; each with a concrete fix.</p>
+        <p>Pick an application from Job Postings. Every requirement in the posting is scored twice &mdash; once against the resume, once against the cover letter &mdash; each with a concrete fix.</p>
       </div>
     </div>
     <div class="card" id="fitPicked"></div>
@@ -365,8 +358,8 @@
   </div>
   <div class="guide-nav">
     <button data-goto="g-career">Resume</button>
-    <button data-goto="g-apps">Applications</button>
-    <button data-goto="g-archive">Archive</button>
+    <button data-goto="g-apps">Postings</button>
+    <button data-goto="g-archive">Job Postings</button>
     
     <button data-goto="g-fit">Fit score</button>
     <button data-goto="g-capture">Capture</button>
@@ -382,12 +375,12 @@
     <p>Every resume entry carries two lists: the <strong>job titles</strong> it is evidence for, and the <strong>skills</strong> it demonstrates. These are what the agent matches a posting against. An untagged entry is invisible to it.</p>
     <p><strong>&#10022; Tag keywords</strong> fills both with AI. It only touches entries that have none, so running it again is safe. It saves for you when it finishes.</p>
 
-    <h3 id="g-apps">The applications list</h3>
+    <h3 id="g-apps">The postings list</h3>
     <p>Across the top of the Resume tab, one row per application &mdash; it stays one line tall however many you have.</p>
     <p><strong>Documents</strong> links open that application's resume or cover letter, ready to print. <strong>Sent</strong>, <strong>Contact email</strong> and <strong>Notes</strong> are yours to type into: they are tracking, not document content, so they are editable right here and save as you type.</p>
-    <p>Rows for applications you have not marked complete are dimmed. Below the table, the same documents again grouped <strong>by job title</strong>, for when you remember the role but not the company.</p>
+    <p>Rows for applications you have not marked complete are dimmed.</p>
 
-    <h3 id="g-archive">Archive</h3>
+    <h3 id="g-archive">Job Postings</h3>
     <p>Every posting on one row, every field its own column &mdash; company, job title, status, how much of the description you actually have, deadline, sent date, contact, notes, and what has been built. Click a row to open it in full underneath.</p>
     <p><strong>Posting</strong> tells you whether you have the real description or only an alert teaser. Nothing can be generated from a teaser.</p>
     <h4>Adding a posting</h4>
@@ -735,8 +728,8 @@ async function tagEverything() {
   btn.disabled = false; btn.textContent = '✦ Tag keywords';
 }
 
-/* Everything you have actually produced, reachable two ways: by who you sent it
-   to, and by what the role was. Each link opens that document ready to print. */
+/* Everything you have actually produced, one link per document. Each link opens
+   that document ready to print. */
 function docLinks(j) {
   const v = currentVersion(j);
   const rTxt = j.resume.frozenText || (v ? versionResumeText(j, v) : '');
@@ -747,17 +740,7 @@ function docLinks(j) {
     '</span>';
 }
 
-function groupedDocs(keyFn, emptyLabel) {
-  const groups = new Map();
-  jdList().forEach((j) => {
-    const key = (keyFn(j) || '').trim() || emptyLabel;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(j);
-  });
-  return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-}
-
-/* By company is a table, one row per application: at a glance it stays one line
+/* Postings is a table, one row per application: at a glance it stays one line
    tall however many you have. Sent, contact and notes are yours to type in —
    they are tracking, not resume content, so they are editable here. */
 const APP_FIELDS = [
@@ -770,7 +753,7 @@ function renderCompanyTable() {
   const rows = jdList().slice().sort((a, b) =>
     (a.company || '~').localeCompare(b.company || '~') || (a.role || '').localeCompare(b.role || ''));
   $('docsByCompany').innerHTML =
-    '<div class="sec-head"><h2>By company</h2><span class="count">' + rows.length + '</span></div>' +
+    '<div class="sec-head"><h2>Postings</h2><span class="count">' + rows.length + '</span></div>' +
     '<p class="tagline" style="margin-bottom:8px">One row per application. Sent, contact and notes save as you type.</p>' +
     (!rows.length ? '<div class="empty">Nothing captured yet.</div>' :
       '<table class="apptbl"><colgroup>' +
@@ -804,18 +787,8 @@ function renderCompanyTable() {
 
 function renderDocLists() {
   renderCompanyTable();
-  const groups = groupedDocs(titleOf, 'No title');
-  $('docsByTitle').innerHTML =
-    '<div class="sec-head"><h2>By job title</h2><span class="count">' + groups.length + '</span></div>' +
-    '<p class="tagline" style="margin-bottom:8px">What the role was.</p>' +
-    (!groups.length ? '<div class="empty">Nothing generated yet.</div>'
-      : groups.map(([key, js]) =>
-        '<div class="docgroup"><b>' + esc(key) + '</b>' +
-          js.map((j) => '<div class="docrow"><span class="sub">' + esc(j.company || 'no company') + '</span>' + docLinks(j) + '</div>').join('') +
-        '</div>').join(''));
-
-  // Scoped: the Archive table also carries [data-doc] links and wires its own.
-  // A global query here would bind a second handler and open two print windows.
+  // Scoped: the Job Postings table also carries [data-doc] links and wires its
+  // own. A global query here would bind a second handler and open two windows.
   $('panel-career').querySelectorAll('[data-doc]').forEach((a) => a.addEventListener('click', (e) => {
     e.preventDefault();
     const [what, id] = a.dataset.doc.split('|');
@@ -824,8 +797,6 @@ function renderDocLists() {
     if (what === 'r') printResume(j); else printCoverLetter(j);
   }));
 }
-const companyOf = (j) => j.company;
-const titleOf = (j) => j.role;
 
 function renderTagSummary() {
   const items = state.master.sections.flatMap((sec) => sec.items);
@@ -1944,7 +1915,7 @@ function showGrabber() {
     '</ol>' +
 
     '<div class="banner info"><b>What you end up with</b>' +
-      'A new posting in the list on the left, with the job description filled in, and the company and role guessed from the page title. ' +
+      'A new posting in the Postings list, with the job description filled in, and the company and role guessed from the page title. ' +
       'Check those two are right, then open it in Fit Score to generate a resume and letter against it.</div>' +
 
     '<div class="banner warn"><b>If clicking the bookmark does nothing</b>' +

@@ -6,13 +6,17 @@
 
 export const config = {
   matcher: [
-    '/education.html',
+    '/workbench.html',
+    '/workbench',
     '/education-editor.html',
-    '/education',
     '/education-editor',
     '/app.html',
     '/career',
     '/dashboard/career',
+    // Legacy Education paths. They redirect to /workbench.html, but stay in
+    // the matcher so the gate still applies if a redirect is ever removed.
+    '/education.html',
+    '/education',
   ],
 };
 

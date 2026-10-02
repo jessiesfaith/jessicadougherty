@@ -1,5 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/education.html",
+      "destination": "/workbench.html",
+      "permanent": false
+    },
+    {
+      "source": "/education",
+      "destination": "/workbench.html",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/resume",

@@ -55,24 +55,24 @@
 </style>
 </head>
 <body>
-<nav><div class="nav-inner"><a class="brand" href="index.html">Jessica&nbsp;Dougherty</a><a href="education.html" style="font-size:14px;font-weight:600">Education page →</a></div></nav>
+<nav><div class="nav-inner"><a class="brand" href="index.html">Jessica&nbsp;Dougherty</a><a href="workbench.html" style="font-size:14px;font-weight:600">Workbench page →</a></div></nav>
 
 <header class="wrap">
   <p class="eyebrow">Private tool</p>
   <h1>Education page editor</h1>
-  <p>Unlock the current page, edit the three tabs as plain HTML, then download a rebuilt <code>education.html</code>. Everything happens in this browser — nothing is uploaded anywhere.</p>
+  <p>Unlock the current page, edit the three tabs as plain HTML, then download a rebuilt <code>workbench.html</code>. Everything happens in this browser — nothing is uploaded anywhere.</p>
 </header>
 
 <main class="wrap steps">
 
   <section class="card">
     <h2><span class="n">1</span>Unlock the current page</h2>
-    <p class="hint">Loads <code>education.html</code> and decrypts it so you can edit what's inside.</p>
+    <p class="hint">Loads <code>workbench.html</code> and decrypts it so you can edit what's inside.</p>
     <label for="pw">Current password</label>
     <input type="password" id="pw" placeholder="Current password" autocomplete="current-password" spellcheck="false" />
     <div class="row">
       <button id="loadBtn" type="button">Unlock &amp; load</button>
-      <button class="ghost" id="pickBtn" type="button">Choose education.html manually</button>
+      <button class="ghost" id="pickBtn" type="button">Choose workbench.html manually</button>
       <input type="file" id="file" accept=".html" hidden />
     </div>
     <p class="status" id="s1"></p>
@@ -98,9 +98,9 @@
       <p class="hint">Leave the password blank to keep the current one, or type a new one to change it.</p>
       <label for="newpw">New password (optional)</label>
       <input type="password" id="newpw" placeholder="Leave blank to keep the current password" autocomplete="new-password" spellcheck="false" />
-      <div class="row"><button id="buildBtn" type="button">Rebuild education.html</button></div>
+      <div class="row"><button id="buildBtn" type="button">Rebuild workbench.html</button></div>
       <p class="status" id="s3"></p>
-      <div class="note"><b>Last step:</b> upload the downloaded <code>education.html</code> to your repo (GitHub → the file → <b>Add file / Upload files</b>, or drag it in), replacing the old one. It goes live in about a minute.</div>
+      <div class="note"><b>Last step:</b> upload the downloaded <code>workbench.html</code> to your repo (GitHub → the file → <b>Add file / Upload files</b>, or drag it in), replacing the old one. It goes live in about a minute.</div>
     </section>
   </div>
 
@@ -150,12 +150,12 @@
     var pw = $('pw').value;
     if (!pw) return say('s1', 'Enter the current password first.', false);
     say('s1', 'Loading…');
-    fetch('education.html', { cache: 'no-store' })
+    fetch('workbench.html', { cache: 'no-store' })
       .then(function(r){ if (!r.ok) throw new Error('http'); return r.text(); })
       .then(function(t){ return loadFromText(t, pw); })
       .catch(function(e){
         if (e && e.message === 'no vault') return say('s1', 'That file has no encrypted section in it.', false);
-        say('s1', 'Couldn’t load or decrypt. If you opened this file directly from your disk, use “Choose education.html manually”. Otherwise the password is wrong.', false);
+        say('s1', 'Couldn’t load or decrypt. If you opened this file directly from your disk, use “Choose workbench.html manually”. Otherwise the password is wrong.', false);
       });
   });
 
@@ -208,10 +208,10 @@
         var blob = new Blob([out], { type:'text/html' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'education.html';
+        a.download = 'workbench.html';
         a.click();
         setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
-        say('s3', 'Downloaded. Upload it to your repo to replace the old education.html.' +
+        say('s3', 'Downloaded. Upload it to your repo to replace the old workbench.html.' +
                   ($('newpw').value ? ' Your password has been changed.' : ''), true);
       })
       .catch(function(){ say('s3', 'Something went wrong while encrypting.', false); });

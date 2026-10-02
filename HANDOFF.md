@@ -2,13 +2,17 @@
 
 Everything private lives behind one password at `/career`. No build step, no
 dependencies, no framework: `app.html` is the whole client, `api/*.js` are
-Vercel functions, and your data is JSON in a private GitHub repo you own.
+Vercel functions, and the data is JSON in a private GitHub repo you own.
+
+This file explains what the app **is**. `CLAUDE.md` is how to **work on it** —
+settled decisions, traps that have already bitten, and how to verify a change.
+Read that one before editing anything.
 
 ## The shape of it
 
 | Piece | What it is |
 | --- | --- |
-| `app.html` | The entire workspace — four tabs, one file, one inline script |
+| `app.html` | The entire workspace — five tabs, one file, one inline script |
 | `api/data.js` | Read/write the JSON documents, with an optimistic-lock check |
 | `api/_store.js` | GitHub Contents API as the database |
 | `api/ai.js` | Every Claude call. One action per feature |
@@ -18,34 +22,62 @@ Vercel functions, and your data is JSON in a private GitHub repo you own.
 | `api/resume.js` | **Public.** Serves the published resume at `/resume` |
 | `api/_dashboard-page.js` | The dashboard, as tabs over grouped modules |
 
-The dashboard's **Career** group is one card per tab of `/career`, in the order
-they appear there, so the two never drift into describing different things.
+Files under `api/` whose names start with `_` are private modules. Vercel does
+not route them, so they never become endpoints.
 
-### The four tabs
+## The five tabs
 
-**Resume** — your master resume and cover letter, read-only, shown exactly as
-they print. A read-only mirror of the postings table sits above them, including a
-**Public** column showing which application's resume is live on the site.
+`TABS` in `app.html` is the single list that drives the hash router. The
+dashboard's **Career** group mirrors it, one card per tab, in the same order, so
+the two never drift into describing different things.
 
-**Job Postings** — the editable table. Add or capture postings, edit tracking
-fields in the row, tick and Remove. Removing is a soft delete: status becomes
-`deleted` and *show deleted* brings it back.
+**Resume** — the master resume and cover letter, read-only, shown exactly as
+they print. A read-only mirror of the postings table sits above them, including
+a **Public** column showing which application's resume is live on the site.
 
-**Fit Score** — the working tab. Posting, resume and cover letter side by side;
-every requirement scored twice; the agent's questions; a proposed next version
-you edit and approve; versions; score history.
+**Job Postings** — the editable table, and the only place a posting is edited.
+Add or capture postings, edit tracking fields in the row, tick and Remove.
+Removing is a soft delete: status becomes `deleted`, and *show deleted* brings
+it back.
 
-**Other** — four plans: Education, Experience, Events and Project. Each is a flat
-sortable list — Type, Company, Item, Enrolled, Duration, Link, Notes, Priority — of what you
-intend to do, kept apart from the career master, which is the record of what you
-have done. Rows move up and down with the arrows on each row — that is the stored
-order. Sorting is display-only, so it never rewrites it. Stored in `career/plans.json`. **No agent reads them and no version is
-built from them** — when something on a plan happens, it goes into the master by
-hand, which is the moment it becomes a fact.
+**Fit Score** — the working tab. Posting, resume and cover letter side by side,
+all three read-only; every requirement scored twice; the agent's questions; a
+proposed next version to edit and approve; versions; score history.
 
 **Interview Prep** — after the documents are sent. Likely questions, a
 double-check of where the three documents disagree, questions to ask them, and
-prep versions.
+prep versions. All three documents are read-only here too.
+
+**Other** — four plans: Education, Experience, Events and Project. Each is a
+flat sortable list — Type, Company, Item, Enrolled, Duration, Link, Notes,
+Priority — of what you intend to do, kept apart from the career master, which is
+the record of what you have done. Rows move up and down with the arrows on each
+row; that is the stored order, and sorting is display-only so it never rewrites
+it. Stored in `career/plans.json`. **No agent reads them and no version is built
+from them** — when something on a plan happens it goes into the master by hand,
+which is the moment it becomes a fact.
+
+Every section on every tab is collapsed by default, including nested prep
+versions. Action buttons sit outside the collapse, so a section can be run
+without opening it.
+
+## The process
+
+This is the loop the app is built around, on **Fit Score**:
+
+1. **Score** the posting against the current resume and cover letter.
+2. **Add to resume** / **Add to letter** work individual fixes into a draft.
+3. **Answer the questions** the agent raises — by hand, or with **AI help**,
+   which drafts into a review box beside the answer, never into it.
+4. **Save resume and cover letter** at the top of the page turns the approved
+   draft into a numbered version.
+5. **See it in Job Postings** jumps to the row whose resume and letter links now
+   serve that version.
+
+Both question lists — Fit Score and Interview Prep — carry **Run all AI help**,
+which runs every open question **sequentially** into its own review box, with a
+counter on the button. The approval rule is unchanged: batching changes how many
+drafts appear, not how they become real.
 
 ## The dashboard
 
@@ -55,9 +87,9 @@ and **Public**. The tab you were last on is remembered in `localStorage`.
 
 To add a module: add it to `MODULES` in `api/_dashboard-page.js` with a `group`
 (and a `sub` if its group has sub-tabs). If it needs a page of its own, create
-`api/<module>.js` with the guard copied from `api/dashboard.js` and add a rewrite
-in `vercel.json`. Anything served from an `/api` route with that guard is private
-by default.
+`api/<module>.js` with the guard copied from `api/dashboard.js` and add a
+rewrite in `vercel.json`. Anything served from an `/api` route with that guard
+is private by default.
 
 ## Publishing the public resume
 
@@ -78,11 +110,11 @@ Three things worth knowing:
 
 - **Publishing takes effect immediately.** No deploy, no build. The route is
   cached for 60 seconds at the edge, so allow a moment.
-- **What goes public is a specific version, chosen a row at a time.** That means
-  a resume aimed at one posting can become the public one — deliberate, since the
-  Publish button is per row and confirms with the company name in the prompt.
-- **It is a copy, not a link.** Editing your master afterwards does not change
-  what is live until you press Publish again. The line under the Resume heading
+- **What goes public is a specific version, chosen a row at a time.** A resume
+  aimed at one posting can become the public one — deliberate, since the button
+  is per row and confirms with the company name in the prompt.
+- **It is a copy, not a link.** Editing the master afterwards does not change
+  what is live until Publish is pressed again. The line under the Resume heading
   says what is live and when it went out.
 
 ## Two rules the code keeps
@@ -94,9 +126,9 @@ listed as something to confirm rather than a sentence to sign. If you change one
 thing in here, do not change this.
 
 **A completed version is a record.** Marking a document complete freezes its
-text. The Interview Prep tab shows documents read-only for the same reason — the
-resume is generated from a version's entries and summary, so there is no text
-field to edit, and editing means making the next version in Fit Score.
+text. Fit Score and Interview Prep show the documents read-only for the same
+reason — the resume is generated from a version's entries and summary, so there
+is no text field to edit, and editing means making the next version.
 
 ## Environment variables
 
@@ -108,8 +140,11 @@ field to edit, and editing means making the next version in Fit Score.
 | `GITHUB_DATA_TOKEN` | Storage | Fine-grained token, Contents: Read and write, that repo only. **Expires — diarise it** |
 | `GITHUB_DATA_BRANCH` | Storage | Optional, defaults to `main` |
 | `ANTHROPIC_API_KEY` | The AI buttons | Everything else works without it |
-| `ANTHROPIC_MODEL` | The AI buttons | **Recommended.** Unset, the app takes the first model the API lists, which is not pinned to anything |
+| `ANTHROPIC_MODEL` | The AI buttons | **Pin it.** Unset, the app takes the first model the API lists, which is not pinned to anything. Currently `claude-opus-5` |
 | `INBOX_SECRET` | The email agent | Optional |
+
+Changing a variable in Vercel requires a **redeploy** — saving alone does
+nothing to what is already running.
 
 `/resume` needs `GITHUB_DATA_REPO` and `GITHUB_DATA_TOKEN` like everything else.
 Without them it simply falls back to the static `resume.html` rather than
@@ -125,11 +160,11 @@ keeps a snapshot. Three things hold the line:
 - Prep versions are capped at **20 per position**, oldest dropped.
 - `api/_store.js` refuses a save that would exceed the limit **before** sending
   it, naming the file, its size and what to prune. Nothing already saved is
-  touched. Above 800 KB the commit message carries the size as a warning, so
-  the data repo's history shows you it coming.
+  touched. Above 800 KB the commit message carries the size as a warning, so the
+  data repo's history shows it coming.
 
-If you ever see that error, prune from Score history first — it is the fastest
-win per KB.
+If you ever see that error, prune Score history first — it is the fastest win
+per KB.
 
 ## Deploying
 
@@ -143,11 +178,11 @@ with that check red.**
 
 ## Working on `app.html`
 
-It is one long file of string-built HTML. Two habits keep it safe:
+It is one long file of string-built HTML. `CLAUDE.md` covers this properly; the
+short version is two habits:
 
-1. **Parse it before you commit.** The workflow does it, but so should you:
-   `node -e '…new Function(script)…'` — the check step in the workflow is
-   copy-pasteable.
+1. **Parse it before you commit.** The workflow does it, but so should you — the
+   check step there is copy-pasteable.
 2. **Escape everything.** `esc()` for plain text; `rich()` where `**bold**` and
    `***bold blue***` are allowed, which escapes first and then adds the only two
    tags permitted. Never interpolate raw input. Do not pass an HTML entity

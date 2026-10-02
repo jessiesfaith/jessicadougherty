@@ -157,7 +157,7 @@ Push to `main`; Vercel builds it. Nothing compiles.
 
 `.github/workflows/check.yml` parses every API module, every inline script in
 every page, and the edge middleware. It skips `<script type="application/json">`
-— `education.html` carries an encrypted vault in one.
+— `workbench.html` carries an encrypted vault in one.
 
 Environment variables live in Vercel and are listed in `HANDOFF.md`. Changing
 one requires a **redeploy**; saving alone does nothing to what is running.
